@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+.dotnet-home/
+.nuget-packages/
+.nuget-user/
+.vs/
+**/.keys/
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+.env
+.env.*
+!.env.example
+authcookies*.txt
+*.csproj.user

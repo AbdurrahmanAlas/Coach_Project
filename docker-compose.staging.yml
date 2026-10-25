@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${STAGING_POSTGRES_DB:-kocluk_staging}
+      POSTGRES_USER: ${STAGING_POSTGRES_USER:-kocluk_staging}
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?STAGING_POSTGRES_PASSWORD is required}
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${STAGING_POSTGRES_USER:-kocluk_staging} -d $${STAGING_POSTGRES_DB:-kocluk_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  api:
+    build:
+      context: .
+      dockerfile: src/Kocluk.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      DatabaseProvider: Postgres
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${STAGING_POSTGRES_DB:-kocluk_staging};Username=${STAGING_POSTGRES_USER:-kocluk_staging};Password=${STAGING_POSTGRES_PASSWORD}
+      APP_PUBLIC_URL: ${STAGING_PUBLIC_URL:-http://localhost:8081}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      DATA_PROTECTION_KEYS_PATH: /keys
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - staging-api-keys:/keys
+    ports:
+      - "8081:8080"
+volumes:
+  staging-postgres-data:
+  staging-api-keys:

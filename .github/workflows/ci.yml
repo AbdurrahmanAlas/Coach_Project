@@ -1,0 +1,33 @@
+name: Kocluk CI
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet restore KoclukProject.sln
+      - run: dotnet build KoclukProject.sln --no-restore --configuration Release
+      - name: Run domain behavior checks
+        run: dotnet run --project tests/Kocluk.Domain.Checks/Kocluk.Domain.Checks.csproj --configuration Release --no-build
+      - name: Validate browser script syntax
+        run: |
+          python3 -c "import re,pathlib; s=re.search(r'<script>(.*?)</script>', pathlib.Path('src/Kocluk.Api/wwwroot/index.html').read_text(), re.S).group(1); pathlib.Path('/tmp/kocluk-inline.js').write_text(s)"
+          node --check /tmp/kocluk-inline.js
+      - name: Publish API artifact
+        run: dotnet publish src/Kocluk.Api/Kocluk.Api.csproj --configuration Release --no-restore --output ./artifacts/api
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kocluk-api-${{ github.sha }}
+          path: ./artifacts/api
+      - name: Build production container
+        run: docker build --file src/Kocluk.Api/Dockerfile --tag kocluk-api:${{ github.sha }} .
+      - name: Verify EF migrations
+        run: dotnet ef migrations list --project src/Kocluk.Infrastructure --startup-project src/Kocluk.Api --no-build

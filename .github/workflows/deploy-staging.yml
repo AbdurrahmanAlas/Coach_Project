@@ -1,0 +1,26 @@
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.STAGING_APP_DIRECTORY }}"
+            git fetch --all --prune
+            git checkout staging
+            git pull --ff-only origin staging
+            docker compose -f docker-compose.staging.yml up -d --build
+            docker compose -f docker-compose.staging.yml ps
+            curl --fail --retry 10 --retry-delay 3 http://localhost:8081/api/health/ready

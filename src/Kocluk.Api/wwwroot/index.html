@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Koçluk | Öğrenci gelişim paneli</title>
+  <style>
+    :root{--navy:#10233f;--navy-2:#172f52;--ink:#17243a;--muted:#71809a;--line:#e8edf4;--bg:#f5f8fc;--mint:#2cc6a7;--blue:#4f83ff;--orange:#ffad61;--white:#fff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px Inter,Segoe UI,Arial,sans-serif}button{font:inherit;border:0;cursor:pointer}
+    .shell{display:flex;min-height:100vh}.sidebar{width:250px;background:var(--navy);color:#d9e4f4;padding:24px 16px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:750;color:#fff;margin:0 10px 42px}.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--mint),#67e0c7);color:var(--navy);font-weight:900}.nav-label{margin:0 12px 11px;color:#7890b2;font-size:11px;text-transform:uppercase;letter-spacing:1.4px}.nav a{display:flex;align-items:center;gap:12px;color:#b6c5da;text-decoration:none;padding:12px;border-radius:10px;margin:4px 0}.nav a.active,.nav a:hover{background:#22466f;color:#fff}.icon{width:22px;text-align:center;font-size:17px}.sidebar-bottom{margin-top:auto;background:#1a365d;border:1px solid #2d527f;border-radius:14px;padding:15px}.sidebar-bottom p{margin:0 0 7px;color:#fff;font-weight:650}.sidebar-bottom small{display:block;color:#9fb5d1;line-height:1.45}.main{flex:1;min-width:0}.topbar{height:76px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 38px}.crumb{color:var(--muted);font-size:13px}.top-actions{display:flex;align-items:center;gap:18px}.bell{font-size:20px;color:#71809a}.avatar{display:flex;align-items:center;gap:10px;font-weight:650}.avatar-circle{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#d9f5ee;color:#137d6b}.content{padding:34px 40px;max-width:1450px}.welcome{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px}.welcome h1{font-size:29px;margin:0 0 8px;letter-spacing:-.6px}.welcome p{margin:0;color:var(--muted)}.date{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:24px}.card{background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:0 5px 16px rgba(22,44,76,.04)}.stat{padding:20px}.stat-head{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}.stat-value{font-size:28px;font-weight:750;margin:15px 0 6px}.stat-foot{font-size:12px;color:#26a989}.stat-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#edf5ff;color:var(--blue);font-size:17px}.layout{display:grid;grid-template-columns:1.55fr 1fr;gap:22px}.section{padding:23px}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.section-title h2{font-size:17px;margin:0}.section-title a{font-size:12px;color:var(--blue);text-decoration:none}.progress-wrap{display:flex;gap:22px;align-items:center}.progress{width:118px;height:118px;border-radius:50%;background:conic-gradient(var(--mint) 0 72%,#e9f1f2 72% 100%);display:grid;place-items:center;flex:none}.progress:after{content:"";width:86px;height:86px;border-radius:50%;background:#fff;position:absolute}.progress span{position:relative;z-index:1;font-size:23px;font-weight:750}.progress-copy h3{margin:0 0 7px;font-size:16px}.progress-copy p{margin:0;color:var(--muted);line-height:1.5}.bar-row{margin-top:24px}.bar-label{display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;color:var(--muted)}.bar{height:8px;border-radius:8px;background:#edf1f6;overflow:hidden}.bar i{display:block;height:100%;border-radius:8px;background:var(--blue)}.bar i.mint{background:var(--mint)}.tasks{display:grid;gap:11px}.task{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:11px;padding:12px}.check{width:20px;height:20px;border:2px solid #cbd7e6;border-radius:6px;flex:none}.task.done .check{background:var(--mint);border-color:var(--mint);position:relative}.task.done .check:after{content:'✓';color:#fff;position:absolute;left:3px;top:-2px;font-weight:700}.task-text{flex:1}.task-text strong{display:block;font-size:13px;margin-bottom:4px}.task-text small{color:var(--muted)}.tag{padding:5px 8px;border-radius:6px;background:#fff4e9;color:#c5752a;font-size:11px}.tag.blue{background:#edf3ff;color:#4d78d9}.schedule{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.day{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;min-height:98px}.day b{display:block;font-size:11px;color:var(--muted);margin-bottom:11px}.day strong{display:block;font-size:21px;margin-bottom:10px}.day.active{background:var(--navy);color:#fff;border-color:var(--navy)}.day.active b{color:#a9c4e7}.day em{font-style:normal;font-size:11px;color:var(--mint)}.quote{margin-top:22px;background:linear-gradient(120deg,#eafbf7,#f1f5ff);border:0;padding:18px 20px}.quote p{margin:0;font-size:14px;line-height:1.55;color:#31516c}.quote small{display:block;margin-top:9px;color:#6e8495}.primary{background:var(--navy);color:#fff;border-radius:9px;padding:10px 15px;font-size:12px}.primary:hover{background:#23476d}@media(max-width:1000px){.sidebar{width:210px}.grid{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}@media(max-width:650px){.sidebar{display:none}.content{padding:24px 18px}.topbar{padding:0 18px}.grid{grid-template-columns:1fr 1fr}.welcome{display:block}.date{margin-top:12px}}
+    .profile-button{background:none;display:flex;align-items:center;gap:10px;font-weight:650;color:var(--ink);padding:4px 0}.profile-menu{position:absolute;right:0;top:48px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px #10233f1c;padding:8px;z-index:5;min-width:170px}.profile-menu button{width:100%;background:none;text-align:left;padding:10px;border-radius:8px;color:#33435b}.profile-menu button:hover{background:#f1f5fa}.hidden{display:none!important}.auth-screen{position:fixed;inset:0;background:linear-gradient(135deg,#10233f,#1c4970);z-index:20;display:grid;place-items:center;padding:20px}.auth-card{width:min(430px,100%);background:#fff;border-radius:20px;padding:32px;box-shadow:0 22px 70px #07172c55}.auth-brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;margin-bottom:25px}.auth-card h1{margin:0 0 8px;font-size:25px}.auth-card p{color:var(--muted);margin:0 0 22px}.auth-card label{display:block;color:#52627a;font-size:12px;font-weight:650;margin:14px 0 6px}.auth-card input,.auth-card select{width:100%;border:1px solid #d9e2ee;border-radius:9px;padding:12px;outline:none}.auth-card input:focus,.auth-card select:focus{border-color:var(--blue)}.auth-submit{width:100%;margin-top:20px;padding:13px}.auth-switch{text-align:center;margin-top:18px!important;font-size:12px}.auth-switch a{color:var(--blue);cursor:pointer}.auth-error{color:#c35454!important;background:#fff0f0;padding:9px;border-radius:8px;font-size:12px}.role-help{font-size:11px!important;margin-top:8px!important}
+    .modal-backdrop{position:fixed;inset:0;background:#07172c99;z-index:30;display:grid;place-items:center;padding:20px}.modal-card{width:min(720px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 80px #07172c55}.modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:24px 26px 12px}.modal-head h2{margin:0 0 5px;font-size:21px}.modal-head p{margin:0;color:var(--muted);font-size:12px}.modal-close{background:#f1f5fa;border-radius:50%;width:32px;height:32px;color:#52627a;font-size:19px}.modal-form{padding:10px 26px 26px}.form-section{border-top:1px solid var(--line);padding-top:18px;margin-top:16px}.form-section h3{font-size:13px;margin:0 0 13px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-field label{display:block;color:#52627a;font-size:12px;font-weight:650;margin:0 0 6px}.form-field input{width:100%;border:1px solid #d9e2ee;border-radius:9px;padding:11px;outline:none}.form-field input:focus{border-color:var(--blue)}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.secondary{background:#edf2f8;color:#33435b;border-radius:9px;padding:10px 15px;font-size:12px}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+    .student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}.student-card{position:relative;min-height:190px;padding:18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,#fff,#f8fbff);cursor:pointer;transition:transform .18s,box-shadow .18s}.student-card:hover{transform:translateY(-3px);box-shadow:0 12px 24px #10233f12}.student-card:nth-child(3n+1) .student-avatar{background:#d9f5ee;color:#137d6b}.student-card:nth-child(3n+2) .student-avatar{background:#e8edff;color:#536fd4}.student-card:nth-child(3n) .student-avatar{background:#fff0dd;color:#c27528}.student-avatar{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;font-size:17px;font-weight:750;margin-bottom:20px}.student-card h3{margin:0 0 8px;font-size:16px}.student-card p{margin:0;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.student-card .student-actions{position:absolute;right:14px;top:14px;display:flex;gap:5px}.student-card .student-actions button{font-size:11px;padding:6px 8px;border-radius:7px}.student-detail-card{width:min(1000px,100%);background:linear-gradient(145deg,#f5fffb,#fff)}.detail-hero{display:flex;align-items:center;gap:15px;padding:0 26px 20px}.detail-avatar{display:grid;place-items:center;width:62px;height:62px;border-radius:18px;background:#c9f1e5;color:#137d6b;font-size:22px;font-weight:800}.detail-hero h3{margin:0 0 5px;font-size:20px}.detail-hero p{margin:0;color:var(--muted);font-size:12px}.detail-tabs{display:flex;gap:6px;padding:0 26px;border-bottom:1px solid #d9eee7}.detail-tab{background:none;color:var(--muted);padding:11px 12px;border-bottom:2px solid transparent;font-size:12px}.detail-tab:hover{color:#16826d}.detail-tab.active{color:#16826d;border-color:var(--mint)}.detail-body{padding:22px 26px 26px}.detail-panel{display:none}.detail-panel.active{display:block}.detail-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.detail-stat{padding:14px;border-radius:12px;background:#e9f9f3}.detail-stat strong{display:block;font-size:20px;margin-bottom:5px}.detail-stat span{font-size:11px;color:var(--muted)}.calendar-box{border:1px solid #d9eee7;background:#f2fcf8;border-radius:14px;padding:16px}.calendar-box h3{margin:0 0 5px}.calendar-box p{margin:0 0 14px;color:var(--muted);font-size:12px}.calendar-form{display:grid;grid-template-columns:1.1fr .7fr .7fr 1.2fr auto;gap:8px;align-items:end}.calendar-form input{border:1px solid #cde7dd;border-radius:8px;padding:9px;background:#fff}.calendar-form label{display:block;color:#52726a;font-size:10px;margin-bottom:4px}.session-item{display:flex;justify-content:space-between;align-items:center;border:1px solid #d9eee7;border-radius:10px;background:#fff;padding:11px;margin-top:8px}.session-item small{color:var(--muted)}@media(max-width:800px){.calendar-form{grid-template-columns:1fr 1fr}.calendar-form button{grid-column:span 2}}
+    .session-item small{display:block;margin-top:4px}.session-actions{display:flex;gap:5px}.session-actions button{font-size:11px;padding:6px 8px;border-radius:7px}
+    /* Professional coaching workspace theme */
+    body{background:radial-gradient(circle at 85% -10%,#eaf8f5 0,#f5f8fc 38%,#f5f8fc 100%)}
+    .sidebar{background:linear-gradient(180deg,#0d2341 0%,#102e51 55%,#0c213d 100%);box-shadow:12px 0 35px rgba(9,30,58,.12)}
+    .brand-mark{box-shadow:0 8px 18px rgba(44,198,167,.25)}
+    .nav a{transition:all .2s ease}.nav a.active{box-shadow:inset 3px 0 var(--mint),0 8px 18px rgba(4,20,40,.15)}
+    .topbar{background:rgba(255,255,255,.9);backdrop-filter:blur(14px);position:sticky;top:0;z-index:10}
+    .content{animation:pageIn .28s ease-out}.card{transition:box-shadow .2s ease,transform .2s ease}.card:hover{box-shadow:0 12px 28px rgba(22,44,76,.08)}
+    .stat{background:linear-gradient(145deg,#fff 0%,#fbfdff 100%)}.stat-value{letter-spacing:-.7px}
+    .primary{background:linear-gradient(135deg,#10233f,#1e4d78);box-shadow:0 7px 16px rgba(16,35,63,.18);transition:transform .18s,box-shadow .18s}.primary:hover{background:linear-gradient(135deg,#183a63,#28618e);transform:translateY(-1px);box-shadow:0 10px 22px rgba(16,35,63,.23)}
+    .student-card{background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(239,250,248,.9));border-color:#dcebe9}.student-card:after{content:'';position:absolute;right:-18px;bottom:-28px;width:100px;height:100px;border-radius:50%;background:rgba(44,198,167,.08);pointer-events:none}
+    .student-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),275px));align-items:stretch;gap:18px}
+    .student-card{min-height:245px;aspect-ratio:1/0.92;padding:21px;overflow:hidden;background:linear-gradient(145deg,#fff 0%,#f1fcf8 100%);border-color:#d6ebe5;box-shadow:0 8px 22px rgba(20,64,84,.055)}
+    .student-card:nth-child(4n+2){background:linear-gradient(145deg,#fff 0%,#f1f5ff 100%);border-color:#dce5fb}
+    .student-card:nth-child(4n+3){background:linear-gradient(145deg,#fff 0%,#fff7ed 100%);border-color:#f5e5d1}
+    .student-card:nth-child(4n){background:linear-gradient(145deg,#fff 0%,#f7f2ff 100%);border-color:#e8def7}
+    .student-avatar{width:62px;height:62px;border-radius:19px;font-size:20px;box-shadow:0 7px 16px rgba(26,58,88,.08);margin-bottom:26px}
+    .student-card h3{font-size:17px;margin-bottom:10px;position:relative;z-index:1}
+    .student-card p{font-size:13px;line-height:1.55;position:relative;z-index:1}
+    .student-card .student-actions{z-index:2}
+    .student-card .student-actions button{padding:7px 9px;font-size:12px}
+    .student-card:focus-visible{outline:3px solid #6ad8c0;outline-offset:3px}
+    .modal-card{border:1px solid rgba(217,238,231,.9);background:linear-gradient(145deg,#ffffff 0%,#f8fffc 100%)}
+    .calendar-box{box-shadow:inset 0 1px 0 #fff,0 8px 20px rgba(38,145,119,.06)}
+    /* Keep the application navigation visible while giving the student file the main workspace. */
+    #student-detail-modal{left:250px;place-items:stretch center;padding:24px 30px;background:rgba(7,23,44,.58);backdrop-filter:blur(3px)}
+    #student-detail-modal .student-detail-card{width:min(1320px,100%);max-height:calc(100vh - 48px);border-radius:24px;box-shadow:0 28px 90px rgba(7,23,44,.32);background:linear-gradient(145deg,#f5fffb 0%,#fff 45%,#f4f8ff 100%);overflow:auto}
+    #student-detail-modal .modal-head{padding:30px 36px 14px;align-items:center}
+    #student-detail-modal .modal-head h2{font-size:27px;letter-spacing:-.4px;color:#10233f}
+    #student-detail-modal .modal-head p{font-size:14px;margin-top:6px}
+    #student-detail-modal .modal-close{width:42px;height:42px;font-size:24px;background:#e9f2ff;color:#315b91;transition:transform .15s,background .15s}
+    #student-detail-modal .modal-close:hover{transform:rotate(90deg);background:#dceaff}
+    #student-detail-modal .detail-hero{margin:0 36px 22px;padding:20px 22px;border:1px solid #d7eee7;border-radius:20px;background:linear-gradient(110deg,#e3fbf2,#eff5ff 72%,#fff4e8);box-shadow:0 8px 24px rgba(31,94,98,.06)}
+    #student-detail-modal .detail-avatar{width:78px;height:78px;border-radius:22px;background:linear-gradient(145deg,#2cc6a7,#70dfc8);color:#103c42;font-size:27px;box-shadow:0 8px 18px rgba(44,198,167,.2)}
+    #student-detail-modal .detail-hero h3{font-size:25px;color:#10233f;margin-bottom:8px}
+    #student-detail-modal .detail-hero p{font-size:14px;line-height:1.55}
+    #student-detail-modal .detail-tabs{padding:0 36px;gap:12px;border-bottom-color:#dce8f0}
+    #student-detail-modal .detail-tab{font-size:14px;padding:14px 17px;border-radius:12px 12px 0 0}
+    #student-detail-modal .detail-tab.active{background:#e8f8f3;color:#087e69;border-color:#2cc6a7;font-weight:700}
+    #student-detail-modal .detail-body{padding:28px 36px 36px}
+    #student-detail-modal .detail-summary{gap:16px}
+    #student-detail-modal .detail-stat{padding:21px 22px;border:1px solid transparent;border-radius:18px;box-shadow:0 8px 20px rgba(21,54,88,.05)}
+    #student-detail-modal .detail-stat:nth-child(1){background:linear-gradient(135deg,#e0f8ef,#f4fffb);border-color:#ccefe2}
+    #student-detail-modal .detail-stat:nth-child(2){background:linear-gradient(135deg,#e8efff,#f7f9ff);border-color:#dce5ff}
+    #student-detail-modal .detail-stat:nth-child(3){background:linear-gradient(135deg,#fff0df,#fffaf3);border-color:#ffe6c8}
+    #student-detail-modal .detail-stat strong{font-size:29px;color:#10233f;margin-bottom:8px}
+    #student-detail-modal .detail-stat span{font-size:13px;font-weight:600}
+    #student-detail-modal .form-section{border-top-color:#dce8f0;padding-top:24px;margin-top:25px}
+    #student-detail-modal .form-section h3,#student-detail-modal .calendar-box h3{font-size:17px;color:#10233f}
+    #student-detail-modal .task{padding:16px;border-radius:14px;background:rgba(255,255,255,.88)}
+    #student-detail-modal .task-text strong{font-size:14px}
+    #student-detail-modal .task-text small,#student-detail-modal .session-item{font-size:13px}
+    #student-detail-modal .calendar-box{padding:22px;border-radius:18px;background:linear-gradient(135deg,#eafbf5,#f3f8ff);border-color:#cfe9df}
+    #student-detail-modal .calendar-box p{font-size:13px;line-height:1.55}
+    #student-detail-modal .calendar-form{grid-template-columns:1.1fr .8fr .7fr 1.3fr auto;gap:12px}
+    #student-detail-modal .calendar-form label{font-size:12px;font-weight:650;margin-bottom:7px}
+    #student-detail-modal .calendar-form input{min-height:43px;padding:10px 12px;font:inherit}
+    #student-detail-modal .session-item{padding:14px;border-color:#d5ebe2;border-radius:13px}
+    @media(max-width:1000px){#student-detail-modal{left:210px;padding:16px}#student-detail-modal .student-detail-card{max-height:calc(100vh - 32px)}#student-detail-modal .detail-body,#student-detail-modal .modal-head{padding-left:24px;padding-right:24px}#student-detail-modal .detail-hero{margin-left:24px;margin-right:24px}#student-detail-modal .detail-tabs{padding-left:24px;padding-right:24px}#student-detail-modal .calendar-form{grid-template-columns:1fr 1fr}}
+    @media(max-width:650px){#student-detail-modal{left:0;padding:8px;place-items:center}#student-detail-modal .student-detail-card{max-height:calc(100vh - 16px);border-radius:18px}#student-detail-modal .modal-head{padding:20px 18px 12px}#student-detail-modal .modal-head h2{font-size:21px}#student-detail-modal .detail-hero{margin:0 18px 16px;padding:15px;gap:12px}#student-detail-modal .detail-avatar{width:60px;height:60px;font-size:21px}#student-detail-modal .detail-hero h3{font-size:19px}#student-detail-modal .detail-hero p{font-size:12px}#student-detail-modal .detail-tabs{padding:0 18px;gap:2px}#student-detail-modal .detail-tab{font-size:12px;padding:12px 9px}#student-detail-modal .detail-body{padding:18px}#student-detail-modal .detail-summary{grid-template-columns:1fr}#student-detail-modal .detail-stat{padding:14px 17px}#student-detail-modal .detail-stat strong{font-size:23px}#student-detail-modal .calendar-form{grid-template-columns:1fr 1fr}#student-detail-modal .calendar-form button{grid-column:1/-1}}
+    @keyframes pageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+    @media(max-width:650px){.topbar{height:64px}.top-actions{gap:9px}.profile-button span:not(.avatar-circle){max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.content{padding-top:22px}.student-grid{grid-template-columns:1fr}.modal-backdrop{padding:10px}.modal-head,.detail-hero,.detail-body{padding-left:18px;padding-right:18px}}
+      .mobile-nav-toggle{display:none;background:#edf5ff;color:var(--navy);border-radius:9px;width:34px;height:34px;font-size:18px}.sidebar-overlay{display:none}@media(max-width:650px){.mobile-nav-toggle{display:block}.sidebar{position:fixed;inset:0 auto 0 0;width:250px;z-index:40;transform:translateX(-105%);transition:transform .22s ease}.sidebar.mobile-open{transform:translateX(0)}.sidebar-overlay{position:fixed;inset:0;background:#07172c88;z-index:35}.sidebar-overlay.mobile-open{display:block}.main{width:100%}}</style>
+</head>
+<body>
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand"><span class="brand-mark">K</span> Koçluk</div>
+      <div id="login-view"><h1>Hoş geldin</h1><p>Koçluk paneline giriş yaparak devam et.</p><div id="login-error" class="auth-error hidden"></div><form id="login-form"><label>E-posta</label><input id="login-email" type="email" required placeholder="ornek@mail.com"><label>Şifre</label><input id="login-password" type="password" required placeholder="En az 10 karakter"><button class="primary auth-submit" type="submit">Giriş yap</button></form><p class="auth-switch">Hesabın yok mu? <a id="show-register">Kayıt ol</a></p></div>
+      <div id="register-view" class="hidden"><h1>Hesap oluştur</h1><p>Öğrenci koçluğu hesabını birkaç saniyede oluştur.</p><div id="register-error" class="auth-error hidden"></div><form id="register-form"><label>E-posta</label><input id="register-email" type="email" required placeholder="ornek@mail.com"><label>Şifre</label><input id="register-password" type="password" required placeholder="En az 10 karakter, büyük harf ve rakam"><label>Hesap türü</label><select id="register-role"><option value="Student">Öğrenci</option><option value="Parent">Veli</option></select><p class="role-help">Koç ve yönetici hesapları kurum yöneticisinin davetiyle açılır.</p><label style="display:flex;gap:8px;align-items:flex-start"><input id="register-privacy-consent" type="checkbox" required style="width:auto;margin-top:4px"><span><a href="/privacy.html" target="_blank" rel="noopener">Gizlilik/KVKK bilgilendirme taslağını</a> okudum.</span></label><label style="display:flex;gap:8px;align-items:flex-start"><input id="register-terms-consent" type="checkbox" required style="width:auto;margin-top:4px"><span><a href="/terms.html" target="_blank" rel="noopener">Kullanım koşulları taslağını</a> okudum.</span></label><button class="primary auth-submit" type="submit">Kayıt ol</button></form><p class="auth-switch">Zaten hesabın var mı? <a id="show-login">Giriş yap</a></p><p class="auth-switch">Bu taslaklar yayın öncesi işletmeci ve hukuk danışmanı tarafından tamamlanmalıdır.</p></div>
+    </div>
+  </div>
+  <div id="exam-modal" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head"><div><h2>Deneme sonucu ekle</h2><p>Öğrencinin deneme performansını kaydedin.</p></div><button type="button" class="modal-close" id="exam-modal-close">×</button></div>
+      <form id="exam-form" class="modal-form"><div class="form-grid"><div class="form-field"><label>Öğrenci</label><select id="exam-student" required style="width:100%;border:1px solid #d9e2ee;border-radius:9px;padding:11px"></select></div><div class="form-field"><label>Deneme adı</label><input id="exam-title" required maxlength="180" placeholder="TYT Genel Deneme #1"></div><div class="form-field"><label>Tarih</label><input id="exam-date" type="date" required></div><div class="form-field"><label>Puan</label><input id="exam-score" type="number" min="0" step="0.01" required></div><div class="form-field"><label>Doğru</label><input id="exam-correct" type="number" min="0" required></div><div class="form-field"><label>Yanlış</label><input id="exam-wrong" type="number" min="0" required></div><div class="form-field"><label>Boş</label><input id="exam-blank" type="number" min="0" required></div></div><div id="exam-form-error" class="auth-error hidden" style="margin-top:16px"></div><div class="modal-actions"><button type="button" class="secondary" id="exam-modal-cancel">Vazgeç</button><button type="submit" class="primary">Sonucu kaydet</button></div></form>
+    </div>
+  </div>
+  <div id="student-modal" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-modal-title">
+      <div class="modal-head"><div><h2 id="student-modal-title">Yeni öğrenci ekle</h2><p>Öğrenci ve birincil veli bilgilerini tek adımda oluşturun.</p></div><button type="button" class="modal-close" id="student-modal-close">×</button></div>
+      <form id="student-form" class="modal-form">
+        <div class="form-section" style="border-top:0;padding-top:0;margin-top:0"><h3>Öğrenci bilgileri</h3><div class="form-grid"><div class="form-field"><label for="student-first-name">Ad *</label><input id="student-first-name" required maxlength="100"></div><div class="form-field"><label for="student-last-name">Soyad *</label><input id="student-last-name" required maxlength="100"></div><div class="form-field"><label for="student-email">E-posta</label><input id="student-email" type="email"></div><div class="form-field"><label for="student-phone">Telefon</label><input id="student-phone" type="tel" placeholder="05xx xxx xx xx"></div></div></div>
+        <div class="form-section"><h3>Birincil veli bilgileri</h3><div class="form-grid"><div class="form-field"><label for="parent-first-name">Veli adı *</label><input id="parent-first-name" required maxlength="100"></div><div class="form-field"><label for="parent-last-name">Veli soyadı *</label><input id="parent-last-name" required maxlength="100"></div><div class="form-field"><label for="parent-email">Veli e-posta</label><input id="parent-email" type="email"></div><div class="form-field"><label for="parent-phone">Veli telefon *</label><input id="parent-phone" type="tel" required placeholder="05xx xxx xx xx"></div></div></div>
+        <div id="student-form-error" class="auth-error hidden" style="margin-top:16px"></div><div class="modal-actions"><button type="button" class="secondary" id="student-modal-cancel">Vazgeç</button><button type="submit" class="primary">Öğrenciyi kaydet</button></div>
+      </form>
+    </div>
+  </div>
+  <div id="student-detail-modal" class="modal-backdrop hidden">
+    <div class="modal-card student-detail-card" role="dialog" aria-modal="true">
+      <div class="modal-head"><div><h2>Öğrenci gelişim dosyası</h2><p>Dersler, çalışma planları ve sınav ilerlemesi</p></div><button type="button" class="modal-close" id="student-detail-close">×</button></div>
+      <div class="detail-hero"><div id="detail-avatar" class="detail-avatar">Ö</div><div><h3 id="detail-name">Öğrenci</h3><p id="detail-contact">İletişim bilgileri</p></div></div>
+      <div class="detail-tabs" role="tablist" aria-label="Öğrenci gelişim sekmeleri"><button type="button" class="detail-tab active" role="tab" aria-selected="true" data-detail-tab="overview">Genel bakış</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="plans">Çalışma planları</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="exams">Denemeler</button></div>
+      <div id="student-detail-body" class="detail-body"><div class="detail-summary"><div class="detail-stat"><strong id="detail-plan-count">0</strong><span>Aktif plan</span></div><div class="detail-stat"><strong id="detail-task-count">0</strong><span>Toplam görev</span></div><div class="detail-stat"><strong id="detail-question-count">0</strong><span>Hedef soru</span></div></div><div class="form-section"><div class="section-title"><h3>Çalışma planları</h3><button type="button" class="tag blue" id="export-detail-plans">CSV indir</button></div><div id="detail-plans" class="tasks"><div class="task"><div class="task-text"><strong>Yükleniyor...</strong></div></div></div></div><div class="form-section"><div class="calendar-box"><h3>Koçluk takvimi</h3><p>Bu öğrenciyle yapılacak görüşmeleri planlayın. Öğrenci ve veli yaklaşan görüşmeyi görebilecek.</p><form id="session-form" class="calendar-form"><div><label for="session-date">Tarih</label><input id="session-date" type="date" required></div><div><label for="session-time">Saat</label><input id="session-time" type="time" required></div><div><label for="session-duration">Süre</label><input id="session-duration" type="number" min="15" max="240" step="15" value="45" required></div><div><label for="session-note">Not</label><input id="session-note" placeholder="Haftalık değerlendirme"></div><button class="primary" type="submit">Takvime ekle</button></form><div id="detail-sessions"></div></div></div></div>
+      <div class="form-section"><h3>Deneme sonuçları</h3><div id="detail-exams" class="tasks"><p style="font-size:12px;color:var(--muted)">Yükleniyor...</p></div></div>
+    </div>
+  </div>
+  <div id="tenant-modal" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tenant-modal-title">
+      <div class="modal-head"><div><h2 id="tenant-modal-title">Koçluk alanı oluştur</h2><p>Öğrenci, veli ve koç süreçlerini tek çalışma alanında yönetin.</p></div><button type="button" class="modal-close" id="tenant-modal-close">×</button></div>
+      <form id="tenant-form" class="modal-form"><div class="form-section" style="border-top:0;padding-top:0;margin-top:0"><h3>Alan bilgileri</h3><div class="form-grid"><div class="form-field"><label for="tenant-form-name">Koçluk alanı adı *</label><input id="tenant-form-name" required maxlength="120" placeholder="Örn. Ayşe Öğretmen Koçluk"></div><div class="form-field"><label for="tenant-form-slug">Kısa ad *</label><input id="tenant-form-slug" required maxlength="80" pattern="[a-z0-9-]+" placeholder="ayse-ogretmen-kocluk"><small style="display:block;color:var(--muted);font-size:11px;margin-top:5px">Sadece küçük harf, rakam ve tire kullanın.</small></div></div></div><div id="tenant-form-error" class="auth-error hidden" style="margin-top:16px"></div><div class="modal-actions"><button type="button" class="secondary" id="tenant-modal-cancel">Vazgeç</button><button type="submit" class="primary">Koçluk alanını oluştur</button></div></form>
+    </div>
+  </div>
+  <div id="sidebar-overlay" class="sidebar-overlay"></div><div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">K</span> Koçluk</div>
+      <div class="nav-label">Menü</div>
+      <nav class="nav">
+        <a href="#dashboard" data-page="dashboard" class="active"><span class="icon">⌂</span> Genel Bakış</a>
+        <a href="#students" data-page="students"><span class="icon">◉</span> Öğrenciler</a>
+        <a href="#plans" data-page="plans"><span class="icon">▣</span> Çalışma Planları</a>
+        <a href="#schedule" data-page="schedule"><span class="icon">◷</span> Ders Takvimi</a>
+        <a href="#exams" data-page="exams"><span class="icon">◒</span> Deneme &amp; Sınavlar</a>
+        <a href="#messages" data-page="messages"><span class="icon">✉</span> Mesajlar</a>
+        <a href="#question-bank" data-page="question-bank"><span class="icon">?</span> Soru Bankası</a>
+      </nav>
+      <div class="nav-label" style="margin-top:27px">Yönetim</div>
+      <nav class="nav"><a href="#settings" data-page="settings"><span class="icon">⚙</span> Ayarlar</a><a href="#help" data-page="help"><span class="icon">?</span> Yardım Merkezi</a></nav>
+      <div class="sidebar-bottom"><p>Koçluk hedefin</p><small>Bugün küçük bir adım, yarın büyük bir ilerleme.</small></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div style="display:flex;align-items:center;gap:10px"><button id="mobile-nav-toggle" class="mobile-nav-toggle" aria-label="Menüyü aç">☰</button><div class="crumb">Genel Bakış <span id="tenant-name" style="margin-left:12px;color:#4f83ff"></span></div></div><div class="top-actions"><button id="create-tenant-button" class="primary hidden">+ Koçluk alanı oluştur</button><div style="position:relative"><button id="notifications-button" class="bell" aria-label="Bildirimler">♧<span id="notification-count" class="tag blue hidden" style="position:absolute;top:-8px;right:-12px;padding:2px 5px;font-size:9px">0</span></button><div id="notifications-menu" class="profile-menu hidden" style="right:0;width:300px"><strong style="display:block;padding:8px 12px">Bildirimler</strong><div id="notifications-list"></div></div></div><div style="position:relative"><button id="profile-button" class="profile-button"><span id="profile-avatar" class="avatar-circle">KU</span><span id="profile-name">Kullanıcı</span>⌄</button><div id="profile-menu" class="profile-menu hidden"><button id="profile-info">Profilim</button><button id="export-account">Verilerimi indir</button><button id="request-deletion">Hesap silme talebi</button><button id="logout-button">Çıkış yap</button></div></div></div></header>
+      <section class="content">
+        <div class="welcome"><div><h1 id="greeting">Günaydın, Kullanıcı 👋</h1><p>Bugünkü çalışmalarını planlayalım ve hedeflerine bir adım daha yaklaşalım.</p></div><div id="today-date" class="date"></div></div>
+        <div class="grid">
+          <div class="card stat"><div class="stat-head"><span>Haftalık ilerleme</span><span class="stat-icon">↗</span></div><div class="stat-value">72%</div><div class="stat-foot">↑ Geçen haftaya göre %8</div></div>
+          <div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div class="stat-value">18 / 25</div><div class="stat-foot">7 görev seni bekliyor</div></div>
+          <div class="card stat"><div class="stat-head"><span>Toplam çalışma</span><span class="stat-icon">◷</span></div><div class="stat-value">14.5 sa</div><div class="stat-foot">↑ Hedefin %86'sı tamam</div></div>
+          <div class="card stat"><div class="stat-head"><span>Deneme ortalaması</span><span class="stat-icon">★</span></div><div class="stat-value">78.4</div><div class="stat-foot">↑ Son denemede +4.2 puan</div></div>
+        </div>
+        <div class="layout">
+          <div class="card section"><div class="section-title"><h2>Bu haftanın hedefi</h2><a href="#">Detayları gör →</a></div><div class="progress-wrap"><div class="progress"><span>72%</span></div><div class="progress-copy"><h3>Harika gidiyorsun!</h3><p>Haftalık çalışma hedefinin çoğunu tamamladın. Kalan görevlerle haftayı güçlü kapatabilirsin.</p></div></div><div class="bar-row"><div class="bar-label"><span>Matematik</span><b>8 / 10 saat</b></div><div class="bar"><i style="width:80%"></i></div></div><div class="bar-row"><div class="bar-label"><span>Türkçe</span><b>4 / 6 saat</b></div><div class="bar"><i class="mint" style="width:67%"></i></div></div></div>
+          <div class="card section"><div class="section-title"><h2>Bugünün görevleri</h2><button class="primary">+ Görev ekle</button></div><div class="tasks"><div class="task done"><span class="check"></span><div class="task-text"><strong>Paragraf soru çözümü</strong><small>Türkçe · 30 soru</small></div><span class="tag blue">Tamamlandı</span></div><div class="task"><span class="check"></span><div class="task-text"><strong>Fonksiyonlar konu tekrarı</strong><small>Matematik · 45 dakika</small></div><span class="tag">Bugün</span></div><div class="task"><span class="check"></span><div class="task-text"><strong>İngilizce kelime çalışması</strong><small>İngilizce · 20 kelime</small></div><span class="tag">18:00</span></div></div></div>
+          <div class="card section"><div class="section-title"><h2>Çalışma takvimi</h2><a href="#">Haftayı gör →</a></div><div class="schedule"><div class="day active"><b>PZT</b><strong>26</strong><em>2 görev</em></div><div class="day"><b>SAL</b><strong>27</strong><em>3 görev</em></div><div class="day"><b>ÇAR</b><strong>28</strong><em>1 görev</em></div><div class="day"><b>PER</b><strong>29</strong><em>4 görev</em></div><div class="day"><b>CUM</b><strong>30</strong><em>2 görev</em></div></div><div class="quote"><p>“Başarı, her gün tekrarlanan küçük çabaların toplamıdır.”</p><small>— Robert Collier</small></div></div>
+          <div class="card section"><div class="section-title"><h2>Koçundan not</h2><span class="tag blue">Yeni</span></div><p style="line-height:1.65;color:var(--muted);margin:0">Bu hafta matematikteki istikrarın çok iyi. Deneme sonrasında yanlışlarını analiz etmeyi ve zorlandığın konuları plana eklemeyi unutma.</p><button class="primary" style="margin-top:20px">Mesajlara git →</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const content = document.querySelector('.content');
+    let dashboard = content.innerHTML;
+    let currentUserRoles = [];
+    function buildRoleDashboard(role, name) {
+      if (role === 'Parent') return `<div class="welcome"><div><h1>${name} için gelişim özeti 👋</h1><p>Çocuğunuzun çalışma düzenini ve koçluk sürecini takip edin.</p></div><div class="date">Bu hafta</div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Haftalık devam</span><span class="stat-icon">↗</span></div><div class="stat-value">%86</div><div class="stat-foot">Geçen haftaya göre +%8</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div class="stat-value">18 / 25</div><div class="stat-foot">7 görev devam ediyor</div></div><div class="card stat"><div class="stat-head"><span>Son deneme</span><span class="stat-icon">★</span></div><div class="stat-value">78,4</div><div class="stat-foot">Sonuç yükselişte</div></div><div class="card stat"><div class="stat-head"><span>Koç notu</span><span class="stat-icon">✦</span></div><div class="stat-value">Yeni</div><div class="stat-foot">Mesajları görüntüle</div></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>Bu haftanın özeti</h2><a href="#plans">Detayları gör →</a></div><p style="line-height:1.65;color:var(--muted);margin:0">Çocuğunuz haftalık çalışma hedefinin büyük bölümünü tamamladı. Koçun önerdiği görevleri ve yaklaşan sınavları buradan takip edebilirsiniz.</p></div><div class="card section"><div class="section-title"><h2>Yaklaşanlar</h2></div><div class="tasks"><div class="task"><span class="tag blue">Yarın</span><div class="task-text"><strong>Matematik konu tekrarı</strong><small>Koç tarafından planlandı</small></div></div><div class="task"><span class="tag">Cuma</span><div class="task-text"><strong>Haftalık koç görüşmesi</strong><small>Online görüşme</small></div></div></div></div></div>`;
+      if (role === 'Student') return `<div class="welcome"><div><h1>Günaydın, ${name} 👋</h1><p>Bugünkü çalışmalarını tamamla ve hedeflerine yaklaş.</p></div><div class="date">Bugünkü hedeflerin</div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Haftalık ilerleme</span><span class="stat-icon">↗</span></div><div class="stat-value">%72</div><div class="stat-foot">Geçen haftaya göre +%8</div></div><div class="card stat"><div class="stat-head"><span>Bugünkü görev</span><span class="stat-icon">✓</span></div><div class="stat-value">3</div><div class="stat-foot">1 görev tamamlandı</div></div><div class="card stat"><div class="stat-head"><span>Çözülen soru</span><span class="stat-icon">◷</span></div><div class="stat-value">85</div><div class="stat-foot">Hedefin 120 soru</div></div><div class="card stat"><div class="stat-head"><span>Deneme ortalaması</span><span class="stat-icon">★</span></div><div class="stat-value">78,4</div><div class="stat-foot">Son denemeye göre +4,2</div></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>Bugünün görevleri</h2><a href="#plans">Planı aç →</a></div><div class="tasks"><div class="task done"><span class="check"></span><div class="task-text"><strong>Paragraf soru çözümü</strong><small>Türkçe · 30 soru</small></div><span class="tag blue">Tamamlandı</span></div><div class="task"><span class="check"></span><div class="task-text"><strong>Fonksiyonlar konu tekrarı</strong><small>Matematik · 45 dakika</small></div><span class="tag">Bugün</span></div></div></div><div class="card section"><div class="section-title"><h2>Koçundan not</h2><span class="tag blue">Yeni</span></div><p style="line-height:1.65;color:var(--muted);margin:0">Yanlış yaptığın soruları analiz etmeyi ve zorlandığın konuları bir sonraki plana eklemeyi unutma.</p></div></div>`;
+      const heading = role === 'Admin' ? 'Yönetim paneline hoş geldin' : 'Koç paneline hoş geldin';
+      const subtitle = role === 'Admin' ? 'Platform kullanıcılarını ve koçluk alanlarını yönet.' : 'Öğrencilerinin hedeflerini, planlarını ve gelişimlerini yönet.';
+      return `<div class="welcome"><div><h1>${heading}, ${name} 👋</h1><p>${subtitle}</p></div><div class="date">${role === 'Admin' ? 'Platform yönetimi' : 'Koçluk çalışma alanı'}</div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Aktif öğrenci</span><span class="stat-icon">◉</span></div><div id="active-student-count" class="stat-value">0</div><div class="stat-foot">Kayıtlı öğrenciler</div></div><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div id="active-plan-count" class="stat-value">0</div><div class="stat-foot">Bu hafta için</div></div><div class="card stat"><div class="stat-head"><span>Bekleyen görev</span><span class="stat-icon">✓</span></div><div id="pending-task-count" class="stat-value">0</div><div class="stat-foot">Takip gerektiren görev</div></div><div class="card stat"><div class="stat-head"><span>Yaklaşan görüşme</span><span class="stat-icon">◷</span></div><div class="stat-value">0</div><div class="stat-foot">Planlanan görüşme</div></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>${role === 'Admin' ? 'Platform durumu' : 'Koçluk akışı'}</h2><a href="#students" class="dashboard-action" data-page-target="students">Öğrencileri yönet →</a></div><p style="line-height:1.65;color:var(--muted);margin:0">${role === 'Admin' ? 'Koçluk alanlarını, kullanıcı rollerini ve platform güvenliğini bu panelden yönetin.' : 'Öğrencilerinizi ekleyin, kişisel çalışma planları oluşturun ve soru ilerlemelerini haftalık olarak takip edin.'}</p></div><div class="card section"><div class="section-title"><h2>Hızlı işlemler</h2></div><div class="tasks"><div class="task dashboard-action" data-page-target="students" style="cursor:pointer"><div class="task-text"><strong>${role === 'Admin' ? 'Koç hesabı yönet' : 'Öğrenci ekle'}</strong><small>${role === 'Admin' ? 'Kullanıcıya rol ata' : 'Yeni öğrenci profilini oluştur'}</small></div><span class="tag blue">Başla →</span></div><div class="task dashboard-action" data-page-target="plans" style="cursor:pointer"><div class="task-text"><strong>${role === 'Admin' ? 'Kurumları incele' : 'Plan oluştur'}</strong><small>${role === 'Admin' ? 'Koçluk alanlarını görüntüle' : 'Haftalık hedefleri belirle'}</small></div><span class="tag blue">Başla →</span></div></div></div></div>`;
+    }
+    const pages = {
+      students: `<div class="welcome"><div><h1>Öğrenciler</h1><p>Öğrencilerini takip et, gelişimlerini tek ekrandan yönet.</p></div><button class="primary">+ Yeni öğrenci</button></div><div class="card section"><div class="section-title"><h2>Öğrenci listesi</h2><span id="student-count" class="tag blue">Yükleniyor</span></div><div id="student-list" class="student-grid"><div class="task"><div class="task-text"><strong>Öğrenciler yükleniyor...</strong></div></div></div></div>`,
+      plans: `<div class="welcome"><div><h1>Çalışma Planları</h1><p>Haftalık hedefleri planla ve ilerlemeyi takip et.</p></div><button class="primary">+ Plan oluştur</button></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div class="stat-value">5</div><div class="stat-foot">Bu hafta devam ediyor</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div class="stat-value">18 / 25</div><div class="stat-foot">%72 tamamlandı</div></div><div class="card stat"><div class="stat-head"><span>Planlanan saat</span><span class="stat-icon">◷</span></div><div class="stat-value">20 sa</div><div class="stat-foot">Haftalık hedef</div></div></div><div class="card section"><div class="section-title"><h2>Aktif planlar</h2><a href="#">Tümünü gör →</a></div><div class="tasks"><div class="task"><div class="task-text"><strong>26 Ekim haftası · Ayşe Yılmaz</strong><small>Matematik, Türkçe ve İngilizce · 8 görev</small></div><span class="tag blue">%72</span></div><div class="task"><div class="task-text"><strong>26 Ekim haftası · Emir Kaya</strong><small>Fizik ve Matematik · 6 görev</small></div><span class="tag">%58</span></div></div></div>`,
+      schedule: `<div class="welcome"><div><h1>Ders Takvimi</h1><p>Koçluk görüşmelerini ve çalışma saatlerini düzenle.</p></div><button class="primary">+ Etkinlik ekle</button></div><div class="card section"><div class="section-title"><h2>Bu hafta</h2><a href="#">‹ Önceki &nbsp; Sonraki ›</a></div><div class="schedule"><div class="day active"><b>PZT</b><strong>26</strong><em>2 etkinlik</em></div><div class="day"><b>SAL</b><strong>27</strong><em>3 etkinlik</em></div><div class="day"><b>ÇAR</b><strong>28</strong><em>1 etkinlik</em></div><div class="day"><b>PER</b><strong>29</strong><em>4 etkinlik</em></div><div class="day"><b>CUM</b><strong>30</strong><em>2 etkinlik</em></div></div><div class="tasks" style="margin-top:22px"><div class="task"><span class="tag blue">10:00</span><div class="task-text"><strong>Ayşe Yılmaz ile haftalık görüşme</strong><small>Online görüşme · 45 dakika</small></div></div><div class="task"><span class="tag">16:00</span><div class="task-text"><strong>Deneme sonuçları değerlendirme</strong><small>Çalışma odası · 30 dakika</small></div></div></div></div>`,
+      exams: `<div class="welcome"><div><h1>Deneme &amp; Sınavlar</h1><p>Sonuçları karşılaştır, gelişim alanlarını keşfet.</p></div><button class="primary">+ Deneme ekle</button></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Toplam deneme</span><span class="stat-icon">◒</span></div><div class="stat-value">12</div><div class="stat-foot">Bu dönem</div></div><div class="card stat"><div class="stat-head"><span>Ortalama puan</span><span class="stat-icon">★</span></div><div class="stat-value">78.4</div><div class="stat-foot">↑ 4.2 puan yükseldi</div></div><div class="card stat"><div class="stat-head"><span>Gelişim</span><span class="stat-icon">↗</span></div><div class="stat-value">+18%</div><div class="stat-foot">İlk denemeye göre</div></div></div><div class="card section"><div class="section-title"><h2>Son denemeler</h2><a href="#">Raporu indir ↓</a></div><div class="tasks"><div class="task"><div class="task-text"><strong>TYT Genel Deneme #12</strong><small>26 Ekim 2026 · 92 doğru, 18 yanlış</small></div><span class="tag blue">78.4 puan</span></div><div class="task"><div class="task-text"><strong>Matematik Branş Denemesi #5</strong><small>22 Ekim 2026 · 34 doğru, 6 yanlış</small></div><span class="tag">72.0 puan</span></div></div></div>`,
+      messages: `<div class="welcome"><div><h1>Mesajlar</h1><p>Koç, öğrenci ve veli arasındaki iletişimi tek ekrandan yönetin.</p></div></div><div class="card section"><div class="section-title"><h2>Yeni mesaj</h2><span class="tag blue">Güvenli tenant iletişimi</span></div><form id="message-form" class="form-grid"><div class="form-field"><label>Alıcı</label><select id="message-recipient" required></select></div><div class="form-field" style="grid-column:1/-1"><label>Mesaj</label><textarea id="message-content" maxlength="4000" rows="3" required placeholder="Mesajınızı yazın..."></textarea></div><div class="modal-actions" style="grid-column:1/-1"><button class="primary" type="submit">Gönder</button><span id="message-form-status" class="hidden"></span></div></form></div><div class="card section"><div class="section-title"><h2>Konuşmalar</h2><button id="messages-refresh" class="tag blue" type="button">Yenile</button></div><div id="messages-list" class="tasks"><p style="color:var(--muted)">Yükleniyor...</p></div></div>`,
+      settings: `<div class="welcome"><div><h1>Ayarlar</h1><p>Koçluk hesabını ve bildirim tercihlerini yönet.</p></div></div><div class="card section"><div class="section-title"><h2>Profil bilgileri</h2><button class="primary">Değişiklikleri kaydet</button></div><div class="tasks"><div class="task"><div class="task-text"><strong>Ad soyad</strong><small>Ayşe Yılmaz</small></div><span class="tag blue">Düzenle</span></div><div class="task"><div class="task-text"><strong>E-posta</strong><small>ayse@example.com</small></div><span class="tag blue">Düzenle</span></div><div class="task"><div class="task-text"><strong>Bildirimler</strong><small>Günlük görev hatırlatıcıları açık</small></div><span class="tag">Açık</span></div></div></div>`,
+      help: `<div class="welcome"><div><h1>Yardım Merkezi</h1><p>Koçluk panelini kullanırken ihtiyacın olan cevaplar.</p></div></div><div class="card section"><div class="section-title"><h2>Sık sorulanlar</h2></div><div class="tasks"><div class="task"><div class="task-text"><strong>Yeni öğrenci nasıl eklerim?</strong><small>Öğrenciler ekranından “Yeni öğrenci” butonunu kullanabilirsin.</small></div><span class="tag blue">›</span></div><div class="task"><div class="task-text"><strong>Haftalık plan nasıl oluşturulur?</strong><small>Çalışma Planları menüsünden yeni plan oluşturabilirsin.</small></div><span class="tag blue">›</span></div><div class="task"><div class="task-text"><strong>Destek ekibine ulaş</strong><small>Destek: destek@kocluk.local</small></div><span class="tag">İletişim</span></div></div></div>`
+    };
+    document.querySelectorAll('[data-page]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault(); const page = link.dataset.page;
+      document.querySelectorAll('[data-page]').forEach(item => item.classList.toggle('active', item === link));
+      content.innerHTML = page === 'dashboard' ? dashboard : pages[page];
+      document.querySelector('.crumb').textContent = link.textContent.trim();
+      history.replaceState(null, '', '#' + page);
+      if (page === 'dashboard') { bindDashboardActions(); loadDashboardData(); }
+      if (page === 'students') loadStudentsPage();
+      if (page === 'plans') loadPlansPage();
+      if (page === 'schedule') loadSchedulePage();
+      if (page === 'exams') loadExamsPage();
+      if (page === 'messages') loadMessagesPage();
+      if (page === 'question-bank') loadQuestionBankPage();
+      if (page === 'settings') loadSettingsPage();
+    }));
+
+    const authScreen = document.getElementById('auth-screen');
+    const mobileNavToggle = document.getElementById('mobile-nav-toggle'); const sidebar = document.querySelector('.sidebar'); const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const closeMobileNav = () => { sidebar?.classList.remove('mobile-open'); sidebarOverlay?.classList.remove('mobile-open'); };
+    mobileNavToggle?.addEventListener('click', () => { sidebar?.classList.toggle('mobile-open'); sidebarOverlay?.classList.toggle('mobile-open'); }); sidebarOverlay?.addEventListener('click', closeMobileNav); document.querySelectorAll('.nav a').forEach(link => link.addEventListener('click', closeMobileNav));
+    const showAuthError = (id, message) => { const el = document.getElementById(id); el.textContent = message; el.classList.remove('hidden'); };
+    const authRequest = async (url, options = {}) => fetch(url, { ...options, credentials: 'include', headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+    async function loadMessagesPage() {
+      const tenantId = localStorage.getItem('tenantId'); if (!tenantId) return;
+      const [membersResponse, messagesResponse] = await Promise.all([authRequest(`/api/tenants/${tenantId}/members`), authRequest(`/api/tenants/${tenantId}/messages`) ]);
+      const members = membersResponse.ok ? await membersResponse.json() : [];
+      const messages = messagesResponse.ok ? await messagesResponse.json() : [];
+      const recipient = document.getElementById('message-recipient');
+      if (recipient) recipient.innerHTML = members.map(item => `<option value="${item.id}">${item.firstName || ''} ${item.lastName || ''} · ${item.role}</option>`).join('');
+      const list = document.getElementById('messages-list');
+      if (list) list.innerHTML = messages.length ? messages.map(item => `<div class="task"><div class="task-text"><strong>${escapeHtml(item.senderName)} → ${escapeHtml(item.recipientName)}</strong><small>${new Date(item.sentAtUtc).toLocaleString('tr-TR')} · ${escapeHtml(item.content)}</small></div>${item.readAtUtc ? '<span class="tag blue">Okundu</span>' : '<span class="tag">Yeni</span>'}</div>`).join('') : '<p style="color:var(--muted)">Henüz mesaj yok.</p>';
+      document.getElementById('message-form')?.addEventListener('submit', async event => { event.preventDefault(); const status = document.getElementById('message-form-status'); const response = await authRequest(`/api/tenants/${tenantId}/messages`, { method: 'POST', body: JSON.stringify({ recipientUserId: recipient.value, content: document.getElementById('message-content').value.trim() }) }); status.textContent = response.ok ? 'Mesaj gönderildi.' : 'Mesaj gönderilemedi.'; status.className = response.ok ? 'tag blue' : 'auth-error'; if (response.ok) { event.target.reset(); await loadMessagesPage(); } });
+      document.getElementById('messages-refresh')?.addEventListener('click', loadMessagesPage);
+    }
+    async function loadQuestionBankPage() {
+      const tenantId = localStorage.getItem('tenantId'); if (!tenantId) return;
+      const canManage = currentUserRoles.includes('Coach') || currentUserRoles.includes('Admin');
+      const shell = document.querySelector('.content');
+      shell.innerHTML = `<div class="welcome"><div><h1>Soru Bankası</h1><p>Ders ve konu bazında soru çöz, eksiklerini takip et.</p></div>${canManage ? '<button id="question-add-toggle" class="primary">+ Yeni soru</button>' : ''}</div><div class="card section"><div class="section-title"><h2>Filtrele</h2><button id="question-filter" class="tag blue" type="button">Uygula</button></div><div class="form-grid"><div class="form-field"><label>Ders</label><input id="question-subject-filter" placeholder="Matematik"></div><div class="form-field"><label>Konu</label><input id="question-topic-filter" placeholder="Fonksiyonlar"></div><div class="form-field"><label>Zorluk</label><select id="question-difficulty-filter"><option value="">Tümü</option><option>Kolay</option><option>Orta</option><option>Zor</option></select></div><div class="form-field"><label>Sınav türü</label><input id="question-exam-filter" placeholder="TYT"></div></div></div>${canManage ? '<div id="question-form-card" class="card section hidden"><div class="section-title"><h2>Yeni soru oluştur</h2></div><form id="question-form" class="form-grid"><div class="form-field"><label>Ders</label><input id="question-subject" required maxlength="100"></div><div class="form-field"><label>Konu</label><input id="question-topic" required maxlength="180"></div><div class="form-field"><label>Zorluk</label><select id="question-difficulty"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></div><div class="form-field"><label>Sınav türü</label><input id="question-exam" maxlength="80" placeholder="TYT / AYT"></div><div class="form-field" style="grid-column:1/-1"><label>Soru metni</label><textarea id="question-prompt" rows="4" maxlength="4000" required></textarea></div><div class="form-field"><label>Cevap</label><input id="question-answer" maxlength="1000"></div><div class="form-field"><label>Açıklama</label><textarea id="question-explanation" rows="3" maxlength="4000"></textarea></div><label style="display:flex;gap:8px;align-items:center"><input id="question-published" type="checkbox"> Öğrencilere yayımla</label><div class="modal-actions" style="grid-column:1/-1"><button type="submit" class="primary">Kaydet</button><span id="question-form-status" class="hidden"></span></div></form></div>' : ''}<div class="card section"><div class="section-title"><h2>Sorular</h2><span id="question-count" class="tag blue">0 soru</span></div><div id="question-list" class="tasks"><p style="color:var(--muted)">Yükleniyor...</p></div></div>`;
+      const list = document.getElementById('question-list');
+      async function refresh() {
+        const params = new URLSearchParams(); const subject = document.getElementById('question-subject-filter')?.value.trim(); const topic = document.getElementById('question-topic-filter')?.value.trim(); const difficulty = document.getElementById('question-difficulty-filter')?.value; const examType = document.getElementById('question-exam-filter')?.value.trim(); if (subject) params.set('subject', subject); if (topic) params.set('topic', topic); if (difficulty) params.set('difficulty', difficulty); if (examType) params.set('examType', examType);
+        const response = await authRequest(`/api/tenants/${tenantId}/question-bank?${params}`); const items = response.ok ? await response.json() : []; document.getElementById('question-count').textContent = `${items.length} soru`; list.innerHTML = items.length ? items.map(item => `<article class="task" style="align-items:flex-start"><div class="task-text"><strong>${escapeHtml(item.subject)} · ${escapeHtml(item.topic)} <span class="tag blue">${escapeHtml(item.difficulty)}</span></strong><small style="display:block;margin-top:8px;white-space:pre-wrap">${escapeHtml(item.prompt)}</small>${item.answer ? `<small style="display:block;margin-top:8px;color:#137d6b">Cevap: ${escapeHtml(item.answer)}</small>` : ''}${item.explanation ? `<small style="display:block;margin-top:5px">${escapeHtml(item.explanation)}</small>` : ''}${!canManage ? `<div style="display:flex;gap:8px;margin-top:12px"><input class="question-answer" data-id="${item.id}" placeholder="Cevabınız" maxlength="1000"><button class="tag blue question-submit" data-id="${item.id}" type="button">Cevapla</button></div>` : ''}</div>${canManage ? `<button class="tag question-delete" data-id="${item.id}" type="button">Sil</button>` : '<span class="tag">Soru</span>'}</article>`).join('') : '<p style="color:var(--muted)">Bu filtrelerle soru bulunamadı.</p>';
+        list.querySelectorAll('.question-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu soruyu silmek istiyor musunuz?')) return; const deleted = await authRequest(`/api/tenants/${tenantId}/question-bank/${button.dataset.id}`, { method: 'DELETE' }); if (deleted.ok) refresh(); }));
+        list.querySelectorAll('.question-submit').forEach(button => button.addEventListener('click', async () => { const input = list.querySelector(`.question-answer[data-id="${button.dataset.id}"]`); const response = await authRequest(`/api/tenants/${tenantId}/question-bank/${button.dataset.id}/attempt`, { method: 'POST', body: JSON.stringify({ answer: input.value }) }); const result = response.ok ? await response.json() : null; button.textContent = response.ok ? (result.isCorrect ? 'Doğru ✓' : 'Yanlış') : 'Hata'; button.className = response.ok && result.isCorrect ? 'tag blue' : 'tag'; if (response.ok) input.disabled = true; }));
+      }
+      document.getElementById('question-filter')?.addEventListener('click', refresh); document.getElementById('question-add-toggle')?.addEventListener('click', () => document.getElementById('question-form-card').classList.toggle('hidden')); await refresh();
+      document.getElementById('question-form')?.addEventListener('submit', async event => { event.preventDefault(); const payload = { subject: document.getElementById('question-subject').value.trim(), topic: document.getElementById('question-topic').value.trim(), prompt: document.getElementById('question-prompt').value.trim(), answer: document.getElementById('question-answer').value.trim() || null, explanation: document.getElementById('question-explanation').value.trim() || null, difficulty: document.getElementById('question-difficulty').value, examType: document.getElementById('question-exam').value.trim(), isPublished: document.getElementById('question-published').checked }; const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, { method: 'POST', body: JSON.stringify(payload) }); const status = document.getElementById('question-form-status'); status.textContent = response.ok ? 'Soru kaydedildi.' : 'Soru kaydedilemedi.'; status.className = response.ok ? 'tag blue' : 'auth-error'; if (response.ok) { event.target.reset(); await refresh(); } });
+    }
+    async function loadSettingsPage() {
+      const response = await authRequest('/api/auth/me'); if (!response.ok) return;
+      const user = await response.json();
+      content.innerHTML = `<div class="welcome"><div><h1>Hesap ayarları</h1><p>Profilini, güvenliğini ve gizlilik tercihlerini yönet.</p></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>Profil bilgileri</h2><span class="tag blue">${user.email || ''}</span></div><form id="settings-profile-form" class="form-grid"><div class="form-field"><label>Ad</label><input id="settings-first-name" value="${user.firstName || ''}" maxlength="100" required></div><div class="form-field"><label>Soyad</label><input id="settings-last-name" value="${user.lastName || ''}" maxlength="100" required></div><div class="modal-actions" style="grid-column:1/-1"><button class="primary" type="submit">Profili kaydet</button></div></form><div id="settings-profile-message" class="hidden" style="margin-top:12px"></div></div><div class="card section"><div class="section-title"><h2>Şifre değiştir</h2><span class="tag">Güvenlik</span></div><form id="settings-password-form"><div class="form-field"><label>Mevcut şifre</label><input id="settings-current-password" type="password" required></div><div class="form-field" style="margin-top:12px"><label>Yeni şifre</label><input id="settings-new-password" type="password" minlength="10" required></div><button class="primary" type="submit" style="margin-top:18px">Şifreyi güncelle</button></form><div id="settings-password-message" class="hidden" style="margin-top:12px"></div></div></div>`;
+      document.getElementById('settings-profile-form').addEventListener('submit', async event => { event.preventDefault(); const result = await authRequest('/api/auth/profile', { method: 'PUT', body: JSON.stringify({ firstName: document.getElementById('settings-first-name').value.trim(), lastName: document.getElementById('settings-last-name').value.trim() }) }); const message = document.getElementById('settings-profile-message'); message.textContent = result.ok ? 'Profil güncellendi.' : 'Profil güncellenemedi.'; message.className = result.ok ? 'tag blue' : 'auth-error'; if (result.ok) await loadCurrentUser(); });
+      document.getElementById('settings-password-form').addEventListener('submit', async event => { event.preventDefault(); const result = await authRequest('/api/auth/password', { method: 'POST', body: JSON.stringify({ currentPassword: document.getElementById('settings-current-password').value, newPassword: document.getElementById('settings-new-password').value }) }); const message = document.getElementById('settings-password-message'); const body = await result.json().catch(() => ({})); message.textContent = result.ok ? 'Şifre güncellendi.' : (body.error || 'Şifre güncellenemedi.'); message.className = result.ok ? 'tag blue' : 'auth-error'; if (result.ok) event.target.reset(); });
+    }
+    async function loadStudentsPage() {
+      const tenantId = localStorage.getItem('tenantId');
+      const list = document.querySelector('#student-list') || document.querySelector('.content .section .tasks');
+      const addButton = document.querySelector('.content .welcome .primary');
+      if (addButton && !addButton.dataset.bound) {
+        addButton.dataset.bound = 'true';
+        addButton.addEventListener('click', () => openStudentModal());
+      }
+      if (!list || !tenantId) { if (list) list.innerHTML = '<div class="task"><div class="task-text"><strong>Önce bir kurum oluşturmalısın.</strong><small>Üst menüdeki Kurum oluştur düğmesini kullan.</small></div></div>'; return; }
+      const response = await authRequest(`/api/tenants/${tenantId}/students`);
+      if (!response.ok) { list.innerHTML = '<div class="task"><div class="task-text"><strong>Öğrenciler yüklenemedi.</strong><small>Oturum veya kurum üyeliğini kontrol edin.</small></div></div>'; return; }
+      const students = await response.json();
+      list.className = 'student-grid';
+      const section = list.closest('.section');
+      let search = section?.querySelector('#student-search');
+      if (section && !search) { const tools = document.createElement('div'); tools.style.cssText = 'display:flex;gap:10px;align-items:center;margin:-8px 0 18px'; tools.innerHTML = '<input id="student-search" placeholder="Öğrenci, veli veya telefon ara..." style="flex:1;border:1px solid #d9e2ee;border-radius:9px;padding:11px 13px;outline:none"><span id="student-count" class="tag blue"></span>'; section.insertBefore(tools, list); search = tools.querySelector('#student-search'); }
+      const renderStudents = (items) => { document.getElementById('student-count')?.replaceChildren(document.createTextNode(`${items.length} öğrenci`)); list.innerHTML = items.length ? items.map(student => `<article class="student-card" tabindex="0" role="button" aria-label="${student.firstName} ${student.lastName} öğrenci detayını aç" data-student-id="${student.id}"><div class="student-actions"><button class="tag blue student-edit" data-id="${student.id}">Düzenle</button><button class="tag student-delete" data-id="${student.id}">Sil</button></div><div class="student-avatar">${(student.firstName[0] || '') + (student.lastName[0] || '')}</div><h3>${student.firstName} ${student.lastName}</h3><p>${student.guardian ? `Veli: ${student.guardian.firstName} ${student.guardian.lastName}` : 'Veli bilgisi eklenmedi'}</p><p>${student.guardian?.phoneNumber || student.phoneNumber || student.email || 'İletişim bilgisi eklenmedi'}</p></article>`).join('') : '<div class="task"><div class="task-text"><strong>Aramanıza uygun öğrenci bulunamadı.</strong><small>Filtreyi değiştirerek tekrar deneyin.</small></div></div>'; list.querySelectorAll('.student-card').forEach(card => { const open = () => {
+        const student = students.find(item => item.id === card.dataset.studentId);
+        if (student) openStudentDetail(student);
+      }; card.addEventListener('click', open); card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } }); });
+      list.querySelectorAll('.student-edit').forEach(button => button.addEventListener('click', async event => {
+        event.stopPropagation();
+        const student = students.find(item => item.id === button.dataset.id);
+        if (student) openStudentModal(student);
+      }));
+      list.querySelectorAll('.student-delete').forEach(button => button.addEventListener('click', async event => {
+        event.stopPropagation();
+        if (!confirm('Bu öğrenciyi silmek istediğinize emin misiniz?')) return;
+        await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.id}`, { method: 'DELETE' });
+        await loadStudentsPage();
+      }));
+      };
+      renderStudents(students);
+      search?.addEventListener('input', () => { const term = search.value.trim().toLocaleLowerCase('tr-TR'); renderStudents(students.filter(student => `${student.firstName} ${student.lastName} ${student.email || ''} ${student.phoneNumber || ''} ${student.guardian?.firstName || ''} ${student.guardian?.lastName || ''} ${student.guardian?.phoneNumber || ''}`.toLocaleLowerCase('tr-TR').includes(term))); });
+    }
+    let editingStudentId = null;
+    function openStudentModal(student = null) {
+      editingStudentId = student?.id || null;
+      document.getElementById('student-form').reset();
+      document.getElementById('student-form-error').classList.add('hidden');
+      document.getElementById('student-modal-title').textContent = student ? 'Öğrenci bilgilerini düzenle' : 'Yeni öğrenci ekle';
+      if (student) {
+        document.getElementById('student-first-name').value = student.firstName || '';
+        document.getElementById('student-last-name').value = student.lastName || '';
+        document.getElementById('student-email').value = student.email || '';
+        document.getElementById('student-phone').value = student.phoneNumber || '';
+        document.getElementById('parent-first-name').value = student.guardian?.firstName || '';
+        document.getElementById('parent-last-name').value = student.guardian?.lastName || '';
+        document.getElementById('parent-email').value = student.guardian?.email || '';
+        document.getElementById('parent-phone').value = student.guardian?.phoneNumber || '';
+      }
+      document.getElementById('student-modal').classList.remove('hidden');
+      document.getElementById('student-first-name').focus();
+    }
+    function closeStudentModal() { document.getElementById('student-modal').classList.add('hidden'); }
+    document.getElementById('student-modal-close').addEventListener('click', closeStudentModal);
+    document.getElementById('student-modal-cancel').addEventListener('click', closeStudentModal);
+    document.getElementById('student-modal').addEventListener('click', event => { if (event.target.id === 'student-modal') closeStudentModal(); });
+    document.getElementById('student-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const error = document.getElementById('student-form-error'); error.classList.add('hidden');
+      const payload = {
+        firstName: document.getElementById('student-first-name').value.trim(),
+        lastName: document.getElementById('student-last-name').value.trim(),
+        email: document.getElementById('student-email').value.trim() || null,
+        phoneNumber: document.getElementById('student-phone').value.trim() || null,
+        parentFirstName: document.getElementById('parent-first-name').value.trim(),
+        parentLastName: document.getElementById('parent-last-name').value.trim(),
+        parentEmail: document.getElementById('parent-email').value.trim() || null,
+        parentPhone: document.getElementById('parent-phone').value.trim()
+      };
+      const endpoint = editingStudentId ? `/api/tenants/${localStorage.getItem('tenantId')}/students/${editingStudentId}` : `/api/tenants/${localStorage.getItem('tenantId')}/students`;
+      const response = await authRequest(endpoint, { method: editingStudentId ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+      if (!response.ok) { const data = await response.json().catch(() => ({})); error.textContent = data.error || 'Öğrenci kaydedilemedi.'; error.classList.remove('hidden'); return; }
+      closeStudentModal(); await loadStudentsPage();
+    });
+    let currentDetailStudentId = null;
+    function setStudentDetailTab(name) {
+      document.querySelectorAll('[data-detail-tab]').forEach(tab => {
+        const active = tab.dataset.detailTab === name;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      const body = document.getElementById('student-detail-body');
+      if (!body) return;
+      const sections = [...body.querySelectorAll('.form-section')];
+      const summary = body.querySelector('.detail-summary');
+      sections.forEach(section => {
+        const title = section.querySelector('h3')?.textContent?.trim().toLowerCase() || '';
+        const isPlans = title.includes('çalışma plan');
+        const isCalendar = title.includes('koçluk takvimi');
+        const isExams = title.includes('deneme sonuç');
+        const isSubjects = section.id === 'detail-subjects' || title.includes('ders ve konu');
+        section.classList.toggle('hidden', (name === 'overview' && (isPlans || isExams || isSubjects)) || (name === 'plans' && (isCalendar || isExams || isSubjects)) || (name === 'exams' && (isPlans || isCalendar)));
+      });
+      if (summary) summary.classList.toggle('hidden', false);
+    }
+    document.querySelectorAll('[data-detail-tab]').forEach(tab => tab.addEventListener('click', () => setStudentDetailTab(tab.dataset.detailTab)));
+    async function openStudentDetail(student) {
+      currentDetailStudentId = student.id;
+      const modal = document.getElementById('student-detail-modal');
+      document.getElementById('detail-avatar').textContent = (student.firstName[0] || '') + (student.lastName[0] || '');
+      document.getElementById('detail-name').textContent = `${student.firstName} ${student.lastName}`;
+      document.getElementById('detail-contact').textContent = `${student.phoneNumber || student.email || 'Öğrenci iletişimi eklenmedi'}${student.guardian ? ` · Veli: ${student.guardian.firstName} ${student.guardian.lastName} · ${student.guardian.phoneNumber}` : ''}`;
+      modal.classList.remove('hidden');
+      setStudentDetailTab('overview');
+      const sessionForm = document.getElementById('session-form');
+      sessionForm.reset(); delete sessionForm.dataset.editId;
+      sessionForm.querySelector('button[type="submit"]').textContent = 'Takvime ekle';
+      document.getElementById('session-date').min = toLocalDateInputValue(new Date());
+      const plans = document.getElementById('detail-plans');
+      plans.innerHTML = '<div class="task"><div class="task-text"><strong>Yükleniyor...</strong></div></div>';
+      const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/plans`);
+      const items = response.ok ? await response.json() : [];
+      const taskCount = items.reduce((sum, plan) => sum + plan.tasks.length, 0);
+      const questionCount = items.reduce((sum, plan) => sum + plan.tasks.reduce((inner, task) => inner + task.targetQuestions, 0), 0);
+      document.getElementById('detail-plan-count').textContent = items.length;
+      document.getElementById('detail-task-count').textContent = taskCount;
+      document.getElementById('detail-question-count').textContent = questionCount;
+      plans.innerHTML = items.length ? items.map(plan => `<div class="task"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${plan.tasks.length} görev</small></div><span class="tag blue">${plan.tasks.filter(task => task.isCompleted).length}/${plan.tasks.length}</span></div>`).join('') : '<div class="task"><div class="task-text"><strong>Henüz çalışma planı yok.</strong><small>Bu öğrenci için plan oluşturabilirsiniz.</small></div></div>';
+      const plansExport = document.getElementById('export-detail-plans'); if (plansExport) plansExport.onclick = async () => { const exportResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/plans/export`); if (!exportResponse.ok) return; const url = URL.createObjectURL(await exportResponse.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-calisma-planlari.csv`; link.click(); URL.revokeObjectURL(url); };
+      const sessionsResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/sessions`);
+      const sessions = sessionsResponse.ok ? await sessionsResponse.json() : [];
+      const sessionStatus = { Scheduled: ['Planlandı', 'blue'], Pending: ['Onay bekliyor', ''], Cancelled: ['İptal edildi', ''] };
+      document.getElementById('detail-sessions').innerHTML = sessions.length ? sessions.map(session => { const status = sessionStatus[session.status] || [session.status, '']; const actions = session.status === 'Cancelled' ? '' : `<button class="tag blue session-edit" data-id="${session.id}">Düzenle</button><button class="tag session-delete" data-id="${session.id}">Sil</button>`; return `<div class="session-item"><div><strong>${new Date(session.startsAtUtc).toLocaleDateString('tr-TR')} · ${new Date(session.startsAtUtc).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</strong><small>${session.durationMinutes} dakika${session.note ? ` · ${session.note}` : ''}</small></div><div class="session-actions"><span class="tag ${status[1]}">${status[0]}</span>${actions}</div></div>`; }).join('') : '<p style="font-size:12px;color:var(--muted);margin:14px 0 0">Henüz planlanmış koçluk görüşmesi yok.</p>';
+      document.querySelectorAll('.session-edit').forEach(button => button.addEventListener('click', () => editSession(sessions.find(item => item.id === button.dataset.id))));
+      document.querySelectorAll('.session-delete').forEach(button => button.addEventListener('click', async () => {
+        if (!confirm('Bu görüşmeyi silmek istediğinize emin misiniz?')) return;
+        await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/sessions/${button.dataset.id}`, { method: 'DELETE' });
+        await openStudentDetail(student);
+      }));
+      const examsResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/exams`);
+      const exams = examsResponse.ok ? await examsResponse.json() : [];
+      const examsExport = document.getElementById('export-detail-exams'); if (examsExport) examsExport.onclick = async () => { const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/exams/export`); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-denemeler.csv`; link.click(); URL.revokeObjectURL(url); };
+      const examsBox = document.getElementById('detail-exams');
+      if (examsBox) examsBox.innerHTML = exams.length ? exams.slice(0, 5).map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş</small></div><span class="tag blue">${exam.score} puan</span></div>`).join('') : '<p style="font-size:12px;color:var(--muted)">Henüz deneme sonucu yok.</p>';
+      const subjectsResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects`);
+      const subjects = subjectsResponse.ok ? await subjectsResponse.json() : [];
+      document.getElementById('detail-subjects')?.remove();
+      const subjectSection = document.createElement('div'); subjectSection.id = 'detail-subjects'; subjectSection.className = 'form-section'; subjectSection.innerHTML = `<div class="section-title"><h3>Ders ve konu ilerlemesi</h3><div style="display:flex;gap:6px"><button type="button" class="tag blue" id="export-subject-progress">CSV indir</button><button type="button" class="tag blue" id="add-subject-progress">+ Konu ekle</button></div></div><div class="tasks">${subjects.length ? subjects.map(item => `<div class="task"><div class="task-text"><strong>${item.subject} · ${item.topic}</strong><small>İlerleme: %${item.completionPercent}</small></div><span class="tag blue">%${item.completionPercent}</span><button type="button" class="tag blue subject-edit" data-id="${item.id}">Düzenle</button><button type="button" class="tag subject-delete" data-id="${item.id}">Sil</button></div>`).join('') : '<p style="font-size:12px;color:var(--muted)">Henüz konu ilerlemesi girilmedi.</p>'}</div>`;
+      document.getElementById('student-detail-body')?.appendChild(subjectSection);
+      const questionSummaryResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/question-summary`);
+      const summary = questionSummaryResponse.ok ? await questionSummaryResponse.json() : { total: 0, correct: 0, wrong: 0, rate: 0, bySubject: [] };
+      document.getElementById('detail-question-summary')?.remove();
+      const questionSummarySection = document.createElement('div'); questionSummarySection.id = 'detail-question-summary'; questionSummarySection.className = 'form-section'; questionSummarySection.innerHTML = `<div class="section-title"><h3>Soru performansı</h3><span class="tag blue">%${summary.rate} başarı</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px"><div class="task"><div class="task-text"><strong>${summary.total}</strong><small>Toplam soru</small></div></div><div class="task"><div class="task-text"><strong>${summary.correct}</strong><small>Doğru</small></div></div><div class="task"><div class="task-text"><strong>${summary.wrong}</strong><small>Yanlış</small></div></div></div><div class="tasks" style="margin-top:10px">${(summary.bySubject || []).map(item => `<div class="task"><div class="task-text"><strong>${item.subject}</strong><small>${item.correct}/${item.total} doğru</small></div><span class="tag ${item.rate >= 70 ? 'blue' : ''}">%${item.rate}</span></div>`).join('') || '<p style="color:var(--muted)">Henüz soru çözümü yok.</p>'}</div>`;
+      document.getElementById('student-detail-body')?.appendChild(questionSummarySection);
+      document.getElementById('add-subject-progress')?.addEventListener('click', async () => { const subject = prompt('Ders adı:'); if (!subject) return; const topic = prompt('Konu adı:'); if (!topic) return; const completionPercent = Number(prompt('İlerleme yüzdesi (0-100):', '0')); if (!Number.isInteger(completionPercent) || completionPercent < 0 || completionPercent > 100) { alert('0 ile 100 arasında bir tam sayı girin.'); return; } const saveResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects`, { method: 'POST', body: JSON.stringify({ subject, topic, completionPercent }) }); if (!saveResponse.ok) { alert('Konu ilerlemesi kaydedilemedi.'); return; } await openStudentDetail(student); });
+      document.getElementById('export-subject-progress')?.addEventListener('click', async () => { const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/export`); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-konu-ilerlemesi.csv`; link.click(); URL.revokeObjectURL(url); });
+      subjectSection.querySelectorAll('.subject-edit').forEach(button => button.addEventListener('click', async () => { const item = subjects.find(subject => subject.id === button.dataset.id); if (!item) return; const subject = prompt('Ders adı:', item.subject); if (subject === null) return; const topic = prompt('Konu adı:', item.topic); if (topic === null) return; const completionPercent = Number(prompt('İlerleme yüzdesi (0-100):', String(item.completionPercent))); if (!Number.isInteger(completionPercent) || completionPercent < 0 || completionPercent > 100) { alert('0 ile 100 arasında bir tam sayı girin.'); return; } const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/${item.id}`, { method: 'PUT', body: JSON.stringify({ subject, topic, completionPercent }) }); if (!response.ok) { alert('Konu ilerlemesi güncellenemedi.'); return; } await openStudentDetail(student); }));
+      subjectSection.querySelectorAll('.subject-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu konu ilerlemesini silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/${button.dataset.id}`, { method: 'DELETE' }); if (!response.ok) { alert('Konu ilerlemesi silinemedi.'); return; } await openStudentDetail(student); }));
+      setStudentDetailTab('overview');
+    }
+    function closeStudentDetail() { document.getElementById('student-detail-modal').classList.add('hidden'); }
+    function toLocalDateInputValue(date) {
+      const pad = value => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+    function editSession(session) {
+      const date = new Date(session.startsAtUtc);
+      document.getElementById('session-date').value = toLocalDateInputValue(date);
+      document.getElementById('session-time').value = date.toTimeString().slice(0, 5);
+      document.getElementById('session-duration').value = session.durationMinutes;
+      document.getElementById('session-note').value = session.note || '';
+      document.getElementById('session-form').dataset.editId = session.id;
+      document.querySelector('#session-form button[type="submit"]').textContent = 'Güncelle';
+    }
+    document.getElementById('student-detail-close').addEventListener('click', closeStudentDetail);
+    document.getElementById('student-detail-modal').addEventListener('click', event => { if (event.target.id === 'student-detail-modal') closeStudentDetail(); });
+    document.getElementById('session-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!currentDetailStudentId) return;
+      const dateValue = document.getElementById('session-date').value;
+      const timeValue = document.getElementById('session-time').value;
+      if (!dateValue || !timeValue) return;
+      const localStart = new Date(`${dateValue}T${timeValue}`);
+      if (Number.isNaN(localStart.getTime()) || localStart <= new Date()) { alert('Görüşme tarihi ve saati gelecekte olmalıdır.'); return; }
+      const startsAtUtc = localStart.toISOString();
+      const form = document.getElementById('session-form');
+      const editId = form.dataset.editId;
+      const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${currentDetailStudentId}/sessions${editId ? `/${editId}` : ''}`, { method: editId ? 'PUT' : 'POST', body: JSON.stringify({ startsAtUtc, durationMinutes: Number(document.getElementById('session-duration').value), note: document.getElementById('session-note').value.trim() || null }) });
+      if (!response.ok) { alert('Görüşme kaydedilemedi. Tarih ve saat bilgisini kontrol edin.'); return; }
+      const currentStudent = { id: currentDetailStudentId, firstName: document.getElementById('detail-name').textContent.split(' ')[0], lastName: document.getElementById('detail-name').textContent.split(' ').slice(1).join(' ') };
+      await openStudentDetail(currentStudent);
+      form.reset(); delete form.dataset.editId; form.querySelector('button[type="submit"]').textContent = 'Takvime ekle';
+    });
+    async function loadSchedulePage() {
+      const tenantId = localStorage.getItem('tenantId');
+      if (!tenantId) return;
+      const response = await authRequest(`/api/tenants/${tenantId}/sessions`);
+      if (!response.ok) return;
+      const sessions = await response.json();
+      const list = document.querySelector('.content .section .tasks');
+      if (!list) return;
+      list.innerHTML = sessions.length ? sessions.map(session => `<div class="task"><span class="tag blue">${new Date(session.startsAtUtc).toLocaleDateString('tr-TR')} ${new Date(session.startsAtUtc).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</span><div class="task-text"><strong>${session.studentName}</strong><small>${session.note || 'Koçluk görüşmesi'} · ${session.durationMinutes} dakika</small></div><span class="tag">${session.status === 'Scheduled' ? 'Planlandı' : session.status === 'Pending' ? 'Bekliyor' : session.status}</span>${session.status === 'Pending' ? `<button class="tag blue session-confirm" data-id="${session.id}" data-student="${session.studentId}">Onayla</button><button class="tag session-cancel" data-id="${session.id}" data-student="${session.studentId}">İptal</button>` : ''}</div>`).join('') : '<div class="task"><div class="task-text"><strong>Henüz görüşme planlanmadı.</strong><small>Öğrenci detayından yeni koçluk görüşmesi ekleyebilirsiniz.</small></div></div>';
+      list.querySelectorAll('.session-confirm').forEach(button => button.addEventListener('click', async () => { const result = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.student}/sessions/${button.dataset.id}/confirm`, { method: 'POST' }); if (result.ok) await loadSchedulePage(); }));
+      list.querySelectorAll('.session-cancel').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu talebi iptal etmek istiyor musunuz?')) return; const result = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.student}/sessions/${button.dataset.id}/cancel`, { method: 'POST' }); if (result.ok) await loadSchedulePage(); }));
+      document.getElementById('coach-availability-card')?.remove();
+      if (currentUserRoles.some(role => ['coach', 'admin'].includes(role.toLowerCase()))) {
+        const availabilityResponse = await authRequest(`/api/tenants/${tenantId}/availability`); const availability = availabilityResponse.ok ? await availabilityResponse.json() : [];
+        const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const card = document.createElement('div'); card.id = 'coach-availability-card'; card.className = 'card section'; card.innerHTML = `<div class="section-title"><h2>Koç müsaitlik saatleri</h2><span class="tag blue">Öğrenciler taleplerini buna göre planlar</span></div><form id="availability-form" class="calendar-form"><div><label for="availability-day">Gün</label><select id="availability-day" style="width:100%;border:1px solid #cde7dd;border-radius:8px;padding:9px;background:#fff">${days.map((day, index) => `<option value="${index}">${day}</option>`).join('')}</select></div><div><label for="availability-start">Başlangıç</label><input id="availability-start" type="time" required></div><div><label for="availability-end">Bitiş</label><input id="availability-end" type="time" required></div><button class="primary" type="submit">Saat ekle</button></form><div id="availability-list" class="tasks" style="margin-top:12px">${availability.length ? availability.map(slot => `<div class="task"><div class="task-text"><strong>${days[slot.dayOfWeek]} · ${String(slot.startTime).slice(0,5)} - ${String(slot.endTime).slice(0,5)}</strong><small>Haftalık tekrarlanan müsaitlik</small></div><button class="tag availability-delete" data-id="${slot.id}">Sil</button></div>`).join('') : '<p style="color:var(--muted);font-size:12px">Henüz müsaitlik saati eklenmedi.</p>'}</div>`; content.appendChild(card);
+        document.getElementById('availability-form').addEventListener('submit', async event => { event.preventDefault(); const response = await authRequest(`/api/tenants/${tenantId}/availability`, { method: 'POST', body: JSON.stringify({ dayOfWeek: Number(document.getElementById('availability-day').value), startTime: `${document.getElementById('availability-start').value}:00`, endTime: `${document.getElementById('availability-end').value}:00` }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); alert(body.error || 'Müsaitlik saati eklenemedi.'); return; } await loadSchedulePage(); });
+        card.querySelectorAll('.availability-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu müsaitlik saatini silmek istiyor musunuz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/availability/${button.dataset.id}`, { method: 'DELETE' }); if (response.ok) await loadSchedulePage(); }));
+      }
+    }
+    async function loadExamsPage() {
+      const tenantId = localStorage.getItem('tenantId');
+      if (!tenantId) return;
+      const studentsResponse = await authRequest(`/api/tenants/${tenantId}/students`);
+      if (!studentsResponse.ok) return;
+      const students = await studentsResponse.json();
+      const addButton = document.querySelector('.content .welcome .primary');
+      if (addButton && !addButton.dataset.bound) { addButton.dataset.bound = 'true'; addButton.addEventListener('click', () => openExamModal(students)); }
+      const list = document.querySelector('.content .section .tasks');
+      if (!list || !students.length) return;
+      const student = students[0];
+      const reportLink = document.querySelector('.content .section .section-title a');
+      if (reportLink && !reportLink.dataset.bound) { reportLink.dataset.bound = 'true'; reportLink.addEventListener('click', async event => { event.preventDefault(); const exportResponse = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/exams/export`); if (!exportResponse.ok) return; const blob = await exportResponse.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'deneme-sonuclari.csv'; anchor.click(); URL.revokeObjectURL(url); }); }
+      const response = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/exams`);
+      if (!response.ok) return;
+      const exams = await response.json();
+      list.innerHTML = exams.length ? exams.map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş</small></div><span class="tag blue">${exam.score} puan</span><button class="tag blue exam-edit" data-student="${student.id}" data-id="${exam.id}">Düzenle</button><button class="tag exam-delete" data-student="${student.id}" data-id="${exam.id}">Sil</button></div>`).join('') : '<div class="task"><div class="task-text"><strong>Henüz deneme sonucu yok.</strong><small>Öğrenci detayından ilk deneme sonucunu ekleyebilirsiniz.</small></div></div>';
+      list.querySelectorAll('.exam-edit').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const exam = exams.find(item => item.id === button.dataset.id); if (exam) openExamModal(students, exam); }));
+      list.querySelectorAll('.exam-delete').forEach(button => button.addEventListener('click', async event => { event.stopPropagation(); if (!confirm('Bu deneme sonucunu silmek istiyor musunuz?')) return; const deleteResponse = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.student}/exams/${button.dataset.id}`, { method: 'DELETE' }); if (deleteResponse.ok) await loadExamsPage(); }));
+    }
+    let editingExam = null;
+    function openExamModal(students, exam = null) {
+      editingExam = exam;
+      const select = document.getElementById('exam-student');
+      select.innerHTML = students.map(student => `<option value="${student.id}">${student.firstName} ${student.lastName}</option>`).join('');
+      document.getElementById('exam-modal').querySelector('h2').textContent = exam ? 'Deneme sonucunu düzenle' : 'Deneme sonucu ekle';
+      document.getElementById('exam-student').value = exam?.studentId || students[0]?.id || '';
+      document.getElementById('exam-title').value = exam?.title || '';
+      document.getElementById('exam-date').value = exam?.examDate || new Date().toISOString().slice(0, 10);
+      document.getElementById('exam-score').value = exam?.score ?? '';
+      document.getElementById('exam-correct').value = exam?.correct ?? '';
+      document.getElementById('exam-wrong').value = exam?.wrong ?? '';
+      document.getElementById('exam-blank').value = exam?.blank ?? '';
+      document.getElementById('exam-form-error').classList.add('hidden');
+      document.getElementById('exam-modal').classList.remove('hidden');
+    }
+    function closeExamModal() { document.getElementById('exam-modal').classList.add('hidden'); }
+    document.getElementById('exam-modal-close').addEventListener('click', closeExamModal);
+    document.getElementById('exam-modal-cancel').addEventListener('click', closeExamModal);
+    document.getElementById('exam-modal').addEventListener('click', event => { if (event.target.id === 'exam-modal') closeExamModal(); });
+    document.getElementById('exam-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const tenantId = localStorage.getItem('tenantId');
+      const studentId = document.getElementById('exam-student').value;
+      const payload = { title: document.getElementById('exam-title').value.trim(), examDate: document.getElementById('exam-date').value, correct: Number(document.getElementById('exam-correct').value), wrong: Number(document.getElementById('exam-wrong').value), blank: Number(document.getElementById('exam-blank').value), score: Number(document.getElementById('exam-score').value) };
+      const response = await authRequest(`/api/tenants/${tenantId}/students/${studentId}/exams${editingExam ? `/${editingExam.id}` : ''}`, { method: editingExam ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); const error = document.getElementById('exam-form-error'); error.textContent = body.error || 'Deneme kaydedilemedi.'; error.classList.remove('hidden'); return; }
+      closeExamModal(); await loadExamsPage();
+    });
+    async function loadPlansPage() {
+      const tenantId = localStorage.getItem('tenantId');
+      const list = document.querySelector('.content .section .tasks');
+      if (!list || !tenantId) return;
+      const createButton = document.querySelector('.content .welcome .primary');
+      if (createButton && !createButton.dataset.bound) {
+        createButton.dataset.bound = 'true';
+        createButton.addEventListener('click', async () => {
+          const studentResponse = await authRequest(`/api/tenants/${tenantId}/students`);
+          const students = studentResponse.ok ? await studentResponse.json() : [];
+          if (!students.length) { alert('Önce Öğrenciler ekranından en az bir öğrenci ekleyin.'); return; }
+          const student = students[0];
+          const title = prompt(`Plan hangi öğrenci için?\nVarsayılan: ${student.firstName} ${student.lastName}`, `${student.firstName} - Haftalık çalışma planı`); if (!title) return;
+          const monday = new Date(); monday.setHours(0,0,0,0); const day = monday.getDay(); monday.setDate(monday.getDate() - ((day + 6) % 7)); const defaultWeekStart = monday.toISOString().slice(0, 10);
+          const weekStart = prompt('Hafta başlangıcı (Pazartesi, YYYY-AA-GG):', defaultWeekStart); if (!weekStart) return;
+          const taskTitle = prompt('İlk görev adı:', 'Matematik soru çözümü'); if (!taskTitle) return;
+          const dueDate = prompt('Görev tarihi (YYYY-AA-GG):', weekStart); if (!dueDate) return;
+          const targetQuestions = Number(prompt('Soru hedefi:', '40') || 0);
+          const weekDate = new Date(`${weekStart}T00:00:00`); const dueDateValue = new Date(`${dueDate}T00:00:00`);
+          if (Number.isNaN(weekDate.getTime()) || weekDate.getDay() !== 1) { alert('Hafta başlangıcı geçerli bir Pazartesi tarihi olmalıdır.'); return; }
+          if (Number.isNaN(dueDateValue.getTime()) || dueDateValue < weekDate || dueDateValue > new Date(weekDate.getTime() + 6 * 86400000)) { alert('Görev tarihi plan haftası içinde olmalıdır.'); return; }
+          if (!Number.isInteger(targetQuestions) || targetQuestions < 0) { alert('Soru hedefi 0 veya daha büyük bir tam sayı olmalıdır.'); return; }
+          const response = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/plans`, { method: 'POST', body: JSON.stringify({ title, weekStart, tasks: [{ title: taskTitle, dueDate, targetQuestions }] }) });
+          if (!response.ok) { alert('Plan oluşturulamadı. Hafta başlangıcının Pazartesi olduğundan emin olun.'); return; }
+          await loadPlansPage();
+        });
+      }
+      const response = await authRequest(`/api/tenants/${tenantId}/plans`);
+      if (!response.ok) return;
+      const plans = await response.json();
+      const exportLink = document.querySelector('.content .section .section-title a');
+      if (exportLink && !exportLink.dataset.bound) { exportLink.dataset.bound = 'true'; exportLink.textContent = 'CSV indir ↓'; exportLink.addEventListener('click', async event => { event.preventDefault(); const studentResponse = await authRequest(`/api/tenants/${tenantId}/students`); const students = studentResponse.ok ? await studentResponse.json() : []; if (!students.length) return; const fileResponse = await authRequest(`/api/tenants/${tenantId}/students/${students[0].id}/plans/export`); if (!fileResponse.ok) return; const url = URL.createObjectURL(await fileResponse.blob()); const link = document.createElement('a'); link.href = url; link.download = 'calisma-planlari.csv'; link.click(); URL.revokeObjectURL(url); }); }
+      list.innerHTML = plans.length ? plans.map(plan => {
+        const total = plan.tasks.reduce((sum, task) => sum + task.targetQuestions, 0);
+        const completed = plan.tasks.reduce((sum, task) => sum + task.completedQuestions, 0);
+        const percent = total ? Math.min(100, Math.round(completed / total * 100)) : 0;
+        const taskRows = plan.tasks.map(task => `<div class="task" style="margin-top:8px;background:#fbfcff"><span class="check ${task.isCompleted ? 'done' : ''}"></span><div class="task-text"><strong>${task.title}</strong><small>${task.dueDate} · ${task.completedQuestions}/${task.targetQuestions} soru</small></div><button class="tag blue plan-task-progress" data-plan-id="${plan.id}" data-task-id="${task.id}" data-completed="${task.completedQuestions}" data-target="${task.targetQuestions}">${task.isCompleted ? 'Tamamlandı' : 'İlerlet'}</button><button class="tag blue plan-task-edit" data-plan-id="${plan.id}" data-task-id="${task.id}">Düzenle</button><button class="tag plan-task-delete" data-plan-id="${plan.id}" data-task-id="${task.id}">Sil</button></div>`).join('');
+        return `<div class="task" style="display:block"><div style="display:flex;align-items:center;gap:12px"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${plan.tasks.length} görev · ${completed}/${total} soru</small></div><span class="tag blue">%${percent}</span><button class="tag blue plan-edit" data-id="${plan.id}">Planı düzenle</button><button class="tag plan-delete" data-id="${plan.id}">Sil</button></div>${taskRows}</div>`;
+      }).join('') : '<div class="task"><div class="task-text"><strong>Henüz çalışma planı yok.</strong><small>Bir öğrenci seçip yeni plan oluşturabilirsiniz.</small></div></div>';
+      list.querySelectorAll('.plan-task-progress').forEach(button => button.addEventListener('click', async () => {
+        const target = Number(button.dataset.target || 0);
+        const current = Number(button.dataset.completed || 0);
+        const value = prompt(`Tamamlanan soru sayısı (0-${target}):`, String(current));
+        if (value === null) return;
+        const completedQuestions = Number(value);
+        if (!Number.isInteger(completedQuestions) || completedQuestions < 0 || completedQuestions > target) { alert(`0 ile ${target} arasında bir tam sayı girin.`); return; }
+        const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.planId}/tasks/${button.dataset.taskId}/progress`, { method: 'PUT', body: JSON.stringify({ completedQuestions, isCompleted: completedQuestions >= target && target > 0 }) });
+        if (!response.ok) { alert('Görev ilerlemesi kaydedilemedi.'); return; }
+        await loadPlansPage();
+      }));
+      list.querySelectorAll('.plan-task-edit').forEach(button => button.addEventListener('click', async () => { const plan = plans.find(item => item.id === button.dataset.planId); const task = plan?.tasks.find(item => item.id === button.dataset.taskId); if (!task) return; const title = prompt('Görev adı:', task.title); if (title === null) return; const dueDate = prompt('Görev tarihi (YYYY-AA-GG):', task.dueDate); if (dueDate === null) return; const targetQuestions = Number(prompt('Soru hedefi:', String(task.targetQuestions))); if (!Number.isInteger(targetQuestions) || targetQuestions < 0) { alert('Soru hedefi 0 veya daha büyük bir tam sayı olmalıdır.'); return; } const response = await authRequest(`/api/tenants/${tenantId}/plans/${plan.id}/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify({ title, dueDate, targetQuestions }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); alert(body.error || 'Görev güncellenemedi.'); return; } await loadPlansPage(); }));
+      list.querySelectorAll('.plan-task-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu görevi silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.planId}/tasks/${button.dataset.taskId}`, { method: 'DELETE' }); if (!response.ok) { alert('Görev silinemedi.'); return; } await loadPlansPage(); }));
+      list.querySelectorAll('.plan-edit').forEach(button => button.addEventListener('click', async () => { const plan = plans.find(item => item.id === button.dataset.id); if (!plan) return; const title = prompt('Plan adı:', plan.title); if (title === null) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${plan.id}`, { method: 'PUT', body: JSON.stringify({ title }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); alert(body.error || 'Plan güncellenemedi.'); return; } await loadPlansPage(); }));
+      list.querySelectorAll('.plan-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu çalışma planını ve görevlerini silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.id}`, { method: 'DELETE' }); if (!response.ok) { alert('Plan silinemedi.'); return; } await loadPlansPage(); }));
+    }
+    function bindDashboardActions() {
+      document.querySelectorAll('.dashboard-action').forEach(action => action.addEventListener('click', () => {
+        const target = document.querySelector(`[data-page="${action.dataset.pageTarget}"]`);
+        if (target) target.click();
+      }));
+    }
+    async function loadDashboardData() {
+      const tenantId = localStorage.getItem('tenantId');
+      if (!tenantId || !document.getElementById('active-student-count')) return;
+      const studentsResponse = await authRequest(`/api/tenants/${tenantId}/students`);
+      if (!studentsResponse.ok) return;
+      const students = await studentsResponse.json();
+      document.getElementById('active-student-count').textContent = students.length;
+      const plansResponse = await authRequest(`/api/tenants/${tenantId}/plans`);
+      if (!plansResponse.ok) return;
+      const plans = await plansResponse.json();
+      document.getElementById('active-plan-count').textContent = plans.length;
+      const pendingTasks = plans.reduce((count, plan) => count + plan.tasks.filter(task => !task.isCompleted).length, 0);
+      document.getElementById('pending-task-count').textContent = pendingTasks;
+      const upcoming = await authRequest(`/api/tenants/${tenantId}/sessions`);
+      const upcomingCount = document.querySelector('.welcome + .grid .stat:nth-child(4) .stat-value');
+      if (upcoming.ok && upcomingCount) upcomingCount.textContent = (await upcoming.json()).filter(session => session.status !== 'Cancelled' && new Date(session.startsAtUtc) >= new Date()).length;
+      const subscriptionResponse = await authRequest(`/api/tenants/${tenantId}/subscription`);
+      if (subscriptionResponse.ok && !document.getElementById('subscription-summary')) {
+        const subscription = await subscriptionResponse.json(); const card = document.createElement('div'); card.id = 'subscription-summary'; card.className = 'card section';
+        card.innerHTML = `<div class="section-title"><h2>Abonelik durumu</h2><span class="tag ${subscription.isActive ? 'blue' : ''}">${subscription.status}</span></div><div class="tasks"><div class="task"><div class="task-text"><strong>${subscription.planCode}</strong><small>${subscription.maxStudents} öğrenci · ${subscription.maxCoaches} koç limiti</small></div><span class="tag">${new Date(subscription.currentPeriodEndUtc).toLocaleDateString('tr-TR')} tarihine kadar</span><button id="change-plan-button" class="tag blue">Paketi değiştir</button><button id="cancel-plan-button" class="tag">İptal et</button></div></div>`;
+        content.appendChild(card);
+        document.getElementById('change-plan-button').addEventListener('click', async () => { const plan = prompt('Yeni paket (Starter, Professional, Enterprise):', subscription.planCode); if (!plan) return; const result = await authRequest(`/api/tenants/${tenantId}/subscription/plan`, { method: 'POST', body: JSON.stringify({ planCode: plan }) }); if (!result.ok) { const body = await result.json().catch(() => ({})); alert(body.error || 'Paket değiştirilemedi.'); return; } await loadCurrentUser(); });
+        document.getElementById('cancel-plan-button').addEventListener('click', async () => { if (!confirm('Aboneliği iptal etmek istediğinize emin misiniz?')) return; const result = await authRequest(`/api/tenants/${tenantId}/subscription/cancel`, { method: 'POST' }); if (result.ok) await loadCurrentUser(); else alert('Abonelik iptal edilemedi.'); });
+      }
+      const summaryResponse = await authRequest(`/api/tenants/${tenantId}/question-summary`);
+      if (summaryResponse.ok && !document.getElementById('question-summary-dashboard')) {
+        const summary = await summaryResponse.json(); const card = document.createElement('div'); card.id = 'question-summary-dashboard'; card.className = 'card section';
+        card.innerHTML = `<div class="section-title"><h2>Soru çözüm özeti</h2><div style="display:flex;gap:8px"><a href="#question-bank">Soru bankasına git →</a><button id="export-question-summary" class="tag blue" type="button">CSV indir</button></div></div><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px"><div class="task"><div class="task-text"><strong>${summary.total}</strong><small>Toplam soru</small></div></div><div class="task"><div class="task-text"><strong>${summary.correct}</strong><small>Doğru cevap</small></div></div><div class="task"><div class="task-text"><strong>%${summary.rate}</strong><small>Genel başarı</small></div></div></div><div class="tasks" style="margin-top:12px">${(summary.students || []).slice(0, 5).map(item => `<div class="task"><div class="task-text"><strong>${item.studentName}</strong><small>${item.correct}/${item.total} doğru</small></div><span class="tag ${item.rate >= 70 ? 'blue' : ''}">%${item.rate}</span></div>`).join('') || '<p style="color:var(--muted)">Henüz öğrenci soru çözümü yok.</p>'}</div>`;
+        content.appendChild(card);
+        document.getElementById('export-question-summary').addEventListener('click', async () => { const response = await authRequest(`/api/tenants/${tenantId}/question-summary/export`); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = 'soru-performansi.csv'; link.click(); URL.revokeObjectURL(url); });
+      }
+    }
+    async function loadParentDashboard() {
+      const response = await authRequest('/api/parent/students');
+      if (!response.ok) return;
+      const students = await response.json();
+      if (!students.length) {
+        content.innerHTML = `<div class="welcome"><div><h1>Veli paneline hoş geldiniz 👋</h1><p>Henüz hesabınıza bağlı bir öğrenci bulunmuyor.</p></div></div><div class="card section"><h2>Bağlantı bekleniyor</h2><p style="color:var(--muted);line-height:1.7">Koçunuz öğrenci kaydındaki veli e-postasını hesabınızla eşleştirdiğinde gelişim bilgileri burada görünecek.</p></div>`;
+        return;
+      }
+      const selectedId = localStorage.getItem('parentStudentId');
+      const selected = students.find(item => item.id === selectedId) || students[0];
+      const detailResponse = await authRequest(`/api/parent/students/${selected.id}/overview`);
+      if (!detailResponse.ok) return;
+      const detail = await detailResponse.json();
+      const plans = detail.plans || [];
+      const sessions = detail.sessions || [];
+      const tasks = plans.flatMap(plan => plan.tasks || []);
+      const completed = tasks.filter(task => task.isCompleted).length;
+      const nextSession = sessions.find(session => session.status !== 'Cancelled' && new Date(session.startsAtUtc) >= new Date());
+      content.innerHTML = `<div class="welcome"><div><h1>${detail.student.firstName} için gelişim özeti 👋</h1><p>Çocuğunuzun çalışma planını ve koçluk görüşmelerini takip edin.</p></div><div class="date">${detail.student.firstName} ${detail.student.lastName}</div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div class="stat-value">${plans.length}</div><div class="stat-foot">Koç tarafından oluşturuldu</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div class="stat-value">${completed} / ${tasks.length}</div><div class="stat-foot">Güncel çalışma durumu</div></div><div class="card stat"><div class="stat-head"><span>Koçluk görüşmesi</span><span class="stat-icon">◷</span></div><div class="stat-value">${sessions.length}</div><div class="stat-foot">Toplam planlanan görüşme</div></div><div class="card stat"><div class="stat-head"><span>Sonraki görüşme</span><span class="stat-icon">★</span></div><div class="stat-value" style="font-size:16px">${nextSession ? new Date(nextSession.startsAtUtc).toLocaleDateString('tr-TR') : 'Yok'}</div><div class="stat-foot">${nextSession ? `${nextSession.durationMinutes} dakika` : 'Yeni görüşme bekleniyor'}</div></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>Çalışma planları</h2><span class="tag blue">${tasks.length} görev</span></div>${plans.length ? plans.map(plan => `<div class="task"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${(plan.tasks || []).length} görev</small></div><span class="tag blue">${(plan.tasks || []).filter(task => task.isCompleted).length}/${(plan.tasks || []).length}</span></div>`).join('') : '<p style="color:var(--muted)">Henüz çalışma planı oluşturulmadı.</p>'}</div><div class="card section"><div class="section-title"><h2>Koçluk takvimi</h2><span class="tag">${sessions.length} görüşme</span></div>${sessions.length ? sessions.slice(0, 5).map(session => `<div class="task"><span class="tag blue">${new Date(session.startsAtUtc).toLocaleDateString('tr-TR')}</span><div class="task-text"><strong>${new Date(session.startsAtUtc).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} · ${session.durationMinutes} dakika</strong><small>${session.note || 'Koçluk görüşmesi'}</small></div></div>`).join('') : '<p style="color:var(--muted)">Henüz görüşme planlanmadı.</p>'}</div></div>`;
+      const exams = detail.exams || [];
+      const examSection = document.createElement('div'); examSection.className = 'card section';
+      examSection.innerHTML = `<div class="section-title"><h2>Son denemeler</h2><span class="tag blue">${exams.length} sonuç</span></div>${exams.length ? exams.slice(0, 5).map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş</small></div><span class="tag blue">${exam.score} puan</span></div>`).join('') : '<p style="color:var(--muted)">Henüz deneme sonucu bulunmuyor.</p>'}`;
+      content.appendChild(examSection);
+      const subjectSection = document.createElement('div'); subjectSection.className = 'card section'; const subjects = detail.subjects || []; subjectSection.innerHTML = `<div class="section-title"><h2>Ders ve konu ilerlemesi</h2><span class="tag blue">${subjects.length} konu</span></div>${subjects.length ? subjects.slice(0, 12).map(item => `<div class="bar-row"><div class="bar-label"><span>${item.subject} · ${item.topic}</span><strong>%${item.completionPercent}</strong></div><div class="bar"><i class="${item.completionPercent >= 70 ? 'mint' : ''}" style="width:${item.completionPercent}%"></i></div></div>`).join('') : '<p style="color:var(--muted)">Henüz konu ilerlemesi bulunmuyor.</p>'}`; content.appendChild(subjectSection);
+      if (students.length > 1) { const selector = document.createElement('div'); selector.className = 'card section'; selector.style.marginBottom = '18px'; selector.innerHTML = `<div class="section-title"><h2>Öğrenci seçimi</h2><span class="tag blue">${students.length} öğrenci</span></div><select id="parent-student-select" style="width:100%;border:1px solid #d9e2ee;border-radius:9px;padding:11px">${students.map(item => `<option value="${item.id}" ${item.id === selected.id ? 'selected' : ''}>${item.firstName} ${item.lastName}</option>`).join('')}</select>`; content.insertBefore(selector, content.firstChild); selector.querySelector('select').addEventListener('change', async event => { localStorage.setItem('parentStudentId', event.target.value); await loadParentDashboard(); }); }
+    }
+    async function loadStudentDashboard() {
+      const response = await authRequest('/api/student/me/overview');
+      if (!response.ok) return;
+      const detail = await response.json(); const plans = detail.plans || []; const sessions = detail.sessions || []; const exams = detail.exams || [];
+      const tasks = plans.flatMap(plan => plan.tasks || []); const completed = tasks.filter(task => task.isCompleted).length; const next = sessions.find(item => item.status !== 'Cancelled' && new Date(item.startsAtUtc) >= new Date());
+      content.innerHTML = `<div class="welcome"><div><h1>Merhaba, ${detail.student.firstName} 👋</h1><p>Bugünkü çalışmalarını ve koçluk sürecini takip et.</p></div><div class="date">Kişisel gelişim panelin</div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div class="stat-value">${plans.length}</div><div class="stat-foot">Koçun tarafından oluşturuldu</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div class="stat-value">${completed} / ${tasks.length}</div><div class="stat-foot">Güncel ilerlemen</div></div><div class="card stat"><div class="stat-head"><span>Deneme sayısı</span><span class="stat-icon">★</span></div><div class="stat-value">${exams.length}</div><div class="stat-foot">Son sonuçlar</div></div><div class="card stat"><div class="stat-head"><span>Sonraki görüşme</span><span class="stat-icon">◷</span></div><div class="stat-value" style="font-size:16px">${next ? new Date(next.startsAtUtc).toLocaleDateString('tr-TR') : 'Yok'}</div><div class="stat-foot">${next ? new Date(next.startsAtUtc).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : 'Takvim boş'}</div></div></div><div class="layout"><div class="card section"><div class="section-title"><h2>Çalışma planlarım</h2></div>${plans.length ? plans.map(plan => `<div class="task"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${(plan.tasks || []).length} görev</small></div><span class="tag blue">${(plan.tasks || []).filter(task => task.isCompleted).length}/${(plan.tasks || []).length}</span></div>`).join('') : '<p style="color:var(--muted)">Henüz plan oluşturulmadı.</p>'}</div><div class="card section"><div class="section-title"><h2>Son denemeler</h2></div>${exams.length ? exams.slice(0, 5).map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış</small></div><span class="tag blue">${exam.score}</span></div>`).join('') : '<p style="color:var(--muted)">Henüz deneme sonucu yok.</p>'}</div></div>`;
+      const requestCard = document.createElement('div'); requestCard.className = 'card section'; requestCard.innerHTML = '<div class="section-title"><h2>Koçluk görüşmesi talep et</h2><span class="tag blue">Koçuna iletilir</span></div><form id="student-session-request-form" class="calendar-form"><div><label for="student-session-date">Tarih</label><input id="student-session-date" type="date" required></div><div><label for="student-session-time">Saat</label><input id="student-session-time" type="time" required></div><div><label for="student-session-duration">Süre (dakika)</label><input id="student-session-duration" type="number" min="15" max="240" step="15" value="45" required></div><div><label for="student-session-note">Not</label><input id="student-session-note" placeholder="Görüşme konusu"></div><button class="primary" type="submit">Talep gönder</button></form><div id="student-session-message" class="hidden" style="margin-top:12px"></div><div id="student-session-list" class="tasks" style="margin-top:16px"></div>'; content.appendChild(requestCard);
+      const sessionList = document.getElementById('student-session-list'); const requestSessions = sessions.filter(session => new Date(session.startsAtUtc) >= new Date() && session.status !== 'Cancelled'); sessionList.innerHTML = requestSessions.length ? `<h3 style="font-size:13px;margin:0 0 8px">Yaklaşan görüşmeler</h3>${requestSessions.slice(0,5).map(session => `<div class="task"><div class="task-text"><strong>${new Date(session.startsAtUtc).toLocaleDateString('tr-TR')} · ${new Date(session.startsAtUtc).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</strong><small>${session.note || 'Koçluk görüşmesi'} · ${session.durationMinutes} dakika</small></div><span class="tag ${session.status === 'Pending' ? '' : 'blue'}">${session.status === 'Pending' ? 'Onay bekliyor' : 'Planlandı'}</span>${session.status === 'Pending' ? `<button type="button" class="tag student-session-cancel" data-id="${session.id}">Talebi iptal et</button>` : ''}</div>`).join('')}` : '';
+      sessionList.querySelectorAll('.student-session-cancel').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu görüşme talebini iptal etmek istiyor musunuz?')) return; const response = await authRequest(`/api/student/me/session-requests/${button.dataset.id}/cancel`, { method: 'POST' }); if (!response.ok) { alert('Talep iptal edilemedi.'); return; } await loadStudentDashboard(); }));
+      const availabilityResponse = await authRequest(`/api/tenants/${detail.student.tenantId}/availability`); if (availabilityResponse.ok) { const slots = await availabilityResponse.json(); if (slots.length) { const days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi']; const hint = document.createElement('p'); hint.style.cssText = 'color:var(--muted);font-size:12px;margin:12px 0 0'; hint.textContent = `Koçun müsaitlik saatleri: ${slots.map(slot => `${days[slot.dayOfWeek]} ${String(slot.startTime).slice(0,5)}-${String(slot.endTime).slice(0,5)}`).join(' · ')}`; requestCard.appendChild(hint); } }
+      document.getElementById('student-session-date').min = new Date().toISOString().slice(0, 10);
+      document.getElementById('student-session-request-form').addEventListener('submit', async event => { event.preventDefault(); const date = document.getElementById('student-session-date').value; const time = document.getElementById('student-session-time').value; const start = new Date(`${date}T${time}`); const message = document.getElementById('student-session-message'); if (start <= new Date()) { message.textContent = 'Görüşme tarihi gelecekte olmalıdır.'; message.className = 'auth-error'; return; } const result = await authRequest('/api/student/me/session-requests', { method: 'POST', body: JSON.stringify({ startsAtUtc: start.toISOString(), durationMinutes: Number(document.getElementById('student-session-duration').value), note: document.getElementById('student-session-note').value.trim() || null }) }); const body = await result.json().catch(() => ({})); if (!result.ok) { message.textContent = body.error || 'Talep oluşturulamadı.'; message.className = 'auth-error'; return; } message.textContent = 'Görüşme talebiniz koçunuza iletildi.'; message.className = 'tag blue'; event.target.reset(); document.getElementById('student-session-duration').value = 45; await loadNotifications(); });
+      const taskSection = document.createElement('div'); taskSection.className = 'card section';
+      taskSection.innerHTML = `<div class="section-title"><h2>Bugünkü görevlerim</h2><span class="tag blue">${completed}/${tasks.length}</span></div>${tasks.length ? tasks.map(task => `<label class="task" style="cursor:pointer"><input type="checkbox" data-plan="${task.studyPlanId || ''}" data-task="${task.id}" ${task.isCompleted ? 'checked' : ''} style="width:18px;height:18px;margin-right:12px"><div class="task-text"><strong>${task.title}</strong><small>Hedef: ${task.targetQuestions} soru · Tamamlanan: ${task.completedQuestions}</small></div></label>`).join('') : '<p style="color:var(--muted)">Henüz görev atanmadı.</p>'}`;
+      content.appendChild(taskSection);
+      taskSection.querySelectorAll('input[data-task]').forEach(input => input.addEventListener('change', async () => {
+        const plan = plans.find(item => (item.tasks || []).some(task => task.id === input.dataset.task)); const task = plan?.tasks.find(item => item.id === input.dataset.task); if (!plan || !task) return;
+        const response = await authRequest(`/api/tenants/${detail.student.tenantId}/plans/${plan.id}/tasks/${task.id}/progress`, { method: 'PUT', body: JSON.stringify({ completedQuestions: input.checked ? Math.max(task.completedQuestions, task.targetQuestions) : 0, isCompleted: input.checked }) });
+        if (!response.ok) { input.checked = !input.checked; alert('Görev güncellenemedi.'); }
+      }));
+      const subjectSection = document.createElement('div'); subjectSection.className = 'card section'; const subjects = detail.subjects || []; subjectSection.innerHTML = `<div class="section-title"><h2>Konu ilerlemem</h2><span class="tag blue">${subjects.length} konu</span></div>${subjects.length ? subjects.slice(0, 12).map(item => `<div class="bar-row"><div class="bar-label"><span>${item.subject} · ${item.topic}</span><strong>%${item.completionPercent}</strong></div><div class="bar"><i class="${item.completionPercent >= 70 ? 'mint' : ''}" style="width:${item.completionPercent}%"></i></div></div>`).join('') : '<p style="color:var(--muted)">Koçun henüz konu ilerlemesi eklemedi.</p>'}`; content.appendChild(subjectSection);
+    }
+    async function loadAdminDashboard() {
+      const response = await authRequest('/api/admin/audit-logs?take=12'); if (!response.ok) return;
+      const logs = await response.json();
+      const section = document.createElement('div'); section.className = 'card section';
+      section.innerHTML = `<div class="section-title"><h2>Son sistem işlemleri</h2><div style="display:flex;gap:8px;align-items:center"><span class="tag blue">${logs.length} kayıt</span><button id="export-audit-log" class="tag blue">CSV indir</button></div></div>${logs.length ? logs.map(log => `<div class="task"><div class="task-text"><strong>${log.action} · ${log.entityType}</strong><small>${log.details || 'Detay yok'} · ${new Date(log.createdAtUtc).toLocaleString('tr-TR')}</small></div><span class="tag">Denetim</span></div>`).join('') : '<p style="color:var(--muted)">Henüz işlem kaydı yok.</p>'}`;
+      content.appendChild(section);
+      document.getElementById('export-audit-log').addEventListener('click', async () => { const result = await authRequest('/api/admin/audit-logs/export'); if (!result.ok) return; const url = URL.createObjectURL(await result.blob()); const link = document.createElement('a'); link.href = url; link.download = 'audit-logs.csv'; link.click(); URL.revokeObjectURL(url); });
+      const usersResponse = await authRequest('/api/admin/users');
+      if (usersResponse.ok) { const users = await usersResponse.json(); const userSection = document.createElement('div'); userSection.className = 'card section'; userSection.innerHTML = `<div class="section-title"><h2>Kullanıcı özeti</h2><span class="tag blue">${users.length} kullanıcı</span></div>${users.slice(0, 12).map(user => `<div class="task"><div class="task-text"><strong>${user.email}</strong><small>${user.roles.join(', ') || 'Rol atanmadı'}</small></div><span class="tag ${user.locked ? '' : 'blue'}">${user.locked ? 'Pasif' : 'Aktif'}</span><button class="tag ${user.locked ? 'blue' : ''} admin-lock-user" data-id="${user.id}" data-locked="${user.locked}">${user.locked ? 'Aktifleştir' : 'Pasifleştir'}</button><button class="tag admin-role-user" data-id="${user.id}">Rol değiştir</button></div>`).join('')}`; content.appendChild(userSection); userSection.querySelectorAll('.admin-lock-user').forEach(button => button.addEventListener('click', async () => { const locked = button.dataset.locked !== 'true'; const lockResponse = await authRequest(`/api/admin/users/${button.dataset.id}/lock`, { method: 'POST', body: JSON.stringify({ locked }) }); if (lockResponse.ok) await loadCurrentUser(); else alert('Kullanıcı durumu güncellenemedi.'); })); userSection.querySelectorAll('.admin-role-user').forEach(button => button.addEventListener('click', async () => { const role = prompt('Yeni rol (Student, Parent, Coach, Admin):'); if (!role) return; const roleResponse = await authRequest(`/api/auth/users/${button.dataset.id}/role`, { method: 'POST', body: JSON.stringify({ role }) }); if (roleResponse.ok) await loadCurrentUser(); else alert('Rol güncellenemedi.'); })); }
+      const deletionResponse = await authRequest('/api/admin/deletion-requests');
+      if (deletionResponse.ok) { const requests = await deletionResponse.json(); const deletionSection = document.createElement('div'); deletionSection.className = 'card section'; deletionSection.innerHTML = `<div class="section-title"><h2>Veri silme talepleri</h2><span class="tag blue">${requests.filter(item => item.status === 'Pending').length} bekliyor</span></div>${requests.length ? requests.slice(0, 10).map(item => `<div class="task"><div class="task-text"><strong>${item.email}</strong><small>${item.reason || 'Neden belirtilmedi'} · ${new Date(item.createdAtUtc).toLocaleString('tr-TR')}</small></div>${item.status === 'Pending' ? `<button class="tag blue admin-process-deletion" data-id="${item.id}">İşleme alındı</button>` : '<span class="tag">İşlendi</span>'}</div>`).join('') : '<p style="color:var(--muted)">Bekleyen talep yok.</p>'}`; content.appendChild(deletionSection); deletionSection.querySelectorAll('.admin-process-deletion').forEach(button => button.addEventListener('click', async () => { const result = await authRequest(`/api/admin/deletion-requests/${button.dataset.id}/process`, { method: 'POST' }); if (result.ok) await loadCurrentUser(); else alert('Talep güncellenemedi.'); })); }
+      const tenantsResponse = await authRequest('/api/admin/tenants');
+      if (tenantsResponse.ok) { const tenants = await tenantsResponse.json(); const tenantSection = document.createElement('div'); tenantSection.className = 'card section'; tenantSection.innerHTML = `<div class="section-title"><h2>Koçluk alanları</h2><span class="tag blue">${tenants.length} alan</span></div>${tenants.length ? tenants.map(item => `<div class="task"><div class="task-text"><strong>${item.name}</strong><small>${item.slug} · ${item.studentCount} öğrenci · ${item.memberCount} üye · ${item.subscription?.planCode || 'Paket yok'} · ${item.subscription?.maxStudents || 0} öğrenci limiti</small></div><span class="tag ${item.subscription?.status === 'Active' || item.subscription?.status === 'Trial' ? 'blue' : ''}">${item.subscription?.status || 'Tanımsız'}</span><button class="tag blue admin-change-tenant-plan" data-id="${item.id}">Paketi yönet</button></div>`).join('') : '<p style="color:var(--muted)">Henüz koçluk alanı yok.</p>'}`; content.appendChild(tenantSection); tenantSection.querySelectorAll('.admin-change-tenant-plan').forEach(button => button.addEventListener('click', async () => { const plan = prompt('Yeni paket (Starter, Professional, Enterprise):'); if (!plan) return; const result = await authRequest(`/api/admin/tenants/${button.dataset.id}/subscription/plan`, { method: 'POST', body: JSON.stringify({ planCode: plan }) }); if (result.ok) await loadCurrentUser(); else alert('Paket güncellenemedi.'); })); }
+    }
+    async function loadNotifications() {
+      const response = await authRequest('/api/notifications'); if (!response.ok) return;
+      const items = await response.json(); const unread = items.filter(item => !item.readAtUtc);
+      const count = document.getElementById('notification-count'); count.textContent = unread.length; count.classList.toggle('hidden', unread.length === 0);
+      const list = document.getElementById('notifications-list'); list.innerHTML = items.length ? items.slice(0, 8).map(item => `<button class="task" data-notification-id="${item.id}" style="width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0"><div class="task-text"><strong>${item.title}</strong><small>${item.message}</small></div>${item.readAtUtc ? '' : '<span class="tag blue">Yeni</span>'}</button>`).join('') : '<p style="padding:12px;color:var(--muted);font-size:12px">Yeni bildirim yok.</p>';
+      list.querySelectorAll('[data-notification-id]').forEach(button => button.addEventListener('click', async () => { await authRequest(`/api/notifications/${button.dataset.notificationId}/read`, { method: 'POST' }); await loadNotifications(); }));
+    }
+    document.getElementById('notifications-button').addEventListener('click', async () => { document.getElementById('notifications-menu').classList.toggle('hidden'); await loadNotifications(); });
+    setInterval(() => { if (authScreen.classList.contains('hidden')) loadNotifications(); }, 60000);
+    document.addEventListener('click', event => {
+      if (!event.target.closest('#notifications-button') && !event.target.closest('#notifications-menu')) document.getElementById('notifications-menu')?.classList.add('hidden');
+      if (!event.target.closest('#profile-button') && !event.target.closest('#profile-menu')) document.getElementById('profile-menu')?.classList.add('hidden');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      document.getElementById('notifications-menu')?.classList.add('hidden');
+      document.getElementById('profile-menu')?.classList.add('hidden');
+      document.querySelectorAll('.modal-backdrop:not(.hidden)').forEach(modal => modal.classList.add('hidden'));
+    });
+    async function loadCurrentUser() {
+      const response = await authRequest('/api/auth/me');
+      if (!response.ok) { authScreen.classList.remove('hidden'); return; }
+      const user = await response.json();
+      const inviteMatch = window.location.hash.match(/^#invite\/([^/]+)$/);
+      if (inviteMatch && !window.__inviteHandled) {
+        window.__inviteHandled = true;
+        const inviteResponse = await authRequest(`/api/invitations/${encodeURIComponent(inviteMatch[1])}`);
+        if (inviteResponse.ok) {
+          const invite = await inviteResponse.json();
+          if (confirm(`${invite.Email || invite.email} adresi için ${invite.role || invite.Role} davetini kabul etmek istiyor musunuz?`)) {
+            const acceptResponse = await authRequest(`/api/invitations/${encodeURIComponent(inviteMatch[1])}/accept`, { method: 'POST' });
+            alert(acceptResponse.ok ? 'Davet kabul edildi.' : 'Davet kabul edilemedi.');
+            if (acceptResponse.ok) history.replaceState(null, '', '#dashboard');
+          }
+        } else alert('Davet geçersiz veya süresi dolmuş.');
+      }
+      currentUserRoles = user.roles || [];
+      authScreen.classList.add('hidden');
+      if (!user.privacyConsentAtUtc) { const accepted = confirm('Kocluk gizlilik ve KVKK metnini okuduğunuzu ve kabul ettiğinizi onaylıyor musunuz?'); if (accepted) await authRequest('/api/account/privacy-consent', { method: 'POST', body: JSON.stringify({ accepted: true, policyVersion: '2026.10' }) }); }
+      const email = user.email || '';
+      const local = email.split('@')[0];
+      const firstPart = (local.match(/^[A-Za-zÇĞİÖŞÜçğıöşü]+/) || ['Kullanıcı'])[0];
+      const fallbackName = firstPart.charAt(0).toLocaleUpperCase('tr-TR') + firstPart.slice(1).toLocaleLowerCase('tr-TR');
+      const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || fallbackName;
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('profile-avatar').textContent = name.slice(0, 2).toLocaleUpperCase('tr-TR');
+      const role = currentUserRoles.some(x => x.toLowerCase() === 'admin') ? 'Admin' : currentUserRoles.some(x => x.toLowerCase() === 'parent') ? 'Parent' : currentUserRoles.some(x => x.toLowerCase() === 'student') ? 'Student' : 'Coach';
+      const restrictedPages = role === 'Parent' || role === 'Student' ? ['students', 'plans', 'schedule', 'exams'] : [];
+      document.querySelectorAll('.nav a[data-page]').forEach(link => link.classList.toggle('hidden', restrictedPages.includes(link.dataset.page)));
+      dashboard = buildRoleDashboard(role, name);
+      content.innerHTML = dashboard;
+      const today = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+      document.querySelectorAll('.date').forEach(element => { if (element.textContent?.includes('2026') || element.id === 'today-date') element.textContent = today; });
+      bindDashboardActions();
+      const studentsNav = document.querySelector('[data-page="students"]');
+      if (studentsNav) studentsNav.style.display = role === 'Parent' ? 'none' : '';
+      if (role === 'Parent') {
+        ['plans','schedule','exams'].forEach(page => { const nav = document.querySelector(`[data-page="${page}"]`); if (nav) nav.style.display = 'none'; });
+      }
+      await loadTenants();
+      await loadNotifications();
+      if (role === 'Parent') await loadParentDashboard(); else if (role === 'Student') await loadStudentDashboard(); else { await loadDashboardData(); if (role === 'Admin') await loadAdminDashboard(); }
+      const initialPage = window.location.hash.replace('#', '');
+      if (initialPage && initialPage !== 'dashboard' && !restrictedPages.includes(initialPage)) {
+        const initialLink = document.querySelector(`[data-page="${initialPage}"]`);
+        if (initialLink) initialLink.click();
+      } else if (restrictedPages.includes(initialPage)) {
+        history.replaceState(null, '', '#dashboard');
+      }
+    }
+    async function loadTenants() {
+      const response = await authRequest('/api/tenants');
+      if (!response.ok) return;
+      const tenants = await response.json();
+      const createButton = document.getElementById('create-tenant-button');
+      if (tenants.length === 0) {
+        const isCoach = currentUserRoles.some(role => role.toLowerCase() === 'coach');
+        document.getElementById('tenant-name').textContent = isCoach ? '· Koçluk alanı seçilmedi' : '· Koçluk alanı ataması bekleniyor';
+        createButton.classList.toggle('hidden', !isCoach);
+        return;
+      }
+      const selected = tenants.find(x => x.id === localStorage.getItem('tenantId')) || tenants[0];
+      localStorage.setItem('tenantId', selected.id);
+      document.getElementById('tenant-name').textContent = `· ${selected.name}`;
+      createButton.classList.add('hidden');
+    }
+    function closeTenantModal() { document.getElementById('tenant-modal').classList.add('hidden'); }
+    document.getElementById('create-tenant-button').addEventListener('click', () => { document.getElementById('tenant-form').reset(); document.getElementById('tenant-form-error').classList.add('hidden'); document.getElementById('tenant-modal').classList.remove('hidden'); document.getElementById('tenant-form-name').focus(); });
+    document.getElementById('tenant-modal-close').addEventListener('click', closeTenantModal);
+    document.getElementById('tenant-modal-cancel').addEventListener('click', closeTenantModal);
+    document.getElementById('tenant-modal').addEventListener('click', event => { if (event.target.id === 'tenant-modal') closeTenantModal(); });
+    document.getElementById('tenant-form-name').addEventListener('input', event => { const slug = document.getElementById('tenant-form-slug'); if (!slug.dataset.edited) slug.value = event.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); });
+    document.getElementById('tenant-form-slug').addEventListener('input', event => { event.target.dataset.edited = 'true'; event.target.value = event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/--+/g, '-'); });
+    document.getElementById('tenant-form').addEventListener('submit', async event => {
+      event.preventDefault(); const error = document.getElementById('tenant-form-error'); error.classList.add('hidden');
+      const name = document.getElementById('tenant-form-name').value.trim(); const slug = document.getElementById('tenant-form-slug').value.trim();
+      const response = await authRequest('/api/tenants', { method: 'POST', body: JSON.stringify({ name, slug }) });
+      if (!response.ok) { const body = await response.json().catch(() => ({})); error.textContent = body.error || 'Koçluk alanı oluşturulamadı. Kısa ad daha önce kullanılmış olabilir.'; error.classList.remove('hidden'); return; }
+      closeTenantModal(); await loadTenants(); await loadDashboardData();
+    });
+    document.getElementById('profile-button').addEventListener('click', () => document.getElementById('profile-menu').classList.toggle('hidden'));
+    document.getElementById('profile-info').addEventListener('click', () => { document.getElementById('profile-menu').classList.add('hidden'); const settingsLink = document.querySelector('[data-page="settings"]'); if (settingsLink) settingsLink.click(); });
+    document.getElementById('export-account').addEventListener('click', async () => { const response = await authRequest('/api/account/export'); if (!response.ok) { alert('Veriler alınamadı.'); return; } const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'kocluk-verilerim.json'; link.click(); URL.revokeObjectURL(url); document.getElementById('profile-menu').classList.add('hidden'); });
+    document.getElementById('request-deletion').addEventListener('click', async () => { if (!confirm('Hesabınız ve kişisel verileriniz için silme talebi oluşturulsun mu?')) return; const reason = prompt('Talep nedeni (isteğe bağlı):', '') ?? ''; const response = await authRequest('/api/account/deletion-request', { method: 'POST', body: JSON.stringify({ reason }) }); if (response.ok) alert('Talebiniz kaydedildi. Yönetici incelemesinden sonra işleme alınacaktır.'); else if (response.status === 409) alert('Zaten bekleyen bir silme talebiniz var.'); else alert('Talep oluşturulamadı.'); document.getElementById('profile-menu').classList.add('hidden'); });
+    document.getElementById('logout-button').addEventListener('click', async () => { await authRequest('/api/auth/logout', { method: 'POST' }); document.getElementById('profile-menu').classList.add('hidden'); authScreen.classList.remove('hidden'); });
+    document.getElementById('show-register').addEventListener('click', () => { document.getElementById('login-view').classList.add('hidden'); document.getElementById('register-view').classList.remove('hidden'); });
+    document.getElementById('show-login').addEventListener('click', () => { document.getElementById('register-view').classList.add('hidden'); document.getElementById('login-view').classList.remove('hidden'); });
+    document.getElementById('login-form').addEventListener('submit', async event => {
+      event.preventDefault(); document.getElementById('login-error').classList.add('hidden');
+      const response = await authRequest('/api/auth/login?useCookies=true', { method: 'POST', body: JSON.stringify({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }) });
+      if (!response.ok) { showAuthError('login-error', 'E-posta veya şifre hatalı.'); return; } await loadCurrentUser();
+    });
+    document.getElementById('register-form').addEventListener('submit', async event => {
+      event.preventDefault(); document.getElementById('register-error').classList.add('hidden');
+      const email = document.getElementById('register-email').value, password = document.getElementById('register-password').value, role = document.getElementById('register-role').value;
+      const response = await authRequest('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+      if (!response.ok) { const data = await response.json().catch(() => ({})); showAuthError('register-error', data.detail || 'Kayıt başarısız. Şifre en az 10 karakter olmalı.'); return; }
+      const login = await authRequest('/api/auth/login?useCookies=true', { method: 'POST', body: JSON.stringify({ email, password }) });
+      if (!login.ok) { showAuthError('register-error', 'Kayıt tamamlandı, şimdi giriş yapabilirsiniz.'); return; }
+      await authRequest('/api/auth/role', { method: 'POST', body: JSON.stringify({ role }) });
+      const consent = await authRequest('/api/account/privacy-consent', { method: 'POST', body: JSON.stringify({ accepted: true, policyVersion: '2026.10' }) });
+      if (!consent.ok) { showAuthError('register-error', 'Hesap oluşturuldu ancak bilgilendirme kaydı tamamlanamadı. Lütfen giriş yapıp tekrar deneyin.'); return; }
+      await loadCurrentUser();
+    });
+    loadCurrentUser();
+  </script>
+</body>
+</html>

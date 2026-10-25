@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kocluk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kocluk
+      POSTGRES_USER: kocluk
+      POSTGRES_PASSWORD: kocluk_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - kocluk-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  kocluk-postgres-data:
