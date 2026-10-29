@@ -138,7 +138,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        if (Path.GetExtension(context.File.Name).Equals(".html", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+            context.Context.Response.Headers.Pragma = "no-cache";
+            context.Context.Response.Headers.Expires = "0";
+        }
+    }
+});
 
 var databaseProvider = app.Configuration["DatabaseProvider"] ?? (app.Environment.IsDevelopment() ? "Sqlite" : "Postgres");
 if (databaseProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
@@ -163,8 +174,10 @@ if (app.Environment.IsDevelopment())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE AspNetUsers ADD COLUMN PrivacyPolicyVersion TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS DataDeletionRequests (Id TEXT NOT NULL CONSTRAINT PK_DataDeletionRequests PRIMARY KEY, UserId TEXT NOT NULL, Reason TEXT NULL, Status TEXT NOT NULL, CreatedAtUtc TEXT NOT NULL, ProcessedAtUtc TEXT NULL, ProcessedByUserId TEXT NULL);");
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Students ADD COLUMN PhoneNumber TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Students ADD COLUMN ApplicationUserId TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Students ADD COLUMN IsDeleted INTEGER NOT NULL DEFAULT 0;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE Students ADD COLUMN DeletedAtUtc TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_Students_ApplicationUserId ON Students (ApplicationUserId) WHERE ApplicationUserId IS NOT NULL;");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS StudentGuardians (Id TEXT NOT NULL CONSTRAINT PK_StudentGuardians PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, ParentUserId TEXT NULL, FirstName TEXT NOT NULL, LastName TEXT NOT NULL, Email TEXT NULL, PhoneNumber TEXT NOT NULL, CreatedAtUtc TEXT NOT NULL);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS CoachingSessions (Id TEXT NOT NULL CONSTRAINT PK_CoachingSessions PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, StartsAtUtc TEXT NOT NULL, DurationMinutes INTEGER NOT NULL, Note TEXT NULL, Status TEXT NOT NULL, CreatedAtUtc TEXT NOT NULL);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS AuditLogs (Id TEXT NOT NULL CONSTRAINT PK_AuditLogs PRIMARY KEY, TenantId TEXT NULL, UserId TEXT NULL, Action TEXT NOT NULL, EntityType TEXT NOT NULL, EntityId TEXT NULL, Details TEXT NULL, CreatedAtUtc TEXT NOT NULL);");
@@ -182,9 +195,22 @@ if (app.Environment.IsDevelopment())
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_UserMessages_TenantId_RecipientUserId_SentAtUtc ON UserMessages (TenantId, RecipientUserId, SentAtUtc);");
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_UserMessages_TenantId_SenderUserId_SentAtUtc ON UserMessages (TenantId, SenderUserId, SentAtUtc);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS QuestionBankItems (Id TEXT NOT NULL CONSTRAINT PK_QuestionBankItems PRIMARY KEY, TenantId TEXT NOT NULL, CreatedByUserId TEXT NULL, Subject TEXT NOT NULL, Topic TEXT NOT NULL, Prompt TEXT NOT NULL, Answer TEXT NULL, Explanation TEXT NULL, Difficulty TEXT NOT NULL, ExamType TEXT NOT NULL, IsPublished INTEGER NOT NULL, CreatedAtUtc TEXT NOT NULL);");
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionBankItems ADD COLUMN QuestionType TEXT NOT NULL DEFAULT 'ShortAnswer';"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionBankItems ADD COLUMN OptionsJson TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionBankItems ADD COLUMN ResourceId TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionBankItems ADD COLUMN Points REAL NOT NULL DEFAULT 1;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_QuestionBankItems_TenantId_Subject_Topic_IsPublished ON QuestionBankItems (TenantId, Subject, Topic, IsPublished);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS QuestionAttempts (Id TEXT NOT NULL CONSTRAINT PK_QuestionAttempts PRIMARY KEY, TenantId TEXT NOT NULL, QuestionBankItemId TEXT NOT NULL, StudentId TEXT NOT NULL, SelectedAnswer TEXT NOT NULL, IsCorrect INTEGER NOT NULL, AttemptedAtUtc TEXT NOT NULL);");
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionAttempts ADD COLUMN IsBlank INTEGER NOT NULL DEFAULT 0;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionAttempts ADD COLUMN TimeSpentSeconds INTEGER NOT NULL DEFAULT 0;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE QuestionAttempts ADD COLUMN ErrorReason TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_QuestionAttempts_TenantId_StudentId_AttemptedAtUtc ON QuestionAttempts (TenantId, StudentId, AttemptedAtUtc);");
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS QuestionAssignments (Id TEXT NOT NULL CONSTRAINT PK_QuestionAssignments PRIMARY KEY, TenantId TEXT NOT NULL, QuestionBankItemId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NOT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, ErrorReason TEXT NULL, StudentNote TEXT NULL, AssignedAtUtc TEXT NOT NULL, CompletedAtUtc TEXT NULL);");
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_QuestionAssignments_TenantId_StudentId_Status_DueDateUtc ON QuestionAssignments (TenantId, StudentId, Status, DueDateUtc);");
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS StudyResources (Id TEXT NOT NULL CONSTRAINT PK_StudyResources PRIMARY KEY, TenantId TEXT NOT NULL, UploadedByUserId TEXT NOT NULL, Subject TEXT NOT NULL, Topic TEXT NOT NULL, FileName TEXT NOT NULL, StoredFileName TEXT NOT NULL, ContentType TEXT NOT NULL, Size INTEGER NOT NULL, CreatedAtUtc TEXT NOT NULL);");
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_StudyResources_TenantId_Subject_Topic_CreatedAtUtc ON StudyResources (TenantId, Subject, Topic, CreatedAtUtc);");
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceAssignments (Id TEXT NOT NULL CONSTRAINT PK_ResourceAssignments PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, AssignedAtUtc TEXT NOT NULL, OpenedAtUtc TEXT NULL);");
+        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ResourceAssignments_TenantId_StudentId_Status_AssignedAtUtc ON ResourceAssignments (TenantId, StudentId, Status, AssignedAtUtc);");
     }
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     foreach (var role in new[] { "Student", "Parent", "Coach", "Admin" })
@@ -266,7 +292,17 @@ app.MapGet("/api/notifications", async (ClaimsPrincipal principal, KoclukDbConte
 {
     if (!TryGetUserId(principal, out var userId)) return Results.Unauthorized();
     var notifications = await db.UserNotifications.AsNoTracking().Where(x => x.UserId == userId).OrderByDescending(x => x.CreatedAtUtc).Take(50).ToListAsync(ct);
-    return Results.Ok(notifications.Select(x => new { x.Id, x.Title, x.Message, x.Type, x.CreatedAtUtc, x.ReadAtUtc }));
+    var coachTenantIds = await db.TenantMemberships.AsNoTracking().Where(x => x.UserId == userId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner")).Select(x => x.TenantId).ToListAsync(ct);
+    var pendingRequests = coachTenantIds.Count == 0
+        ? new List<PendingNotificationProjection>()
+        : await (from session in db.CoachingSessions.AsNoTracking()
+                 join student in db.Students.AsNoTracking() on session.StudentId equals student.Id
+                 where coachTenantIds.Contains(session.TenantId) && session.Status == "Pending"
+                 select new PendingNotificationProjection(session.Id, $"{student.FirstName} {student.LastName}", session.StartsAtUtc, session.Note, session.DurationMinutes)).ToListAsync(ct);
+    var result = notifications.Select(x => new NotificationListItem(x.Id, x.Title, x.Message, x.Type, x.CreatedAtUtc, x.ReadAtUtc)).ToList();
+    var generated = pendingRequests.Where(request => !result.Any(item => item.Type == "SessionRequest" && item.Message.Contains($"session:{request.Id}", StringComparison.OrdinalIgnoreCase))).Select(request => new UserNotification(userId, "Yeni görüşme talebi", $"{request.StudentName} için yeni bir koçluk görüşmesi talebi var. [session:{request.Id}]", "SessionRequest")).ToList();
+    if (generated.Count > 0) { db.UserNotifications.AddRange(generated); await db.SaveChangesAsync(ct); result.AddRange(generated.Select(x => new NotificationListItem(x.Id, x.Title, x.Message, x.Type, x.CreatedAtUtc, x.ReadAtUtc))); }
+    return Results.Ok(result.OrderByDescending(x => x.CreatedAtUtc).Take(50));
 }).RequireAuthorization();
 app.MapPost("/api/notifications/{id:guid}/read", async (Guid id, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
 {
@@ -307,11 +343,20 @@ app.MapGet("/api/tenants", async (ClaimsPrincipal principal, KoclukDbContext db,
     return Results.Ok(tenants);
 }).RequireAuthorization();
 
-app.MapGet("/api/auth/me", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users) =>
+app.MapGet("/api/auth/me", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
 {
     if (principal.Identity?.IsAuthenticated != true) return Results.Unauthorized();
     var user = await users.GetUserAsync(principal);
     if (user is null) return Results.Unauthorized();
+    if (user.Email is not null && await users.IsInRoleAsync(user, "Student"))
+    {
+        var linkedStudent = await db.Students.FirstOrDefaultAsync(x => x.ApplicationUserId == null && x.Email == user.Email, ct);
+        if (linkedStudent is not null)
+        {
+            linkedStudent.LinkUser(user.Id);
+            await db.SaveChangesAsync(ct);
+        }
+    }
     return Results.Ok(new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, privacyConsentAtUtc = user.PrivacyConsentAtUtc, privacyPolicyVersion = user.PrivacyPolicyVersion, roles = await users.GetRolesAsync(user) });
 });
 
@@ -456,7 +501,7 @@ app.MapGet("/api/student/me/overview", async (ClaimsPrincipal principal, UserMan
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.Email == user.Email, ct);
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct);
     if (student is null) return Results.NotFound();
     var plans = await db.StudyPlans.AsNoTracking().Include(nameof(StudyPlan.Tasks)).Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderByDescending(x => x.WeekStart).ToListAsync(ct);
     var sessions = await db.CoachingSessions.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderBy(x => x.StartsAtUtc).ToListAsync(ct);
@@ -465,14 +510,74 @@ app.MapGet("/api/student/me/overview", async (ClaimsPrincipal principal, UserMan
     var questionAttempts = await db.QuestionAttempts.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).Select(x => x.IsCorrect).ToListAsync(ct);
     var questionTotal = questionAttempts.Count; var questionCorrect = questionAttempts.Count(x => x);
     var questionSummary = new { total = questionTotal, correct = questionCorrect, wrong = questionTotal - questionCorrect, rate = questionTotal == 0 ? 0 : Math.Round(questionCorrect * 100m / questionTotal, 1) };
-    return Results.Ok(new { student = ToStudentResponse(student), plans = plans.Select(ToPlanResponse), sessions = sessions.Select(ToSessionResponse), exams = exams.Select(ToExamResponse), subjects, questionSummary });
+    var coaches = await (from membership in db.TenantMemberships.AsNoTracking()
+                         join coach in db.Users.AsNoTracking() on membership.UserId equals coach.Id
+                         where membership.TenantId == student.TenantId && (membership.Role.ToLower() == "coach" || membership.Role.ToLower() == "owner")
+                         orderby coach.FirstName, coach.LastName, coach.Email
+                         select new { coach.Id, coach.FirstName, coach.LastName, coach.Email }).ToListAsync(ct);
+    return Results.Ok(new { student = ToStudentResponse(student), coaches, plans = plans.Select(ToPlanResponse), sessions = sessions.Select(ToSessionResponse), exams = exams.Select(ToExamResponse), subjects, questionSummary });
+}).RequireAuthorization();
+
+app.MapGet("/api/student/me/availability", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct) =>
+{
+    var user = await users.GetUserAsync(principal);
+    if (user?.Email is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct);
+    if (student is null) return Results.NotFound();
+    var availability = await db.CoachAvailabilities.AsNoTracking().Where(x => x.TenantId == student.TenantId).ToListAsync(ct);
+    var booked = await db.CoachingSessions.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.Status != "Cancelled" && x.StartsAtUtc >= DateTime.UtcNow.AddMinutes(-1)).ToListAsync(ct);
+    var timeZoneId = configuration["COACH_TIME_ZONE"] ?? (OperatingSystem.IsWindows() ? "Turkey Standard Time" : "Europe/Istanbul");
+    TimeZoneInfo timeZone; try { timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId); } catch { timeZone = TimeZoneInfo.Utc; }
+    var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
+    var slots = new List<AvailableSessionSlot>();
+    for (var dayOffset = 0; dayOffset < 90; dayOffset++)
+    {
+        var date = localNow.Date.AddDays(dayOffset);
+        foreach (var rule in availability.Where(x => x.DayOfWeek == (int)date.DayOfWeek))
+        {
+            for (var minute = rule.StartTime.ToTimeSpan(); minute + TimeSpan.FromMinutes(30) <= rule.EndTime.ToTimeSpan(); minute += TimeSpan.FromMinutes(30))
+            {
+                foreach (var duration in new[] { 30, 45, 60 })
+                {
+                    if (minute + TimeSpan.FromMinutes(duration) > rule.EndTime.ToTimeSpan()) continue;
+                    var localStart = DateTime.SpecifyKind(date.Add(minute), DateTimeKind.Unspecified);
+                    var starts = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
+                    if (starts <= DateTime.UtcNow.AddMinutes(15)) continue;
+                    var ends = starts.AddMinutes(duration);
+                    if (booked.Any(x => starts < x.StartsAtUtc.AddMinutes(x.DurationMinutes) && ends > x.StartsAtUtc)) continue;
+                    slots.Add(new AvailableSessionSlot(starts, duration));
+                }
+            }
+        }
+    }
+    return Results.Ok(slots.OrderBy(x => x.StartsAtUtc).ThenBy(x => x.DurationMinutes).Take(120));
+}).RequireAuthorization();
+
+app.MapGet("/api/student/me/insights", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    var user = await users.GetUserAsync(principal);
+    if (user?.Email is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct);
+    if (student is null) return Results.NotFound();
+    var exams = await db.ExamAttempts.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderByDescending(x => x.ExamDate).Take(8).ToListAsync(ct);
+    var subjects = await db.SubjectProgresses.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).ToListAsync(ct);
+    var insights = new List<object>();
+    if (exams.Count >= 2)
+    {
+        var latestNet = exams[0].Correct - exams[0].Wrong / 4m; var previousNet = exams[1].Correct - exams[1].Wrong / 4m;
+        insights.Add(new { type = latestNet >= previousNet ? "positive" : "attention", title = latestNet >= previousNet ? "Netlerin yükseliyor" : "Netlerini güçlendirelim", detail = $"Son denemede {latestNet:0.##} net yaptın; önceki denemeye göre {Math.Abs(latestNet - previousNet):0.##} net fark var." });
+    }
+    var weakest = subjects.OrderBy(x => x.CompletionPercent).FirstOrDefault();
+    if (weakest is not null) insights.Add(new { type = "attention", title = $"Öncelikli konu: {weakest.Subject}", detail = $"{weakest.Topic} ilerlemen %{weakest.CompletionPercent}. Bu konuyu gelecek çalışma planında öne al." });
+    if (insights.Count == 0) insights.Add(new { type = "info", title = "Kişisel önerin hazırlanıyor", detail = "İki deneme sonucu veya konu ilerlemesi eklendiğinde burada sana özel öneriler görünecek." });
+    return Results.Ok(new { generatedAtUtc = DateTime.UtcNow, insights });
 }).RequireAuthorization();
 
 app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct) =>
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.Email == user.Email, ct);
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct);
     if (student is null) return Results.NotFound(new { error = "Öğrenci profili bulunamadı." });
     try
     {
@@ -489,8 +594,8 @@ app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest requ
         var conflict = await db.CoachingSessions.AnyAsync(x => x.TenantId == student.TenantId && x.Status != "Cancelled" && starts < x.StartsAtUtc.AddMinutes(x.DurationMinutes) && ends > x.StartsAtUtc, ct);
         if (conflict) return Results.Conflict(new { error = "Bu saat aralığında başka bir görüşme bulunuyor." });
         var session = new CoachingSession(student.TenantId, student.Id, starts, request.DurationMinutes, request.Note, "Pending"); db.CoachingSessions.Add(session);
-        var coaches = await db.TenantMemberships.Where(x => x.TenantId == student.TenantId && x.Role == "Coach").Select(x => x.UserId).ToListAsync(ct);
-        foreach (var coachId in coaches) db.UserNotifications.Add(new UserNotification(coachId, "Yeni görüşme talebi", $"{student.FirstName} {student.LastName} için yeni bir koçluk görüşmesi talebi var.", "SessionRequest"));
+        var coaches = await db.TenantMemberships.Where(x => x.TenantId == student.TenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner")).Select(x => x.UserId).ToListAsync(ct);
+        foreach (var coachId in coaches) db.UserNotifications.Add(new UserNotification(coachId, "Yeni görüşme talebi", $"{student.FirstName} {student.LastName} için yeni bir koçluk görüşmesi talebi var. [session:{session.Id}]", "SessionRequest"));
         await db.SaveChangesAsync(ct);
         return Results.Created($"/api/student/me/session-requests/{session.Id}", ToSessionResponse(session));
     }
@@ -499,10 +604,34 @@ app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest requ
 app.MapPost("/api/student/me/session-requests/{sessionId:guid}/cancel", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
 {
     var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.Email == user.Email, ct); if (student is null) return Results.NotFound();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct); if (student is null) return Results.NotFound();
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "Pending", ct);
     if (session is null) return Results.NotFound(new { error = "Bekleyen görüşme talebi bulunamadı." });
     session.Cancel(); await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "Cancelled", "CoachingSession", session.Id, "StudentRequest", ct); return Results.Ok(ToSessionResponse(session));
+}).RequireAuthorization();
+
+app.MapPost("/api/student/me/session-requests/{sessionId:guid}/confirm", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct); if (student is null) return Results.NotFound();
+    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "PendingStudent", ct);
+    if (session is null) return Results.NotFound(new { error = "Öğrenci onayı bekleyen randevu bulunamadı." });
+    session.Confirm();
+    var coachIds = await db.TenantMemberships.AsNoTracking().Where(x => x.TenantId == student.TenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner")).Select(x => x.UserId).ToListAsync(ct);
+    foreach (var coachId in coachIds) db.UserNotifications.Add(new UserNotification(coachId, "Randevu onaylandı", $"{student.FirstName} {student.LastName} koçunuzun önerdiği randevuyu onayladı.", "SessionConfirmed"));
+    await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "StudentConfirmed", "CoachingSession", sessionId, "CoachProposal", ct); return Results.Ok(ToSessionResponse(session));
+}).RequireAuthorization();
+
+app.MapPost("/api/student/me/session-requests/{sessionId:guid}/reject", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email), ct); if (student is null) return Results.NotFound();
+    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "PendingStudent", ct);
+    if (session is null) return Results.NotFound(new { error = "Öğrenci onayı bekleyen randevu bulunamadı." });
+    session.Reject();
+    var coachIds = await db.TenantMemberships.AsNoTracking().Where(x => x.TenantId == student.TenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner")).Select(x => x.UserId).ToListAsync(ct);
+    foreach (var coachId in coachIds) db.UserNotifications.Add(new UserNotification(coachId, "Randevu reddedildi", $"{student.FirstName} {student.LastName} koçunuzun önerdiği randevuyu reddetti.", "SessionRejected"));
+    await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "StudentRejected", "CoachingSession", sessionId, "CoachProposal", ct); return Results.Ok(ToSessionResponse(session));
 }).RequireAuthorization();
 
 app.MapGet("/api/admin/audit-logs", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, int? take, CancellationToken ct) =>
@@ -553,7 +682,12 @@ app.MapPost("/api/auth/role", async (SetRoleRequest request, ClaimsPrincipal pri
     var user = await users.GetUserAsync(principal);
     if (user is null) return Results.Unauthorized();
     var current = await users.GetRolesAsync(user);
-    if ((request.Role.Equals("Coach", StringComparison.OrdinalIgnoreCase) || request.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    // Yeni kayıt olan, henüz rolü bulunmayan kullanıcı koç hesabını seçebilir.
+    // Mevcut kullanıcılar koç/admin rolüne kendilerini yükseltemez; bu işlem yalnızca
+    // yönetici tarafından yapılabilir. Admin rolü hiçbir zaman self servis atanamaz.
+    var isNewUser = current.Count == 0;
+    if ((request.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+            || (request.Role.Equals("Coach", StringComparison.OrdinalIgnoreCase) && !isNewUser))
         && !current.Contains("Admin", StringComparer.OrdinalIgnoreCase))
         return Results.Forbid();
     if (current.Count > 0) await users.RemoveFromRolesAsync(user, current);
@@ -587,16 +721,22 @@ app.MapPost("/api/tenants", async (
     ITenantProvisioningService provisioning, UserManager<ApplicationUser> users, CancellationToken ct) =>
 {
     var currentUser = await users.GetUserAsync(user);
-    if (currentUser is null || !await users.IsInRoleAsync(currentUser, "Coach"))
+    if (currentUser is null) return Results.Forbid();
+    // Eski/yarım kalmış koç kayıtlarında rol ataması başarısız olmuş olabilir.
+    // Rolü olmayan ilk kurulum kullanıcısı koçluk alanı oluştururken otomatik olarak koç yapılır.
+    var currentRoles = await users.GetRolesAsync(currentUser);
+    if (currentRoles.Count > 0 && !currentRoles.Contains("Coach", StringComparer.OrdinalIgnoreCase) && !currentRoles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
         return Results.Forbid();
     if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var userId))
         return Results.Unauthorized();
     try
     {
+        if (currentRoles.Count == 0) await users.AddToRoleAsync(currentUser, "Coach");
         var tenant = await provisioning.CreateForOwnerAsync(request.Name, request.Slug, userId, ct);
         return Results.Created($"/api/tenants/{tenant.Id}", new TenantResponse(tenant.Id, tenant.Name, tenant.Slug));
     }
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
+    catch (DbUpdateException) { return Results.Conflict(new { error = "Bu kısa ad zaten kullanılıyor. Lütfen farklı bir kısa ad seçin." }); }
 })
 .RequireAuthorization();
 
@@ -697,7 +837,7 @@ tenantApi.MapPost("/question-bank", async (Guid tenantId, QuestionBankRequest re
 {
     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
     TryGetUserId(principal, out var userId);
-    try { var item = new QuestionBankItem(tenantId, userId, request.Subject, request.Topic, request.Prompt, request.Answer, request.Explanation, request.Difficulty, request.ExamType); item.SetPublished(request.IsPublished); db.QuestionBankItems.Add(item); await db.SaveChangesAsync(ct); return Results.Created($"/api/tenants/{tenantId}/question-bank/{item.Id}", ToQuestionResponse(item, true)); }
+    try { var item = new QuestionBankItem(tenantId, userId, request.Subject, request.Topic, request.Prompt, request.Answer, request.Explanation, request.Difficulty, request.ExamType); item.Configure(request.QuestionType, request.OptionsJson, request.ResourceId, request.Points); item.SetPublished(request.IsPublished); db.QuestionBankItems.Add(item); await db.SaveChangesAsync(ct); return Results.Created($"/api/tenants/{tenantId}/question-bank/{item.Id}", ToQuestionResponse(item, true)); }
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
 });
 
@@ -705,7 +845,7 @@ tenantApi.MapPut("/question-bank/{questionId:guid}", async (Guid tenantId, Guid 
 {
     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
     var item = await db.QuestionBankItems.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == questionId, ct); if (item is null) return Results.NotFound();
-    try { item.Update(request.Subject, request.Topic, request.Prompt, request.Answer, request.Explanation, request.Difficulty, request.ExamType); item.SetPublished(request.IsPublished); await db.SaveChangesAsync(ct); return Results.Ok(ToQuestionResponse(item, true)); }
+    try { item.Update(request.Subject, request.Topic, request.Prompt, request.Answer, request.Explanation, request.Difficulty, request.ExamType); item.Configure(request.QuestionType, request.OptionsJson, request.ResourceId, request.Points); item.SetPublished(request.IsPublished); await db.SaveChangesAsync(ct); return Results.Ok(ToQuestionResponse(item, true)); }
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
 });
 
@@ -719,14 +859,168 @@ tenantApi.MapPost("/question-bank/{questionId:guid}/attempt", async (Guid tenant
 {
     var current = await users.GetUserAsync(principal); if (current is null) return Results.Unauthorized();
     if (!principal.IsInRole("Student")) return Results.Forbid();
-    var student = await db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Email != null && x.Email == current.Email, ct);
+    var student = await db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email != null && x.Email == current.Email)), ct);
     if (student is null) return Results.Forbid();
     var question = await db.QuestionBankItems.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == questionId && x.IsPublished, ct);
     if (question is null) return Results.NotFound();
     var isCorrect = !string.IsNullOrWhiteSpace(question.Answer) && string.Equals(question.Answer.Trim(), request.Answer?.Trim(), StringComparison.OrdinalIgnoreCase);
-    var attempt = new QuestionAttempt(tenantId, questionId, student.Id, request.Answer ?? string.Empty, isCorrect);
+    var attempt = new QuestionAttempt(tenantId, questionId, student.Id, request.Answer ?? string.Empty, isCorrect, request.TimeSpentSeconds, request.ErrorReason);
     db.QuestionAttempts.Add(attempt); await db.SaveChangesAsync(ct);
     return Results.Ok(new { attempt.Id, attempt.IsCorrect, CorrectAnswer = question.Answer is null ? null : (isCorrect ? question.Answer : null), question.Explanation, attempt.AttemptedAtUtc });
+});
+
+tenantApi.MapGet("/resources", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    var resources = await db.StudyResources.AsNoTracking().Where(x => x.TenantId == tenantId).OrderByDescending(x => x.CreatedAtUtc).Take(200).ToListAsync(ct);
+    return Results.Ok(resources.Select(x => new { x.Id, x.Subject, x.Topic, x.FileName, x.ContentType, x.Size, x.CreatedAtUtc, downloadUrl = $"/api/tenants/{tenantId}/resources/{x.Id}/download" }));
+});
+
+tenantApi.MapGet("/my/resources", async (Guid tenantId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    if (!principal.IsInRole("Student")) return Results.Forbid();
+    var current = await users.GetUserAsync(principal); if (current is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+    if (student is null) return Results.Forbid();
+    var rows = await (from assignment in db.ResourceAssignments.AsNoTracking()
+                      join resource in db.StudyResources.AsNoTracking() on assignment.ResourceId equals resource.Id
+                      where assignment.TenantId == tenantId && assignment.StudentId == student.Id
+                      orderby assignment.Status == "Opened", assignment.AssignedAtUtc descending
+                      select new { resource.Id, resource.Subject, resource.Topic, resource.FileName, resource.ContentType, resource.Size, resource.CreatedAtUtc, IdAssignment = assignment.Id, assignment.DueDateUtc, assignment.Note, assignment.Status, assignment.AssignedAtUtc }).Take(200).ToListAsync(ct);
+    return Results.Ok(rows.Select(x => new { id = x.Id, x.Subject, x.Topic, x.FileName, x.ContentType, x.Size, x.CreatedAtUtc, x.DueDateUtc, x.Note, x.Status, x.AssignedAtUtc, downloadUrl = $"/api/tenants/{tenantId}/resources/{x.Id}/download" }));
+});
+
+tenantApi.MapPost("/resources", async (Guid tenantId, HttpRequest request, ClaimsPrincipal principal, KoclukDbContext db, IWebHostEnvironment environment, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    if (!TryGetUserId(principal, out var userId)) return Results.Unauthorized();
+    if (!request.HasFormContentType) return Results.BadRequest(new { error = "Dosya yüklemek için multipart/form-data kullanın." });
+    var form = await request.ReadFormAsync(ct);
+    var file = form.Files.GetFile("file");
+    var subject = form["subject"].ToString().Trim(); var topic = form["topic"].ToString().Trim();
+    if (file is null || file.Length == 0) return Results.BadRequest(new { error = "Bir PDF veya Word dosyası seçin." });
+    if (file.Length > 20 * 1024 * 1024) return Results.BadRequest(new { error = "Dosya boyutu 20 MB sınırını aşamaz." });
+    var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+    var allowed = new[] { ".pdf", ".doc", ".docx" };
+    if (!allowed.Contains(extension)) return Results.BadRequest(new { error = "Sadece PDF, DOC veya DOCX yükleyebilirsiniz." });
+    if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(topic)) return Results.BadRequest(new { error = "Ders ve konu zorunludur." });
+    var directory = Path.Combine(environment.ContentRootPath, "App_Data", "resources", tenantId.ToString("N")); Directory.CreateDirectory(directory);
+    var storedName = $"{Guid.NewGuid():N}{extension}"; var path = Path.Combine(directory, storedName);
+    await using (var stream = File.Create(path)) await file.CopyToAsync(stream, ct);
+    var resource = new StudyResource(tenantId, userId, subject, topic, Path.GetFileName(file.FileName), storedName, file.ContentType, file.Length);
+    db.StudyResources.Add(resource); await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/tenants/{tenantId}/resources/{resource.Id}", new { resource.Id, resource.Subject, resource.Topic, resource.FileName, resource.ContentType, resource.Size, resource.CreatedAtUtc });
+}).DisableAntiforgery();
+
+tenantApi.MapPost("/resource-assignments", async (Guid tenantId, ResourceAssignmentRequest request, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    if (!TryGetUserId(principal, out var userId)) return Results.Unauthorized();
+    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.ResourceId, ct);
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.StudentId, ct);
+    if (resource is null || student is null) return Results.NotFound(new { error = "Kaynak veya öğrenci bulunamadı." });
+    if (await db.ResourceAssignments.AnyAsync(x => x.TenantId == tenantId && x.ResourceId == request.ResourceId && x.StudentId == request.StudentId && x.Status == "Assigned", ct)) return Results.Conflict(new { error = "Bu kaynak öğrenciye zaten gönderilmiş." });
+    var assignment = new ResourceAssignment(tenantId, request.ResourceId, request.StudentId, userId, request.DueDateUtc, request.Note);
+    db.ResourceAssignments.Add(assignment);
+    if (student.ApplicationUserId.HasValue) db.UserNotifications.Add(new UserNotification(student.ApplicationUserId.Value, "Yeni çalışma kaynağı", $"{resource.Subject} · {resource.Topic} için koçundan yeni bir kaynak geldi.", "ResourceAssignment"));
+    await db.SaveChangesAsync(ct);
+    return Results.Created($"/api/tenants/{tenantId}/resource-assignments/{assignment.Id}", new { assignment.Id, assignment.ResourceId, assignment.StudentId, assignment.Status, assignment.DueDateUtc });
+});
+
+tenantApi.MapGet("/resources/{resourceId:guid}/download", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IWebHostEnvironment environment, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
+    if (resource is null) return Results.NotFound();
+    if (principal.IsInRole("Student"))
+    {
+        var current = await users.GetUserAsync(principal);
+        var student = current is null ? null : await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+        var assignment = student is null ? null : await db.ResourceAssignments.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
+        if (assignment is null) return Results.Forbid();
+        assignment.MarkOpened(); await db.SaveChangesAsync(ct);
+    }
+    var path = Path.Combine(environment.ContentRootPath, "App_Data", "resources", tenantId.ToString("N"), resource.StoredFileName);
+    if (!File.Exists(path)) return Results.NotFound();
+    return Results.File(path, resource.ContentType, resource.FileName, enableRangeProcessing: true);
+});
+
+tenantApi.MapGet("/question-assignments", async (Guid tenantId, string? status, Guid? studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    var query = from assignment in db.QuestionAssignments.AsNoTracking()
+                join question in db.QuestionBankItems.AsNoTracking() on assignment.QuestionBankItemId equals question.Id
+                join student in db.Students.AsNoTracking() on assignment.StudentId equals student.Id
+                where assignment.TenantId == tenantId
+                select new { assignment, question, student };
+    if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.assignment.Status == status);
+    if (studentId.HasValue) query = query.Where(x => x.assignment.StudentId == studentId.Value);
+    var rows = await query.OrderBy(x => x.assignment.Status == "Completed").ThenBy(x => x.assignment.DueDateUtc).Take(500).ToListAsync(ct);
+    return Results.Ok(rows.Select(x => ToAssignmentResponse(x.assignment, x.question, x.student.FirstName + " " + x.student.LastName)));
+});
+
+tenantApi.MapGet("/my/question-assignments", async (Guid tenantId, string? status, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Student")) return Results.Forbid();
+    var current = await users.GetUserAsync(principal);
+    if (current is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+    if (student is null) return Results.Forbid();
+    var query = from assignment in db.QuestionAssignments.AsNoTracking()
+                join question in db.QuestionBankItems.AsNoTracking() on assignment.QuestionBankItemId equals question.Id
+                where assignment.TenantId == tenantId && assignment.StudentId == student.Id
+                select new { assignment, question };
+    if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.assignment.Status == status);
+    var rows = await query.OrderBy(x => x.assignment.Status == "Completed").ThenBy(x => x.assignment.DueDateUtc).Take(200).ToListAsync(ct);
+    return Results.Ok(rows.Select(x => ToAssignmentResponse(x.assignment, x.question, null)));
+});
+
+tenantApi.MapPost("/question-assignments", async (Guid tenantId, QuestionAssignmentRequest request, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    if (!TryGetUserId(principal, out var userId)) return Results.Unauthorized();
+    var question = await db.QuestionBankItems.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.QuestionBankItemId, ct);
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == request.StudentId, ct);
+    if (question is null || student is null) return Results.NotFound(new { error = "Soru veya öğrenci bulunamadı." });
+    var duplicate = await db.QuestionAssignments.AnyAsync(x => x.TenantId == tenantId && x.QuestionBankItemId == request.QuestionBankItemId && x.StudentId == request.StudentId && x.Status == "Assigned", ct);
+    if (duplicate) return Results.Conflict(new { error = "Bu soru öğrencinin bekleyen görevlerinde zaten var." });
+    try
+    {
+        var assignment = new QuestionAssignment(tenantId, question.Id, student.Id, userId, request.DueDateUtc, request.Note);
+        db.QuestionAssignments.Add(assignment);
+        await db.SaveChangesAsync(ct);
+        if (student.ApplicationUserId.HasValue)
+        {
+            db.UserNotifications.Add(new UserNotification(student.ApplicationUserId.Value, "Yeni soru görevi", $"{question.Subject} · {question.Topic} için yeni bir soru görevin var.", "QuestionAssignment"));
+            await db.SaveChangesAsync(ct);
+        }
+        return Results.Created($"/api/tenants/{tenantId}/question-assignments/{assignment.Id}", ToAssignmentResponse(assignment, question, student.FirstName + " " + student.LastName));
+    }
+    catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
+});
+
+tenantApi.MapPost("/question-assignments/{assignmentId:guid}/complete", async (Guid tenantId, Guid assignmentId, QuestionAssignmentCompleteRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Student")) return Results.Forbid();
+    var current = await users.GetUserAsync(principal);
+    if (current is null) return Results.Unauthorized();
+    var row = await (from assignment in db.QuestionAssignments
+                     join question in db.QuestionBankItems on assignment.QuestionBankItemId equals question.Id
+                     join student in db.Students on assignment.StudentId equals student.Id
+                     where assignment.Id == assignmentId && assignment.TenantId == tenantId && (student.ApplicationUserId == current.Id || (student.ApplicationUserId == null && student.Email == current.Email))
+                     select new { assignment, question, student }).SingleOrDefaultAsync(ct);
+    if (row is null) return Results.NotFound();
+    if (row.assignment.Status == "Completed") return Results.Conflict(new { error = "Bu görev zaten tamamlandı." });
+    var isCorrect = request.IsCorrect ?? (!string.IsNullOrWhiteSpace(row.question.Answer) && string.Equals(row.question.Answer.Trim(), request.Answer?.Trim(), StringComparison.OrdinalIgnoreCase));
+    row.assignment.Complete(isCorrect ? "" : (request.ErrorReason ?? "Diğer"), request.Note);
+    db.QuestionAttempts.Add(new QuestionAttempt(tenantId, row.question.Id, row.student.Id, request.Answer ?? string.Empty, isCorrect, request.TimeSpentSeconds, request.ErrorReason));
+    if (row.assignment.AssignedByUserId.HasValue)
+        db.UserNotifications.Add(new UserNotification(row.assignment.AssignedByUserId.Value, "Soru görevi tamamlandı", $"{row.student.FirstName} {row.student.LastName} bir soruyu tamamladı: {row.question.Subject} · {row.question.Topic}.", "QuestionAssignmentCompleted"));
+    await db.SaveChangesAsync(ct);
+    return Results.Ok(ToAssignmentResponse(row.assignment, row.question, null) with { IsCorrect = isCorrect, CorrectAnswer = isCorrect ? row.question.Answer : null, Explanation = row.question.Explanation });
 });
 
 tenantApi.MapGet("/students/{studentId:guid}/question-attempts", async (Guid tenantId, Guid studentId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
@@ -751,7 +1045,7 @@ tenantApi.MapGet("/students/{studentId:guid}/question-summary", async (Guid tena
     if (principal.IsInRole("Student"))
     {
         var current = await users.GetUserAsync(principal);
-        allowed = current is not null && await db.Students.AnyAsync(x => x.TenantId == tenantId && x.Id == studentId && x.Email == current.Email, ct);
+        allowed = current is not null && await db.Students.AnyAsync(x => x.TenantId == tenantId && x.Id == studentId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
     }
     else if (principal.IsInRole("Parent"))
     {
@@ -762,11 +1056,12 @@ tenantApi.MapGet("/students/{studentId:guid}/question-summary", async (Guid tena
     var attempts = await (from attempt in db.QuestionAttempts.AsNoTracking()
                           join question in db.QuestionBankItems.AsNoTracking() on attempt.QuestionBankItemId equals question.Id
                           where attempt.TenantId == tenantId && attempt.StudentId == studentId
-                          select new { question.Subject, question.Topic, attempt.IsCorrect, attempt.AttemptedAtUtc }).ToListAsync(ct);
+                          select new { question.Subject, question.Topic, attempt.IsCorrect, attempt.IsBlank, attempt.TimeSpentSeconds, attempt.ErrorReason, attempt.AttemptedAtUtc }).ToListAsync(ct);
     var total = attempts.Count; var correct = attempts.Count(x => x.IsCorrect);
     var bySubject = attempts.GroupBy(x => x.Subject).Select(group => new { subject = group.Key, total = group.Count(), correct = group.Count(x => x.IsCorrect), rate = group.Count() == 0 ? 0 : Math.Round(group.Count(x => x.IsCorrect) * 100m / group.Count(), 1) }).OrderByDescending(x => x.total).ToArray();
     var byTopic = attempts.GroupBy(x => new { x.Subject, x.Topic }).Select(group => new { subject = group.Key.Subject, topic = group.Key.Topic, total = group.Count(), correct = group.Count(x => x.IsCorrect), rate = group.Count() == 0 ? 0 : Math.Round(group.Count(x => x.IsCorrect) * 100m / group.Count(), 1) }).OrderBy(x => x.rate).Take(20).ToArray();
-    return Results.Ok(new { total, correct, wrong = total - correct, rate = total == 0 ? 0 : Math.Round(correct * 100m / total, 1), lastAttemptAtUtc = attempts.OrderByDescending(x => x.AttemptedAtUtc).Select(x => (DateTime?)x.AttemptedAtUtc).FirstOrDefault(), bySubject, byTopic });
+    var errorReasons = attempts.Where(x => !string.IsNullOrWhiteSpace(x.ErrorReason)).GroupBy(x => x.ErrorReason!).Select(group => new { reason = group.Key, count = group.Count() }).OrderByDescending(x => x.count).ToArray();
+    return Results.Ok(new { total, correct, wrong = total - correct, blank = attempts.Count(x => x.IsBlank), averageTimeSeconds = attempts.Count == 0 ? 0 : Math.Round(attempts.Average(x => x.TimeSpentSeconds), 1), rate = total == 0 ? 0 : Math.Round(correct * 100m / total, 1), lastAttemptAtUtc = attempts.OrderByDescending(x => x.AttemptedAtUtc).Select(x => (DateTime?)x.AttemptedAtUtc).FirstOrDefault(), bySubject, byTopic, errorReasons });
 });
 
 tenantApi.MapGet("/question-summary", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
@@ -780,7 +1075,9 @@ tenantApi.MapGet("/question-summary", async (Guid tenantId, ClaimsPrincipal prin
     var total = rows.Count; var correct = rows.Count(x => x.IsCorrect);
     var students = rows.GroupBy(x => new { x.StudentId, x.StudentName }).Select(group => new { studentId = group.Key.StudentId, studentName = group.Key.StudentName, total = group.Count(), correct = group.Count(x => x.IsCorrect), rate = Math.Round(group.Count(x => x.IsCorrect) * 100m / group.Count(), 1) }).OrderByDescending(x => x.total).ToArray();
     var subjects = rows.GroupBy(x => x.Subject).Select(group => new { subject = group.Key, total = group.Count(), correct = group.Count(x => x.IsCorrect), rate = Math.Round(group.Count(x => x.IsCorrect) * 100m / group.Count(), 1) }).OrderByDescending(x => x.total).ToArray();
-    return Results.Ok(new { total, correct, wrong = total - correct, rate = total == 0 ? 0 : Math.Round(correct * 100m / total, 1), students, subjects });
+    var assignments = await db.QuestionAssignments.AsNoTracking().Where(x => x.TenantId == tenantId).ToListAsync(ct);
+    var errorReasons = assignments.Where(x => x.Status == "Completed" && !string.IsNullOrWhiteSpace(x.ErrorReason)).GroupBy(x => x.ErrorReason!).Select(group => new { reason = group.Key, count = group.Count() }).OrderByDescending(x => x.count).ToArray();
+    return Results.Ok(new { total, correct, wrong = total - correct, rate = total == 0 ? 0 : Math.Round(correct * 100m / total, 1), students, subjects, assigned = assignments.Count, pendingAssignments = assignments.Count(x => x.Status == "Assigned"), completedAssignments = assignments.Count(x => x.Status == "Completed"), errorReasons });
 });
 
 tenantApi.MapGet("/question-summary/export", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
@@ -806,16 +1103,19 @@ tenantApi.MapPost("/invitations", async (Guid tenantId, CreateInvitationRequest 
         {
             var subscription = await db.TenantSubscriptions.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId, ct);
             if (subscription is not null && !subscription.IsActive) return Results.Conflict(new { error = "Abonelik süresi dolmuş. Yeni koç daveti için paketinizi yenileyin." });
-            var coachCount = await db.TenantMemberships.CountAsync(x => x.TenantId == tenantId && x.Role == "Coach", ct);
-            var pendingCoachInvites = await db.TenantInvitations.CountAsync(x => x.TenantId == tenantId && x.Role == "Coach" && x.AcceptedAtUtc == null && x.RevokedAtUtc == null && x.ExpiresAtUtc > DateTime.UtcNow, ct);
+            var coachCount = await db.TenantMemberships.CountAsync(x => x.TenantId == tenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner"), ct);
+            var pendingCoachInvites = await db.TenantInvitations.CountAsync(x => x.TenantId == tenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner") && x.AcceptedAtUtc == null && x.RevokedAtUtc == null && x.ExpiresAtUtc > DateTime.UtcNow, ct);
             if (subscription is not null && coachCount + pendingCoachInvites >= subscription.MaxCoaches) return Results.Conflict(new { error = "Mevcut paket koç limitine ulaştı." });
         }
         var invitation = new TenantInvitation(tenantId, request.Email, request.Role, DateTime.UtcNow.AddDays(7));
         db.TenantInvitations.Add(invitation);
         var recipient = await users.FindByEmailAsync(invitation.Email);
-        if (recipient is not null) db.UserNotifications.Add(new UserNotification(recipient.Id, "Yeni kurum daveti", $"{invitation.Role} rolüyle bir koçluk alanına davet edildiniz.", "Invitation"));
+        if (recipient is not null) db.UserNotifications.Add(new UserNotification(recipient.Id, "Yeni kurum daveti", $"{invitation.Role} rolüyle bir koçluk alanına davet edildiniz. Daveti açmak için bildirimdeki bağlantıyı kullanın: #invite/{invitation.Token}", "Invitation"));
         await db.SaveChangesAsync(ct);
-        try { var publicUrl = builder.Configuration["APP_PUBLIC_URL"] ?? "https://localhost:7098"; await emailSender.SendAsync(invitation.Email, "Koçluk alanı davetiniz", $"Koçluk alanına davet edildiniz. Daveti açın: {publicUrl.TrimEnd('/')}/#invite/{invitation.Token}\n\nDavet kodu: {invitation.Token}", ct); } catch { /* E-posta servisi geçici olarak kapalıysa token akışı devam eder. */ }
+        if (request.SendEmail)
+        {
+            try { var publicUrl = builder.Configuration["APP_PUBLIC_URL"] ?? "https://localhost:7098"; await emailSender.SendAsync(invitation.Email, "Koçluk alanı davetiniz", $"Koçluk alanına davet edildiniz. Daveti açın: {publicUrl.TrimEnd('/')}/#invite/{invitation.Token}\n\nDavet kodu: {invitation.Token}", ct); } catch { /* E-posta servisi geçici olarak kapalıysa token akışı devam eder. */ }
+        }
         await WriteAuditAsync(db, principal, tenantId, "Created", "TenantInvitation", invitation.Id, invitation.Email, ct);
         return Results.Created($"/api/invitations/{invitation.Token}", new { invitation.Id, invitation.Email, invitation.Role, invitation.ExpiresAtUtc, invitation.Token });
     }
@@ -891,6 +1191,27 @@ tenantApi.MapGet("/students/{studentId:guid}/subjects", async (Guid tenantId, Gu
     var items = await db.SubjectProgresses.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId).OrderBy(x => x.Subject).ThenBy(x => x.Topic).ToListAsync(ct);
     return Results.Ok(items);
 });
+
+tenantApi.MapGet("/students/{studentId:guid}/insights", async (Guid tenantId, Guid studentId, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!await db.Students.AsNoTracking().AnyAsync(x => x.TenantId == tenantId && x.Id == studentId, ct)) return Results.NotFound();
+    var exams = await db.ExamAttempts.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId).OrderByDescending(x => x.ExamDate).Take(8).ToListAsync(ct);
+    var subjects = await db.SubjectProgresses.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId).ToListAsync(ct);
+    var insights = new List<object>();
+    if (exams.Count >= 2)
+    {
+        var latest = exams[0]; var previous = exams[1];
+        var latestNet = latest.Correct - latest.Wrong / 4m; var previousNet = previous.Correct - previous.Wrong / 4m;
+        var direction = latestNet >= previousNet ? "artıyor" : "azalıyor";
+        insights.Add(new { type = latestNet >= previousNet ? "positive" : "attention", title = $"Net performansı {direction}", detail = $"Son denemede {latestNet:0.##} net yaptın; önceki denemeye göre {Math.Abs(latestNet - previousNet):0.##} net fark var." });
+    }
+    var weakest = subjects.OrderBy(x => x.CompletionPercent).FirstOrDefault();
+    if (weakest is not null)
+        insights.Add(new { type = "attention", title = $"{weakest.Subject} · {weakest.Topic}", detail = $"Konu ilerlemesi %{weakest.CompletionPercent}. Bu konu için gelecek plana ek çalışma önerilir." });
+    if (insights.Count == 0)
+        insights.Add(new { type = "info", title = "Analiz için veri bekleniyor", detail = "En az iki deneme sonucu veya konu ilerlemesi eklendiğinde kişisel öneriler burada görünecek." });
+    return Results.Ok(new { generatedAtUtc = DateTime.UtcNow, insights });
+});
 tenantApi.MapGet("/students/{studentId:guid}/subjects/export", async (Guid tenantId, Guid studentId, KoclukDbContext db, CancellationToken ct) =>
 {
     var items = await db.SubjectProgresses.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId).OrderBy(x => x.Subject).ThenBy(x => x.Topic).ToListAsync(ct);
@@ -929,7 +1250,7 @@ tenantApi.MapDelete("/students/{studentId:guid}/subjects/{subjectId:guid}", asyn
 tenantApi.MapGet("/students/{studentId:guid}/exams/export", async (Guid tenantId, Guid studentId, KoclukDbContext db, CancellationToken ct) =>
 {
     var exams = await db.ExamAttempts.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId).OrderByDescending(x => x.ExamDate).ToListAsync(ct);
-    var csv = "Deneme;Tarih;Doğru;Yanlış;Boş;Puan\r\n" + string.Join("\r\n", exams.Select(x => $"{x.Title.Replace(';', ',')};{x.ExamDate:yyyy-MM-dd};{x.Correct};{x.Wrong};{x.Blank};{x.Score:0.##}"));
+    var csv = "Deneme;Tarih;Doğru;Yanlış;Boş;Net;Puan\r\n" + string.Join("\r\n", exams.Select(x => $"{x.Title.Replace(';', ',')};{x.ExamDate:yyyy-MM-dd};{x.Correct};{x.Wrong};{x.Blank};{x.Correct - x.Wrong / 4m:0.##};{x.Score:0.##}"));
     return Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv; charset=utf-8", "deneme-sonuclari.csv");
 });
 
@@ -974,17 +1295,27 @@ tenantApi.MapGet("/students/{studentId:guid}/sessions", async (Guid tenantId, Gu
     return Results.Ok(sessions.Select(ToSessionResponse));
 });
 
-tenantApi.MapPost("/students/{studentId:guid}/sessions", async (Guid tenantId, Guid studentId, CreateSessionRequest request, KoclukDbContext db, ClaimsPrincipal principal, CancellationToken ct) =>
+tenantApi.MapPost("/students/{studentId:guid}/sessions", async (Guid tenantId, Guid studentId, CreateSessionRequest request, KoclukDbContext db, UserManager<ApplicationUser> users, ClaimsPrincipal principal, CancellationToken ct) =>
 {
     try
     {
         if (!await db.Students.AnyAsync(x => x.TenantId == tenantId && x.Id == studentId, ct)) return Results.NotFound();
         var starts = request.StartsAtUtc.ToUniversalTime();
         var ends = starts.AddMinutes(request.DurationMinutes);
+        var sameStart = await db.CoachingSessions.AnyAsync(x => x.TenantId == tenantId && x.Status == "Scheduled" && x.StartsAtUtc == starts, ct);
+        if (sameStart) return Results.Conflict(new { error = "Aynı saatte etkinlik eklenemez. Lütfen başka bir saat seçin." });
         var conflict = await db.CoachingSessions.AnyAsync(x => x.TenantId == tenantId && x.Status == "Scheduled" && starts < x.StartsAtUtc.AddMinutes(x.DurationMinutes) && ends > x.StartsAtUtc, ct);
         if (conflict) return Results.Conflict(new { error = "Bu saat aralığında başka bir koçluk görüşmesi bulunuyor." });
-        var session = new CoachingSession(tenantId, studentId, starts, request.DurationMinutes, request.Note);
+        var session = new CoachingSession(tenantId, studentId, starts, request.DurationMinutes, request.Note, "PendingStudent");
         db.CoachingSessions.Add(session);
+        var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.Id == studentId && x.TenantId == tenantId, ct);
+        if (student is not null)
+        {
+            var studentUser = student.ApplicationUserId is Guid linkedStudentId
+                ? await users.FindByIdAsync(linkedStudentId.ToString())
+                : string.IsNullOrWhiteSpace(student.Email) ? null : await users.FindByEmailAsync(student.Email);
+            if (studentUser is not null) db.UserNotifications.Add(new UserNotification(studentUser.Id, "Yeni randevu önerisi", $"Koçunuz size yeni bir randevu önerdi. Takvimden Onayla, Reddet veya Yeni saat öner seçeneklerinden birini kullanabilirsiniz. [session:{session.Id}]", "SessionRequest"));
+        }
         await db.SaveChangesAsync(ct);
         await WriteAuditAsync(db, principal, tenantId, "Created", "CoachingSession", session.Id, $"Student:{studentId}", ct);
         return Results.Created($"/api/tenants/{tenantId}/students/{studentId}/sessions/{session.Id}", ToSessionResponse(session));
@@ -992,16 +1323,33 @@ tenantApi.MapPost("/students/{studentId:guid}/sessions", async (Guid tenantId, G
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
 });
 
-tenantApi.MapPut("/students/{studentId:guid}/sessions/{sessionId:guid}", async (Guid tenantId, Guid studentId, Guid sessionId, CreateSessionRequest request, KoclukDbContext db, ClaimsPrincipal principal, CancellationToken ct) =>
+tenantApi.MapPut("/students/{studentId:guid}/sessions/{sessionId:guid}", async (Guid tenantId, Guid studentId, Guid sessionId, CreateSessionRequest request, KoclukDbContext db, UserManager<ApplicationUser> users, ClaimsPrincipal principal, CancellationToken ct) =>
 {
-    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId && x.Id == sessionId, ct);
+    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == sessionId, ct);
     if (session is null) return Results.NotFound();
     try {
+        var targetStudent = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId, ct);
+        if (targetStudent is null) return Results.NotFound();
+        var studentChanged = session.StudentId != studentId;
         var starts = request.StartsAtUtc.ToUniversalTime();
         var ends = starts.AddMinutes(request.DurationMinutes);
-        var conflict = await db.CoachingSessions.AnyAsync(x => x.Id != sessionId && x.TenantId == tenantId && x.Status == "Scheduled" && starts < x.StartsAtUtc.AddMinutes(x.DurationMinutes) && ends > x.StartsAtUtc, ct);
+        var sameStart = await db.CoachingSessions.AnyAsync(x => x.Id != sessionId && x.TenantId == tenantId && x.Status != "Cancelled" && x.Status != "Rejected" && x.StartsAtUtc == starts, ct);
+        if (sameStart) return Results.Conflict(new { error = "Aynı saatte etkinlik eklenemez. Lütfen başka bir saat seçin." });
+        var conflict = await db.CoachingSessions.AnyAsync(x => x.Id != sessionId && x.TenantId == tenantId && x.Status != "Cancelled" && x.Status != "Rejected" && starts < x.StartsAtUtc.AddMinutes(x.DurationMinutes) && ends > x.StartsAtUtc, ct);
         if (conflict) return Results.Conflict(new { error = "Bu saat aralığında başka bir koçluk görüşmesi bulunuyor." });
-        session.Reschedule(starts, request.DurationMinutes, request.Note); await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, tenantId, "Updated", "CoachingSession", session.Id, $"Student:{studentId}", ct); return Results.Ok(ToSessionResponse(session)); }
+        if (studentChanged || session.Status == "Pending")
+        {
+            if (studentChanged) session.ChangeStudent(studentId);
+            session.ProposeToStudent();
+            var studentUser = targetStudent.ApplicationUserId is Guid linkedStudentId
+                ? await users.FindByIdAsync(linkedStudentId.ToString())
+                : string.IsNullOrWhiteSpace(targetStudent.Email) ? null : await users.FindByEmailAsync(targetStudent.Email);
+            if (studentUser is not null) db.UserNotifications.Add(new UserNotification(studentUser.Id, "Yeni randevu önerisi", $"Koçunuz size yeni bir randevu önerdi. Takvimden Onayla, Reddet veya Yeni saat öner seçeneklerinden birini kullanabilirsiniz. [session:{session.Id}]", "SessionRequest"));
+        }
+        session.Reschedule(starts, request.DurationMinutes, request.Note);
+        await db.SaveChangesAsync(ct);
+        await WriteAuditAsync(db, principal, tenantId, "Updated", "CoachingSession", session.Id, $"Student:{studentId};StudentChanged:{studentChanged}", ct);
+        return Results.Ok(ToSessionResponse(session)); }
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
 });
 
@@ -1023,6 +1371,27 @@ tenantApi.MapPost("/students/{studentId:guid}/sessions/{sessionId:guid}/confirm"
     await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, tenantId, "Confirmed", "CoachingSession", sessionId, $"Student:{studentId}", ct); return Results.Ok(ToSessionResponse(session));
 });
 
+tenantApi.MapPost("/students/{studentId:guid}/sessions/{sessionId:guid}/reject", async (Guid tenantId, Guid studentId, Guid sessionId, KoclukDbContext db, ClaimsPrincipal principal, UserManager<ApplicationUser> users, CancellationToken ct) =>
+{
+    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId && x.Id == sessionId && x.Status == "Pending", ct);
+    if (session is null) return Results.NotFound();
+    session.Reject();
+    var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.Id == studentId && x.TenantId == tenantId, ct);
+    if (student?.ApplicationUserId is Guid studentUserId) db.UserNotifications.Add(new UserNotification(studentUserId, "Görüşme reddedildi", "Koçluk görüşme talebiniz reddedildi. Takvimden yeni bir saat seçebilirsiniz.", "SessionRejected"));
+    else if (student?.Email is not null) { var studentUser = await users.FindByEmailAsync(student.Email); if (studentUser is not null) db.UserNotifications.Add(new UserNotification(studentUser.Id, "Görüşme reddedildi", "Koçluk görüşme talebiniz reddedildi. Takvimden yeni bir saat seçebilirsiniz.", "SessionRejected")); }
+    var guardian = await db.StudentGuardians.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId, ct);
+    if (guardian?.ParentUserId is Guid parentUserId) db.UserNotifications.Add(new UserNotification(parentUserId, "Görüşme reddedildi", "Bağlı olduğunuz öğrencinin görüşme talebi reddedildi.", "SessionRejected"));
+    await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, tenantId, "Rejected", "CoachingSession", sessionId, $"Student:{studentId}", ct); return Results.Ok(ToSessionResponse(session));
+});
+
+tenantApi.MapPost("/students/{studentId:guid}/sessions/{sessionId:guid}/complete", async (Guid tenantId, Guid studentId, Guid sessionId, KoclukDbContext db, ClaimsPrincipal principal, CancellationToken ct) =>
+{
+    var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId && x.Id == sessionId && x.Status == "Scheduled", ct);
+    if (session is null) return Results.NotFound();
+    if (session.StartsAtUtc > DateTime.UtcNow) return Results.Conflict(new { error = "Gelecekteki görüşme tamamlandı olarak işaretlenemez." });
+    session.Complete(); await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, tenantId, "Completed", "CoachingSession", sessionId, $"Student:{studentId}", ct); return Results.Ok(ToSessionResponse(session));
+});
+
 tenantApi.MapPost("/students/{studentId:guid}/sessions/{sessionId:guid}/cancel", async (Guid tenantId, Guid studentId, Guid sessionId, KoclukDbContext db, ClaimsPrincipal principal, UserManager<ApplicationUser> users, CancellationToken ct) =>
 {
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId && x.Id == sessionId, ct);
@@ -1040,11 +1409,18 @@ tenantApi.MapPost("/students", async (
 {
     try
     {
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber)) return Results.BadRequest(new { error = "Öğrenci telefon numarası zorunludur." });
         var subscription = await db.TenantSubscriptions.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId, ct);
         if (subscription is not null && !subscription.IsActive) return Results.Conflict(new { error = "Abonelik süresi dolmuş. Öğrenci eklemek için paketinizi yenileyin." });
         var studentCount = await db.Students.CountAsync(x => x.TenantId == tenantId, ct);
         if (subscription is not null && studentCount >= subscription.MaxStudents) return Results.Conflict(new { error = "Mevcut paket öğrenci limitine ulaştı." });
         var student = new Student(tenantId, request.FirstName, request.LastName, request.Email, request.PhoneNumber);
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var studentUser = await users.FindByEmailAsync(request.Email);
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student"))
+                student.LinkUser(studentUser.Id);
+        }
         await students.AddAsync(student, ct);
         StudentGuardian? guardian = null;
         if (!string.IsNullOrWhiteSpace(request.ParentFirstName) || !string.IsNullOrWhiteSpace(request.ParentLastName) || !string.IsNullOrWhiteSpace(request.ParentPhone))
@@ -1068,7 +1444,15 @@ tenantApi.MapGet("/students", async (Guid tenantId, IStudentRepository students,
 {
     var result = await students.ListAsync(tenantId, ct);
     var guardians = await db.StudentGuardians.AsNoTracking().Where(x => x.TenantId == tenantId).ToListAsync(ct);
-    return Results.Ok(result.Select(student => ToStudentResponse(student, guardians.FirstOrDefault(x => x.StudentId == student.Id))));
+    var studentEmails = result.Where(x => !string.IsNullOrWhiteSpace(x.Email)).Select(x => x.Email!).Distinct().ToArray();
+    var linkedEmails = (await db.Users.AsNoTracking().Where(x => x.Email != null && studentEmails.Contains(x.Email)).Select(x => x.Email!).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var coachNames = await (from membership in db.TenantMemberships.AsNoTracking()
+                            join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
+                            where membership.TenantId == tenantId && (membership.Role.ToLower() == "coach" || membership.Role.ToLower() == "owner")
+                            orderby user.FirstName, user.LastName
+                            select (user.FirstName + " " + user.LastName).Trim()).ToListAsync(ct);
+    var coachName = coachNames.Count == 0 ? null : string.Join(", ", coachNames);
+    return Results.Ok(result.Select(student => ToStudentResponse(student, guardians.FirstOrDefault(x => x.StudentId == student.Id), coachName, student.ApplicationUserId.HasValue || (student.Email is not null && linkedEmails.Contains(student.Email)))));
 });
 
 tenantApi.MapGet("/students/{studentId:guid}", async (
@@ -1076,7 +1460,13 @@ tenantApi.MapGet("/students/{studentId:guid}", async (
 {
     var student = await students.GetAsync(tenantId, studentId, ct);
     var guardian = student is null ? null : await db.StudentGuardians.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId, ct);
-    return student is null ? Results.NotFound() : Results.Ok(ToStudentResponse(student, guardian));
+    if (student is null) return Results.NotFound();
+    var coachNames = await (from membership in db.TenantMemberships.AsNoTracking()
+                            join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
+                            where membership.TenantId == tenantId && (membership.Role.ToLower() == "coach" || membership.Role.ToLower() == "owner")
+                            orderby user.FirstName, user.LastName
+                            select (user.FirstName + " " + user.LastName).Trim()).ToListAsync(ct);
+    return Results.Ok(ToStudentResponse(student, guardian, coachNames.Count == 0 ? null : string.Join(", ", coachNames)));
 });
 
 tenantApi.MapPut("/students/{studentId:guid}", async (
@@ -1087,7 +1477,14 @@ tenantApi.MapPut("/students/{studentId:guid}", async (
     if (student is null) return Results.NotFound();
     try
     {
+        if (string.IsNullOrWhiteSpace(request.PhoneNumber)) return Results.BadRequest(new { error = "Öğrenci telefon numarası zorunludur." });
         student.UpdateProfile(request.FirstName, request.LastName, request.Email, request.PhoneNumber);
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var studentUser = await users.FindByEmailAsync(request.Email);
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student"))
+                student.LinkUser(studentUser.Id);
+        }
         await students.UpdateAsync(student, ct);
         var guardian = await db.StudentGuardians.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == studentId, ct);
         if (!string.IsNullOrWhiteSpace(request.ParentFirstName) || guardian is not null)
@@ -1168,10 +1565,11 @@ tenantApi.MapPut("/plans/{planId:guid}/tasks/{taskId:guid}/progress", async (
         if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin"))
         {
             var userEmail = principal.FindFirstValue(ClaimTypes.Email) ?? principal.FindFirstValue("email");
+            TryGetUserId(principal, out var currentUserId);
             var existingPlan = await plans.GetAsync(tenantId, planId, ct);
             if (existingPlan is null) return Results.NotFound(new { error = "Plan veya görev bulunamadı." });
-            var planOwner = await db.Students.AsNoTracking().Where(x => x.TenantId == tenantId && x.Id == existingPlan.StudentId).Select(x => x.Email).SingleOrDefaultAsync(ct);
-            if (string.IsNullOrWhiteSpace(userEmail) || !string.Equals(userEmail, planOwner, StringComparison.OrdinalIgnoreCase)) return Results.Forbid();
+            var planOwner = await db.Students.AsNoTracking().Where(x => x.TenantId == tenantId && x.Id == existingPlan.StudentId).Select(x => new { x.ApplicationUserId, x.Email }).SingleOrDefaultAsync(ct);
+            if (planOwner is null || (planOwner.ApplicationUserId is Guid linkedUserId && linkedUserId != currentUserId) || (planOwner.ApplicationUserId is null && (string.IsNullOrWhiteSpace(userEmail) || !string.Equals(userEmail, planOwner.Email, StringComparison.OrdinalIgnoreCase)))) return Results.Forbid();
         }
         var plan = await plans.UpdateTaskProgressAsync(tenantId, planId, taskId,
             request.CompletedQuestions, request.IsCompleted, ct);
@@ -1179,8 +1577,15 @@ tenantApi.MapPut("/plans/{planId:guid}/tasks/{taskId:guid}/progress", async (
         {
             if (request.IsCompleted)
             {
+                var student = await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == plan.StudentId, ct);
+                var studentUser = student?.ApplicationUserId is Guid linkedStudentId
+                    ? await users.FindByIdAsync(linkedStudentId.ToString())
+                    : student?.Email is null ? null : await users.FindByEmailAsync(student.Email);
+                if (studentUser is not null) db.UserNotifications.Add(new UserNotification(studentUser.Id, "Görev tamamlandı", "Çalışma görevin tamamlandı olarak işaretlendi.", "TaskCompleted"));
                 var guardian = await db.StudentGuardians.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StudentId == plan.StudentId, ct);
                 if (guardian?.ParentUserId is Guid parentUserId) db.UserNotifications.Add(new UserNotification(parentUserId, "Görev tamamlandı", "Bağlı olduğunuz öğrenci bir çalışma görevini tamamladı.", "TaskCompleted"));
+                var coachIds = await db.TenantMemberships.AsNoTracking().Where(x => x.TenantId == tenantId && (x.Role.ToLower() == "coach" || x.Role.ToLower() == "owner")).Select(x => x.UserId).ToListAsync(ct);
+                foreach (var coachId in coachIds) db.UserNotifications.Add(new UserNotification(coachId, "Görev tamamlandı", $"{student?.FirstName} {student?.LastName} bir çalışma görevini tamamladı.", "TaskCompleted"));
             }
             await WriteAuditAsync(db, principal, tenantId, "Updated", "StudyTask", taskId, $"Plan:{planId}", ct);
         }
@@ -1267,32 +1672,54 @@ static async Task WriteAuditAsync(KoclukDbContext db, ClaimsPrincipal principal,
 }
 static bool TryGetUserId(ClaimsPrincipal principal, out Guid userId) => Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("sub"), out userId);
 
-static StudentResponse ToStudentResponse(Student student, StudentGuardian? guardian = null) => new(
+static async Task EnsureResourceTablesAsync(KoclukDbContext db, CancellationToken ct)
+{
+    if (!db.Database.IsSqlite()) return;
+    await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS StudyResources (Id TEXT NOT NULL CONSTRAINT PK_StudyResources PRIMARY KEY, TenantId TEXT NOT NULL, UploadedByUserId TEXT NULL, Subject TEXT NOT NULL, Topic TEXT NOT NULL, FileName TEXT NOT NULL, StoredFileName TEXT NOT NULL, ContentType TEXT NOT NULL, Size INTEGER NOT NULL, CreatedAtUtc TEXT NOT NULL);", ct);
+    await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceAssignments (Id TEXT NOT NULL CONSTRAINT PK_ResourceAssignments PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, AssignedAtUtc TEXT NOT NULL, OpenedAtUtc TEXT NULL);", ct);
+}
+
+static StudentResponse ToStudentResponse(Student student, StudentGuardian? guardian = null, string? coachName = null, bool? accountLinked = null) => new(
     student.Id, student.TenantId, student.FirstName, student.LastName, student.Email, student.PhoneNumber, student.CreatedAtUtc,
-    guardian is null ? null : new GuardianResponse(guardian.FirstName, guardian.LastName, guardian.Email, guardian.PhoneNumber, guardian.ParentUserId));
+    guardian is null ? null : new GuardianResponse(guardian.FirstName, guardian.LastName, guardian.Email, guardian.PhoneNumber, guardian.ParentUserId))
+{
+    CoachName = coachName,
+    AccountLinked = accountLinked ?? student.ApplicationUserId.HasValue
+};
 static CoachingSessionResponse ToSessionResponse(CoachingSession session) => new(session.Id, session.StudentId, session.StartsAtUtc, session.DurationMinutes, session.Note, session.Status);
 static ExamResponse ToExamResponse(ExamAttempt exam) => new(exam.Id, exam.StudentId, exam.Title, exam.ExamDate, exam.Correct, exam.Wrong, exam.Blank, exam.Score);
 static StudyPlanResponse ToPlanResponse(StudyPlan plan) => new(
     plan.Id, plan.TenantId, plan.StudentId, plan.Title, plan.WeekStart,
     plan.Tasks.Select(task => new StudyTaskResponse(task.Id, task.Title, task.DueDate,
         task.TargetQuestions, task.CompletedQuestions, task.IsCompleted)).ToArray());
-static QuestionBankResponse ToQuestionResponse(QuestionBankItem item, bool includeAnswers) => new(item.Id, item.TenantId, item.Subject, item.Topic, item.Prompt, includeAnswers ? item.Answer : null, includeAnswers ? item.Explanation : null, item.Difficulty, item.ExamType, item.IsPublished, item.CreatedAtUtc);
+static QuestionBankResponse ToQuestionResponse(QuestionBankItem item, bool includeAnswers) => new(item.Id, item.TenantId, item.Subject, item.Topic, item.Prompt, includeAnswers ? item.Answer : null, includeAnswers ? item.Explanation : null, item.Difficulty, item.ExamType, item.IsPublished, item.CreatedAtUtc, item.QuestionType, item.OptionsJson, item.ResourceId, item.Points);
+static QuestionAssignmentResponse ToAssignmentResponse(QuestionAssignment assignment, QuestionBankItem question, string? studentName) => new(assignment.Id, assignment.TenantId, assignment.QuestionBankItemId, assignment.StudentId, studentName, question.Subject, question.Topic, question.Prompt, question.Difficulty, question.ExamType, question.QuestionType, question.OptionsJson, assignment.DueDateUtc, assignment.Note, assignment.Status, assignment.ErrorReason, assignment.StudentNote, assignment.AssignedAtUtc, assignment.CompletedAtUtc);
 
 public sealed record CreateTenantRequest(string Name, string Slug);
 public sealed record TenantResponse(Guid Id, string Name, string Slug);
 public sealed record CreateStudentRequest(string FirstName, string LastName, string? Email, string? PhoneNumber = null, string? ParentFirstName = null, string? ParentLastName = null, string? ParentEmail = null, string? ParentPhone = null);
 public sealed record UpdateStudentRequest(string FirstName, string LastName, string? Email, string? PhoneNumber = null, string? ParentFirstName = null, string? ParentLastName = null, string? ParentEmail = null, string? ParentPhone = null);
-public sealed record StudentResponse(Guid Id, Guid TenantId, string FirstName, string LastName, string? Email, string? PhoneNumber, DateTime CreatedAtUtc, GuardianResponse? Guardian);
+public sealed record StudentResponse(Guid Id, Guid TenantId, string FirstName, string LastName, string? Email, string? PhoneNumber, DateTime CreatedAtUtc, GuardianResponse? Guardian)
+{
+    public string? CoachName { get; init; }
+    public bool AccountLinked { get; init; }
+}
 public sealed record GuardianResponse(string FirstName, string LastName, string? Email, string PhoneNumber, Guid? ParentUserId);
 public sealed record CreateSessionRequest(DateTime StartsAtUtc, int DurationMinutes, string? Note);
 public sealed record CoachingSessionResponse(Guid Id, Guid StudentId, DateTime StartsAtUtc, int DurationMinutes, string? Note, string Status);
+public sealed record NotificationListItem(Guid Id, string Title, string Message, string? Type, DateTime CreatedAtUtc, DateTime? ReadAtUtc);
+public sealed record PendingNotificationProjection(Guid Id, string StudentName, DateTime StartsAtUtc, string? Note, int DurationMinutes);
+public sealed record AvailableSessionSlot(DateTime StartsAtUtc, int DurationMinutes);
 public sealed record CreateExamRequest(string Title, DateOnly ExamDate, int Correct, int Wrong, int Blank, decimal Score);
-public sealed record ExamResponse(Guid Id, Guid StudentId, string Title, DateOnly ExamDate, int Correct, int Wrong, int Blank, decimal Score);
+public sealed record ExamResponse(Guid Id, Guid StudentId, string Title, DateOnly ExamDate, int Correct, int Wrong, int Blank, decimal Score)
+{
+    public decimal Net => Math.Round(Correct - (Wrong / 4m), 2);
+}
 public sealed record CreateStudyPlanRequest(string Title, DateOnly WeekStart, IReadOnlyList<CreateStudyTaskRequest> Tasks);
 public sealed record CreateStudyTaskRequest(string Title, DateOnly DueDate, int TargetQuestions);
 public sealed record UpdateTaskProgressRequest(int CompletedQuestions, bool IsCompleted);
 public sealed record SetRoleRequest(string Role);
-public sealed record CreateInvitationRequest(string Email, string Role);
+public sealed record CreateInvitationRequest(string Email, string Role, bool SendEmail = true);
 public sealed record SubjectProgressRequest(string Subject, string Topic, int CompletionPercent);
 public sealed record UpdateProfileRequest(string? FirstName, string? LastName);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
@@ -1305,8 +1732,14 @@ public sealed record UpdateStudyTaskRequest(string Title, DateOnly DueDate, int 
 public sealed record RenameStudyPlanRequest(string Title);
 public sealed record BillingWebhookPayload(string EventId, string EventType, string TenantId, string? PlanCode, DateTime? PeriodEndUtc);
 public sealed record SendMessageRequest(Guid RecipientUserId, string Content);
-public sealed record QuestionBankRequest(string Subject, string Topic, string Prompt, string? Answer, string? Explanation, string Difficulty, string ExamType, bool IsPublished);
-public sealed record QuestionBankResponse(Guid Id, Guid TenantId, string Subject, string Topic, string Prompt, string? Answer, string? Explanation, string Difficulty, string ExamType, bool IsPublished, DateTime CreatedAtUtc);
-public sealed record QuestionAttemptRequest(string? Answer);
+public sealed record QuestionBankRequest(string Subject, string Topic, string Prompt, string? Answer, string? Explanation, string Difficulty, string ExamType, bool IsPublished, string QuestionType = "ShortAnswer", string? OptionsJson = null, Guid? ResourceId = null, decimal Points = 1);
+public sealed record QuestionBankResponse(Guid Id, Guid TenantId, string Subject, string Topic, string Prompt, string? Answer, string? Explanation, string Difficulty, string ExamType, bool IsPublished, DateTime CreatedAtUtc, string QuestionType, string? OptionsJson, Guid? ResourceId, decimal Points);
+public sealed record QuestionAttemptRequest(string? Answer, int TimeSpentSeconds = 0, string? ErrorReason = null);
+public sealed record QuestionAssignmentRequest(Guid QuestionBankItemId, Guid StudentId, DateTime? DueDateUtc, string? Note);
+public sealed record QuestionAssignmentCompleteRequest(string? Answer, bool? IsCorrect, string? ErrorReason, string? Note, int TimeSpentSeconds = 0);
+public sealed record QuestionAssignmentResponse(Guid Id, Guid TenantId, Guid QuestionBankItemId, Guid StudentId, string? StudentName, string Subject, string Topic, string Prompt, string Difficulty, string ExamType, string QuestionType, string? OptionsJson, DateTime? DueDateUtc, string? Note, string Status, string? ErrorReason, string? StudentNote, DateTime AssignedAtUtc, DateTime? CompletedAtUtc, bool? IsCorrect = null, string? CorrectAnswer = null, string? Explanation = null);
+public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, DateTime? DueDateUtc, string? Note);
 public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
 public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
+
+

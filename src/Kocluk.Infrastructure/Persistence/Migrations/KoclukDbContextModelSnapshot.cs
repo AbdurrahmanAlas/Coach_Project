@@ -254,6 +254,43 @@ namespace Kocluk.Infrastructure.Persistence.Migrations
                     b.ToTable("ExamAttempts");
                 });
 
+            modelBuilder.Entity("Kocluk.Domain.Entities.QuestionAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AttemptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("QuestionBankItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SelectedAnswer")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionBankItemId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("TenantId", "StudentId", "AttemptedAtUtc");
+
+                    b.ToTable("QuestionAttempts");
+                });
+
             modelBuilder.Entity("Kocluk.Domain.Entities.QuestionBankItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -320,6 +357,9 @@ namespace Kocluk.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ApplicationUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -351,6 +391,10 @@ namespace Kocluk.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId")
+                        .IsUnique()
+                        .HasFilter("\"ApplicationUserId\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "LastName", "FirstName");
 
@@ -996,6 +1040,27 @@ namespace Kocluk.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Kocluk.Domain.Entities.QuestionAttempt", b =>
+                {
+                    b.HasOne("Kocluk.Domain.Entities.QuestionBankItem", null)
+                        .WithMany()
+                        .HasForeignKey("QuestionBankItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kocluk.Domain.Entities.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kocluk.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Kocluk.Domain.Entities.QuestionBankItem", b =>
                 {
                     b.HasOne("Kocluk.Infrastructure.Identity.ApplicationUser", null)
@@ -1012,6 +1077,11 @@ namespace Kocluk.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Kocluk.Domain.Entities.Student", b =>
                 {
+                    b.HasOne("Kocluk.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ApplicationUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Kocluk.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

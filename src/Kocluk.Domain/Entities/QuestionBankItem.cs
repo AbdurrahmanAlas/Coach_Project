@@ -22,6 +22,17 @@ public sealed class QuestionBankItem
     public string ExamType { get; private set; } = string.Empty;
     public bool IsPublished { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+    public string QuestionType { get; private set; } = "ShortAnswer";
+    public string? OptionsJson { get; private set; }
+    public Guid? ResourceId { get; private set; }
+    public decimal Points { get; private set; } = 1;
+    public void Configure(string questionType, string? optionsJson, Guid? resourceId, decimal points)
+    {
+        QuestionType = questionType is "MultipleChoice" or "TrueFalse" or "ShortAnswer" ? questionType : "ShortAnswer";
+        OptionsJson = string.IsNullOrWhiteSpace(optionsJson) ? null : optionsJson.Trim();
+        ResourceId = resourceId;
+        Points = points <= 0 ? 1 : Math.Min(points, 100);
+    }
     public void Update(string subject, string topic, string prompt, string? answer, string? explanation, string difficulty, string examType)
     {
         if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(topic) || string.IsNullOrWhiteSpace(prompt)) throw new ArgumentException("Ders, konu ve soru metni zorunludur.");

@@ -13,6 +13,8 @@ public sealed class Student
     }
     public Guid Id { get; private set; }
     public Guid TenantId { get; private set; }
+    /// <summary>Identity kullanıcısı ile güvenli doğrudan ilişki. Eski kayıtlar için nullable tutulur.</summary>
+    public Guid? ApplicationUserId { get; private set; }
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
     public string? Email { get; private set; }
@@ -29,6 +31,12 @@ public sealed class Student
         LastName = lastName.Trim();
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+    }
+
+    public void LinkUser(Guid userId)
+    {
+        if (userId == Guid.Empty) throw new ArgumentException("Kullanıcı bilgisi zorunludur.", nameof(userId));
+        ApplicationUserId = userId;
     }
 
     public void SoftDelete()

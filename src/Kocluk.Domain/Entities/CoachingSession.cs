@@ -27,6 +27,14 @@ public sealed class CoachingSession
         if (startsAtUtc <= DateTime.UtcNow.AddMinutes(-1)) throw new ArgumentException("Görüşme zamanı geçmişte olamaz.");
         StartsAtUtc = startsAtUtc; DurationMinutes = durationMinutes; Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
     }
+    public void ChangeStudent(Guid studentId)
+    {
+        if (studentId == Guid.Empty) throw new ArgumentException("Öğrenci zorunludur.", nameof(studentId));
+        StudentId = studentId;
+    }
+    public void ProposeToStudent() => Status = "PendingStudent";
     public void Confirm() => Status = "Scheduled";
+    public void Reject() => Status = "Rejected";
     public void Cancel() => Status = "Cancelled";
+    public void Complete() => Status = "Completed";
 }

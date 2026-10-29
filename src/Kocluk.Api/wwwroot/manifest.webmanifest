@@ -1,0 +1,12 @@
+{
+  "name": "Koçluk Öğrenci Gelişim Paneli",
+  "short_name": "Koçluk",
+  "lang": "tr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f8fc",
+  "theme_color": "#10233f",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

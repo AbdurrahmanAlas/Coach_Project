@@ -3,6 +3,7 @@ using Kocluk.Domain.Entities;
 var checks = new (string Name, Action Run)[]
 {
     ("Öğrenci adı/soyadı kırpılır", () => { var item = new Student(Guid.NewGuid(), " Ada ", " Yılmaz "); Assert(item.FirstName == "Ada" && item.LastName == "Yılmaz", "Öğrenci adı normalize edilmedi."); }),
+    ("Öğrenci Identity hesabına bağlanır", () => { var item = new Student(Guid.NewGuid(), "Ada", "Yılmaz"); var userId = Guid.NewGuid(); item.LinkUser(userId); Assert(item.ApplicationUserId == userId, "Öğrenci hesabı bağlanmadı."); }),
     ("Boş kurumlu öğrenci reddedilir", () => Throws<ArgumentException>(() => new Student(Guid.Empty, "Ada", "Yılmaz"))),
     ("Konu ilerlemesi yüzde sınırını uygular", () => { var item = new SubjectProgress(Guid.NewGuid(), Guid.NewGuid(), " Matematik ", " Fonksiyonlar ", 40); item.Update("Matematik", "Fonksiyonlar", 75); Assert(item.CompletionPercent == 75, "İlerleme güncellenmedi."); Throws<ArgumentOutOfRangeException>(() => item.UpdatePercent(101)); }),
     ("Soru zorluk seviyesi doğrulanır", () => Throws<ArgumentException>(() => new QuestionBankItem(Guid.NewGuid(), null, "Matematik", "Fonksiyonlar", "Soru?", "A", null, "Aşırı", "TYT"))),

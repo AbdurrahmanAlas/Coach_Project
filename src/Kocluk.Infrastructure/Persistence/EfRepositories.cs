@@ -117,6 +117,10 @@ public sealed class EfTenantMembershipRepository(KoclukDbContext db) : ITenantMe
 
     public Task<bool> IsMemberAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default) =>
         db.TenantMemberships.AnyAsync(x => x.TenantId == tenantId && x.UserId == userId, cancellationToken);
+
+    public Task<string?> GetRoleAsync(Guid tenantId, Guid userId, CancellationToken cancellationToken = default) =>
+        db.TenantMemberships.Where(x => x.TenantId == tenantId && x.UserId == userId)
+            .Select(x => x.Role).SingleOrDefaultAsync(cancellationToken);
 }
 
 public sealed class EfTenantProvisioningService(KoclukDbContext db) : ITenantProvisioningService

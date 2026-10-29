@@ -27,6 +27,9 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
     public DbSet<UserMessage> UserMessages => Set<UserMessage>();
     public DbSet<QuestionBankItem> QuestionBankItems => Set<QuestionBankItem>();
     public DbSet<QuestionAttempt> QuestionAttempts => Set<QuestionAttempt>();
+    public DbSet<QuestionAssignment> QuestionAssignments => Set<QuestionAssignment>();
+    public DbSet<StudyResource> StudyResources => Set<StudyResource>();
+    public DbSet<ResourceAssignment> ResourceAssignments => Set<ResourceAssignment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -51,6 +54,8 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(256);
             entity.Property(x => x.PhoneNumber).HasMaxLength(32);
+            entity.HasIndex(x => x.ApplicationUserId).IsUnique().HasFilter("\"ApplicationUserId\" IS NOT NULL");
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.ApplicationUserId).OnDelete(DeleteBehavior.SetNull);
             entity.HasIndex(x => new { x.TenantId, x.LastName, x.FirstName });
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -158,6 +163,45 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
         });
 
+        builder.Entity<QuestionAssignment>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Status).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.ErrorReason).HasMaxLength(120);
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.StudentNote).HasMaxLength(500);
+            entity.HasIndex(x => new { x.TenantId, x.StudentId, x.Status, x.DueDateUtc });
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<QuestionBankItem>().WithMany().HasForeignKey(x => x.QuestionBankItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AssignedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<StudyResource>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Subject).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Topic).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(x => x.StoredFileName).HasMaxLength(255).IsRequired();
+            entity.Property(x => x.ContentType).HasMaxLength(120).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Subject, x.Topic, x.CreatedAtUtc });
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<ResourceAssignment>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Status).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.HasIndex(x => new { x.TenantId, x.StudentId, x.Status, x.AssignedAtUtc });
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AssignedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
         builder.Entity<TenantMembership>(entity =>
         {
             entity.HasKey(x => new { x.TenantId, x.UserId });
@@ -209,6 +253,9 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.Property(x => x.Explanation).HasMaxLength(4000);
             entity.Property(x => x.Difficulty).HasMaxLength(16).IsRequired();
             entity.Property(x => x.ExamType).HasMaxLength(80);
+            entity.Property(x => x.QuestionType).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.OptionsJson).HasMaxLength(4000);
+            entity.Property(x => x.Points).HasPrecision(6, 2);
             entity.HasIndex(x => new { x.TenantId, x.Subject, x.Topic, x.IsPublished });
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
@@ -218,6 +265,7 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.SelectedAnswer).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.ErrorReason).HasMaxLength(120);
             entity.HasIndex(x => new { x.TenantId, x.StudentId, x.AttemptedAtUtc });
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<QuestionBankItem>().WithMany().HasForeignKey(x => x.QuestionBankItemId).OnDelete(DeleteBehavior.Cascade);
