@@ -30,7 +30,11 @@ public sealed class TenantMembershipFilter(ITenantMembershipRepository membershi
         var isAssignmentRead = context.HttpContext.User.IsInRole("Student") && HttpMethods.IsGet(context.HttpContext.Request.Method) && path.Contains("/my/question-assignments", StringComparison.OrdinalIgnoreCase);
         var isAssignmentComplete = context.HttpContext.User.IsInRole("Student") && HttpMethods.IsPost(context.HttpContext.Request.Method) && path.Contains("/question-assignments/", StringComparison.OrdinalIgnoreCase) && path.EndsWith("/complete", StringComparison.OrdinalIgnoreCase);
         var isResourceRead = HttpMethods.IsGet(context.HttpContext.Request.Method) && path.Contains("/resources", StringComparison.OrdinalIgnoreCase);
-        if (context.HttpContext.User.IsInRole("Student") && (isStudentProgress || isQuestionAttempt || isQuestionRead || isQuestionSummary || isAssignmentRead || isAssignmentComplete || isResourceRead))
+        var isResourceSubmission = context.HttpContext.User.IsInRole("Student")
+            && HttpMethods.IsPost(context.HttpContext.Request.Method)
+            && path.Contains("/resources/", StringComparison.OrdinalIgnoreCase)
+            && path.EndsWith("/submissions", StringComparison.OrdinalIgnoreCase);
+        if (context.HttpContext.User.IsInRole("Student") && (isStudentProgress || isQuestionAttempt || isQuestionRead || isQuestionSummary || isAssignmentRead || isAssignmentComplete || isResourceRead || isResourceSubmission))
             return await next(context);
         if (context.HttpContext.User.IsInRole("Parent") && (isQuestionRead || isQuestionSummary))
             return await next(context);

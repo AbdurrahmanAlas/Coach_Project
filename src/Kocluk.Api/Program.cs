@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
+using System.IO.Compression;
+using System.Text;
+using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -900,11 +903,11 @@ tenantApi.MapPost("/resources", async (Guid tenantId, HttpRequest request, Claim
     var form = await request.ReadFormAsync(ct);
     var file = form.Files.GetFile("file");
     var subject = form["subject"].ToString().Trim(); var topic = form["topic"].ToString().Trim();
-    if (file is null || file.Length == 0) return Results.BadRequest(new { error = "Bir PDF veya Word dosyası seçin." });
+    if (file is null || file.Length == 0) return Results.BadRequest(new { error = "Bir PDF, Word veya Excel dosyası seçin." });
     if (file.Length > 20 * 1024 * 1024) return Results.BadRequest(new { error = "Dosya boyutu 20 MB sınırını aşamaz." });
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-    var allowed = new[] { ".pdf", ".doc", ".docx" };
-    if (!allowed.Contains(extension)) return Results.BadRequest(new { error = "Sadece PDF, DOC veya DOCX yükleyebilirsiniz." });
+    var allowed = new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".png", ".jpg", ".jpeg", ".webp" };
+    if (!allowed.Contains(extension)) return Results.BadRequest(new { error = "PDF, DOC, DOCX, XLS, XLSX, CSV veya görsel dosyası yükleyebilirsiniz." });
     if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(topic)) return Results.BadRequest(new { error = "Ders ve konu zorunludur." });
     var directory = Path.Combine(environment.ContentRootPath, "App_Data", "resources", tenantId.ToString("N")); Directory.CreateDirectory(directory);
     var storedName = $"{Guid.NewGuid():N}{extension}"; var path = Path.Combine(directory, storedName);
@@ -945,9 +948,90 @@ tenantApi.MapGet("/resources/{resourceId:guid}/download", async (Guid tenantId, 
     }
     var path = Path.Combine(environment.ContentRootPath, "App_Data", "resources", tenantId.ToString("N"), resource.StoredFileName);
     if (!File.Exists(path)) return Results.NotFound();
-    return Results.File(path, resource.ContentType, resource.FileName, enableRangeProcessing: true);
+    // PDF ve görseller platformdaki iframe/img önizlemesinde açılabilsin.
+    // Dosya adı verilen overload Content-Disposition: attachment döndürdüğü için
+    // tarayıcı iframe'i boş bırakabiliyordu.
+    var contentType = resource.ContentType ?? string.Empty;
+    var extension = Path.GetExtension(resource.FileName);
+    if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+        || extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+        || contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        return Results.File(path, contentType, enableRangeProcessing: true);
+    return Results.File(path, contentType, resource.FileName, enableRangeProcessing: true);
 });
 
+tenantApi.MapGet("/resources/{resourceId:guid}/text", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IWebHostEnvironment environment, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Student") && !principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
+    if (resource is null) return Results.NotFound();
+    if (principal.IsInRole("Student"))
+    {
+        var current = await users.GetUserAsync(principal);
+        var student = current is null ? null : await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+        if (student is null || !await db.ResourceAssignments.AnyAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct)) return Results.Forbid();
+    }
+    var path = Path.Combine(environment.ContentRootPath, "App_Data", "resources", tenantId.ToString("N"), resource.StoredFileName);
+    if (!File.Exists(path)) return Results.NotFound();
+    var extension = Path.GetExtension(resource.FileName).ToLowerInvariant();
+    string text;
+    if (extension is ".docx")
+    {
+        using var archive = ZipFile.OpenRead(path);
+        var entry = archive.GetEntry("word/document.xml");
+        using var reader = entry?.Open(); using var xmlReader = reader is null ? null : new StreamReader(reader);
+        var xml = xmlReader is null ? string.Empty : await xmlReader.ReadToEndAsync(ct);
+        text = Regex.Replace(System.Net.WebUtility.HtmlDecode(Regex.Replace(xml, "<[^>]+>", " ")), "\\s+", " ").Trim();
+    }
+    else if (extension is ".xlsx" or ".xlsm")
+    {
+        using var archive = ZipFile.OpenRead(path);
+        var parts = archive.Entries.Where(x => x.FullName is "xl/sharedStrings.xml" || x.FullName.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase)).ToList();
+        var values = new List<string>();
+        foreach (var part in parts) { using var stream = part.Open(); using var reader = new StreamReader(stream); var xml = await reader.ReadToEndAsync(ct); values.Add(Regex.Replace(System.Net.WebUtility.HtmlDecode(Regex.Replace(xml, "<[^>]+>", " ")), "\\s+", " ").Trim()); }
+        text = string.Join(" ", values);
+    }
+    else if (extension is ".csv") text = await File.ReadAllTextAsync(path, ct);
+    else if (extension is ".pdf") text = await ExtractPdfTextAsync(path, ct);
+    else text = string.Empty;
+    return Results.Ok(new { resource.Id, resource.FileName, supported = !string.IsNullOrWhiteSpace(text), text = text.Length > 100000 ? text[..100000] : text });
+});
+
+tenantApi.MapPost("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ResourceSubmissionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    await EnsureResourceTablesAsync(db, ct);
+    // Öğrenci-kaynak eşleşmesi aşağıda doğrulanır; rol claim farklılıkları gönderimi engellemez.
+    var current = await users.GetUserAsync(principal); if (current is null) return Results.Unauthorized();
+    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
+    var student = await db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+    var assigned = student is null ? null : await db.ResourceAssignments.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
+    if (resource is null) return Results.NotFound(new { error = "Kaynak bulunamadı." }); if (student is null) return Results.BadRequest(new { error = "Öğrenci hesabı eşleştirilemedi." }); if (assigned is null) return Results.BadRequest(new { error = "Bu kaynak size atanmış görünmüyor." });
+    var submissionId = Guid.NewGuid();
+    await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO ResourceSubmissions (Id, TenantId, ResourceId, StudentId, AnswersJson, SubmittedAtUtc) VALUES ({submissionId}, {tenantId}, {resourceId}, {student.Id}, {request.AnswersJson}, {DateTime.UtcNow})", ct); await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ResourceAssignments SET Status = 'Completed' WHERE TenantId = {tenantId} AND ResourceId = {resourceId} AND StudentId = {student.Id}", ct);
+    if (resource.UploadedByUserId.HasValue)
+    {
+        try
+        {
+            db.UserNotifications.Add(new UserNotification(resource.UploadedByUserId.Value, "Öğrenci cevapları gönderdi", $"{student.FirstName} {student.LastName} · {resource.Subject} · {resource.Topic} cevaplarını gönderdi.", "ResourceSubmission"));
+            await db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // Cevap kaydı başarılıysa bildirim oluşturulamaması gönderimi başarısız saymaz.
+        }
+    }
+    return Results.Ok(new { submissionId, sent = true });
+});
+
+tenantApi.MapGet("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    await EnsureResourceTablesAsync(db, ct);
+    var rows = await (from submission in db.Database.SqlQueryRaw<ResourceSubmissionRow>("SELECT Id, StudentId, AnswersJson, SubmittedAtUtc FROM ResourceSubmissions WHERE TenantId = {0} AND ResourceId = {1} ORDER BY SubmittedAtUtc DESC", tenantId, resourceId)
+                      join student in db.Students.AsNoTracking() on submission.StudentId equals student.Id
+                      select new { submission.Id, submission.StudentId, student.FirstName, student.LastName, submission.AnswersJson, submission.SubmittedAtUtc }).ToListAsync(ct);
+    return Results.Ok(rows);
+});
 tenantApi.MapGet("/question-assignments", async (Guid tenantId, string? status, Guid? studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
 {
     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
@@ -962,7 +1046,7 @@ tenantApi.MapGet("/question-assignments", async (Guid tenantId, string? status, 
     return Results.Ok(rows.Select(x => ToAssignmentResponse(x.assignment, x.question, x.student.FirstName + " " + x.student.LastName)));
 });
 
-tenantApi.MapGet("/my/question-assignments", async (Guid tenantId, string? status, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+tenantApi.MapGet("/my/question-assignments", async (Guid tenantId, string? status, Guid? resourceId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
 {
     if (!principal.IsInRole("Student")) return Results.Forbid();
     var current = await users.GetUserAsync(principal);
@@ -974,6 +1058,7 @@ tenantApi.MapGet("/my/question-assignments", async (Guid tenantId, string? statu
                 where assignment.TenantId == tenantId && assignment.StudentId == student.Id
                 select new { assignment, question };
     if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.assignment.Status == status);
+    if (resourceId.HasValue) query = query.Where(x => x.question.ResourceId == resourceId.Value);
     var rows = await query.OrderBy(x => x.assignment.Status == "Completed").ThenBy(x => x.assignment.DueDateUtc).Take(200).ToListAsync(ct);
     return Results.Ok(rows.Select(x => ToAssignmentResponse(x.assignment, x.question, null)));
 });
@@ -1677,6 +1762,47 @@ static async Task EnsureResourceTablesAsync(KoclukDbContext db, CancellationToke
     if (!db.Database.IsSqlite()) return;
     await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS StudyResources (Id TEXT NOT NULL CONSTRAINT PK_StudyResources PRIMARY KEY, TenantId TEXT NOT NULL, UploadedByUserId TEXT NULL, Subject TEXT NOT NULL, Topic TEXT NOT NULL, FileName TEXT NOT NULL, StoredFileName TEXT NOT NULL, ContentType TEXT NOT NULL, Size INTEGER NOT NULL, CreatedAtUtc TEXT NOT NULL);", ct);
     await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceAssignments (Id TEXT NOT NULL CONSTRAINT PK_ResourceAssignments PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, AssignedAtUtc TEXT NOT NULL, OpenedAtUtc TEXT NULL);", ct);
+    await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceSubmissions (Id TEXT NOT NULL CONSTRAINT PK_ResourceSubmissions PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AnswersJson TEXT NOT NULL, SubmittedAtUtc TEXT NOT NULL);", ct);
+}
+
+// Metin katmanı olan PDF'lerde basit soru metni çıkarımı. Taranmış/görsel PDF'ler
+// için endpoint boş metin döndürür; istemci bu durumda PDF önizlemesini gösterir.
+static async Task<string> ExtractPdfTextAsync(string path, CancellationToken ct)
+{
+    // Büyük PDF'ler çoğunlukla taranmış sayfa görselleridir. Bunları metin gibi
+    // açmaya çalışmak platformu dakikalarca bekletebilir; OCR yoksa hızlıca
+    // görsel/konu anlatımı akışına düşür.
+    if (new FileInfo(path).Length > 1_000_000) return string.Empty;
+    var bytes = await File.ReadAllBytesAsync(path, ct);
+    var latin = Encoding.Latin1.GetString(bytes);
+    var chunks = new List<string> { latin };
+    var streamCount = 0;
+    foreach (Match match in Regex.Matches(latin, "stream\\r?\\n(?<data>[\\s\\S]*?)\\r?\\nendstream"))
+    {
+        if (++streamCount > 24) break;
+        try
+        {
+            var data = Encoding.Latin1.GetBytes(match.Groups["data"].Value);
+            if (data.Length > 750_000) continue;
+            using var input = new MemoryStream(data);
+            using var inflater = new DeflateStream(input, CompressionMode.Decompress);
+            using var output = new MemoryStream();
+            await inflater.CopyToAsync(output, ct);
+            if (output.Length > 2_000_000) continue;
+            chunks.Add(Encoding.Latin1.GetString(output.ToArray()));
+        }
+        catch { }
+    }
+    var result = new StringBuilder();
+    foreach (var chunk in chunks)
+    {
+        foreach (Match match in Regex.Matches(chunk, "\\((?<text>(?:\\\\.|[^\\\\)])*)\\)\\s*(?:Tj|TJ)"))
+        {
+            var value = match.Groups["text"].Value.Replace("\\)", ")").Replace("\\(", "(").Replace("\\n", " ").Replace("\\r", " ");
+            if (!string.IsNullOrWhiteSpace(value)) result.Append(value).Append(' ');
+        }
+    }
+    return Regex.Replace(result.ToString(), "\\s+", " ").Trim();
 }
 
 static StudentResponse ToStudentResponse(Student student, StudentGuardian? guardian = null, string? coachName = null, bool? accountLinked = null) => new(
@@ -1739,7 +1865,13 @@ public sealed record QuestionAssignmentRequest(Guid QuestionBankItemId, Guid Stu
 public sealed record QuestionAssignmentCompleteRequest(string? Answer, bool? IsCorrect, string? ErrorReason, string? Note, int TimeSpentSeconds = 0);
 public sealed record QuestionAssignmentResponse(Guid Id, Guid TenantId, Guid QuestionBankItemId, Guid StudentId, string? StudentName, string Subject, string Topic, string Prompt, string Difficulty, string ExamType, string QuestionType, string? OptionsJson, DateTime? DueDateUtc, string? Note, string Status, string? ErrorReason, string? StudentNote, DateTime AssignedAtUtc, DateTime? CompletedAtUtc, bool? IsCorrect = null, string? CorrectAnswer = null, string? Explanation = null);
 public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, DateTime? DueDateUtc, string? Note);
+public sealed record ResourceSubmissionRequest(string AnswersJson);
+public sealed record ResourceSubmissionRow(Guid Id, Guid StudentId, string AnswersJson, DateTime SubmittedAtUtc);
 public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
 public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
+
+
+
+
 
 
