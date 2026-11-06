@@ -431,16 +431,29 @@
       for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, 60); pageNumber++) {
         const page = await pdf.getPage(pageNumber);
         const content = await page.getTextContent();
-        const rows = [];
-        for (const item of content.items) {
-          const value = String(item.str || '').trim(); if (!value) continue;
-          const y = Number(item.transform?.[5] || 0); const x = Number(item.transform?.[4] || 0);
-          let row = rows.find(candidate => Math.abs(candidate.y - y) < 3);
-          if (!row) { row = { y, items: [] }; rows.push(row); }
-          row.items.push({ x, value });
-        }
-        rows.sort((a, b) => b.y - a.y);
-        text += '\n' + rows.map(row => row.items.sort((a, b) => a.x - b.x).map(item => item.value).join(' ')).join('\n');
+        const items = content.items.map(item => ({
+          value: String(item.str || '').trim(),
+          x: Number(item.transform?.[4] || 0),
+          y: Number(item.transform?.[5] || 0)
+        })).filter(item => item.value);
+        const readColumn = column => {
+          const rows = [];
+          for (const item of column) {
+            let row = rows.find(candidate => Math.abs(candidate.y - item.y) < 3);
+            if (!row) { row = { y: item.y, items: [] }; rows.push(row); }
+            row.items.push(item);
+          }
+          rows.sort((a, b) => b.y - a.y);
+          return rows.map(row => row.items.sort((a, b) => a.x - b.x).map(item => item.value).join(' ')).join('\n');
+        };
+        const xValues = items.map(item => item.x).sort((a, b) => a - b);
+        const midpoint = xValues.length ? (xValues[0] + xValues[xValues.length - 1]) / 2 : 0;
+        const left = items.filter(item => item.x < midpoint);
+        const right = items.filter(item => item.x >= midpoint);
+        const leftMax = left.length ? Math.max(...left.map(item => item.x)) : 0;
+        const rightMin = right.length ? Math.min(...right.map(item => item.x)) : 0;
+        const isTwoColumn = left.length >= 12 && right.length >= 12 && rightMin - leftMax > 80;
+        text += '\n' + (isTwoColumn ? readColumn(left) + '\n' + readColumn(right) : readColumn(items));
       }
       if (text.replace(/\s+/g, ' ').trim().length >= 120) return text;
       // Görsel/taranmış PDF için OCR yedeği.
