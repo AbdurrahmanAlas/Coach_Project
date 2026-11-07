@@ -1002,7 +1002,7 @@
     body.innerHTML = alertsHtml;
   }
 
-  /* ---------- Dashboard: Performans Özeti ---------- */
+  /* ---------- Dashboard: Günlük Konu Bazlı Performans Analizi ---------- */
 
   async function renderDashboard(body, ctx) {
     body.innerHTML = '<div class="ws-loading"><p class="ws-hint">Pano yükleniyor…</p></div>';
@@ -1014,45 +1014,71 @@
     const allSubmissions = list.flatMap(item => item.students.filter(s => s.last)).map(s => s.last);
     const totalStudents = list.reduce((sum, item) => sum + item.students.length, 0);
     const activeStudents = list.reduce((sum, item) => sum + item.students.filter(s => s.attempts > 0).length, 0);
+    const completedStudents = list.reduce((sum, item) => sum + item.students.filter(s => s.attempts > 0 && s.status === 'Completed').length, 0);
     const avgNet = allSubmissions.length > 0 ? (allSubmissions.reduce((sum, s) => sum + (s.net || 0), 0) / allSubmissions.length).toFixed(1) : 0;
     const avgTime = allSubmissions.length > 0 ? Math.round(allSubmissions.reduce((sum, s) => sum + (s.timeSpentSeconds || 0), 0) / allSubmissions.length) : 0;
 
     const topicStats = {};
     list.forEach(item => {
       const topic = item.topic;
-      if (!topicStats[topic]) topicStats[topic] = { submissions: 0, totalNet: 0, count: 0 };
+      if (!topicStats[topic]) topicStats[topic] = { submissions: 0, totalNet: 0, count: 0, correct: 0, wrong: 0, blank: 0, subject: item.subject };
       item.students.forEach(s => {
         if (s.last) {
           topicStats[topic].submissions++;
           topicStats[topic].totalNet += s.last.net || 0;
+          topicStats[topic].correct += s.last.correct || 0;
+          topicStats[topic].wrong += s.last.wrong || 0;
+          topicStats[topic].blank += s.last.blank || 0;
           topicStats[topic].count++;
         }
       });
     });
 
-    const topicsHtml = Object.entries(topicStats).map(([topic, stats]) => {
+    const topicsHtml = Object.entries(topicStats).map(([topic, stats], idx) => {
       const avgTopicNet = stats.count > 0 ? (stats.totalNet / stats.count).toFixed(1) : 0;
-      return `<div class="ws-topic-card">
-        <strong>${esc(topic)}</strong>
+      const colors = ['#2cc6a7', '#4f83ff', '#f2a04c', '#ed6a6a', '#9b6de3'];
+      const bgColor = colors[idx % colors.length];
+      return `<div class="ws-konu-card" style="border-top-color:${bgColor}">
+        <div class="ws-konu-header">
+          <strong>${esc(stats.subject)} · ${esc(topic)}</strong>
+          <span class="ws-konu-rate" style="color:${bgColor}">${Math.round((stats.correct / Math.max(1, stats.correct + stats.wrong + stats.blank)) * 100)}%</span>
+        </div>
         <small>${stats.submissions} gönderim</small>
-        <div class="ws-topic-stats">
-          <span class="ws-topic-net">${avgTopicNet}</span>
-          <span class="ws-topic-label">ort. net</span>
+        <div class="ws-konu-details">
+          <div class="ws-detail-item"><span class="ws-correct">${stats.correct}</span>Doğru</div>
+          <div class="ws-detail-item"><span class="ws-wrong">${stats.wrong}</span>Yanlış</div>
+          <div class="ws-detail-item"><span class="ws-blank">${stats.blank}</span>Boş</div>
+          <div class="ws-detail-item"><span class="ws-net" style="color:${bgColor}">${avgTopicNet}</span>Net</div>
         </div>
       </div>`;
     }).join('');
 
     body.innerHTML = `
-      <div class="ws-dashboard">
-        <h2>📊 Performans Panosu</h2>
-        <div class="ws-dashboard-stats">
-          <div class="ws-dash-stat"><span>${totalStudents}</span>Toplam Öğrenci</div>
-          <div class="ws-dash-stat"><span>${activeStudents}</span>Aktif</div>
-          <div class="ws-dash-stat"><span>${avgNet}</span>Ort. Net</div>
-          <div class="ws-dash-stat"><span>${Math.round(avgTime / 60)}</span>Ort. Süre (dk)</div>
+      <div class="ws-dashboard-pro">
+        <div class="ws-dashboard-header">
+          <h2>📊 Günlük Konu Bazlı Performans Analizi</h2>
         </div>
-        <h3>Konu Performansı</h3>
-        <div class="ws-topics-grid">${topicsHtml}</div>
+
+        <div class="ws-big-stats">
+          <div class="ws-big-stat" style="background:linear-gradient(135deg,#e8f8ee,#f3fbf8);border-top:4px solid #2cc6a7">
+            <div class="ws-stat-icon">📚</div>
+            <span class="ws-stat-num">${totalStudents}</span>
+            <span class="ws-stat-label">Toplam Çalışma Gönderimi</span>
+          </div>
+          <div class="ws-big-stat" style="background:linear-gradient(135deg,#eef4ff,#e8ecff);border-top:4px solid #4f83ff">
+            <div class="ws-stat-icon">✓</div>
+            <span class="ws-stat-num">${completedStudents}</span>
+            <span class="ws-stat-label">Tamamlanan</span>
+          </div>
+          <div class="ws-big-stat" style="background:linear-gradient(135deg,#fff0df,#ffebd5);border-top:4px solid #f2a04c">
+            <div class="ws-stat-icon">⏱</div>
+            <span class="ws-stat-num">${avgNet}</span>
+            <span class="ws-stat-label">Ortalama Net</span>
+          </div>
+        </div>
+
+        <h3 style="margin:28px 0 18px;font-size:17px;color:#1f4f86;font-weight:700">Konu Detayları</h3>
+        <div class="ws-konular-grid">${topicsHtml}</div>
       </div>
     `;
   }
@@ -1515,6 +1541,28 @@
   .ws-alert-item span{font-weight:650;color:#173452}
   .ws-alert-item small{color:#6b85a0;font-size:12px}
   .ws-dashboard{padding:0}
+  .ws-dashboard-pro{padding:0}
+  .ws-dashboard-header{margin-bottom:24px}
+  .ws-dashboard-pro h2{margin:0;font-size:26px;color:#10233f;font-weight:800}
+  .ws-big-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+  .ws-big-stat{padding:20px;border-radius:14px;text-align:center;transition:all 0.2s ease;cursor:pointer;box-shadow:0 2px 8px rgba(23,52,82,.06)}
+  .ws-big-stat:hover{box-shadow:0 6px 16px rgba(23,52,82,.12);transform:translateY(-2px)}
+  .ws-stat-icon{font-size:28px;margin-bottom:10px}
+  .ws-stat-num{display:block;font-size:32px;font-weight:800;color:#10233f;margin-bottom:4px}
+  .ws-stat-label{display:block;font-size:12px;color:#6b85a0;font-weight:600}
+  .ws-konular-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .ws-konu-card{background:#fff;border:1px solid #e0e8f2;border-radius:12px;padding:16px;transition:all 0.2s ease;cursor:pointer;border-top:4px solid}
+  .ws-konu-card:hover{border-color:#d4dfe8;box-shadow:0 4px 16px rgba(23,52,82,.12)}
+  .ws-konu-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+  .ws-konu-header strong{font-size:13px;color:#1f4f86;font-weight:700}
+  .ws-konu-rate{font-size:16px;font-weight:800}
+  .ws-konu-card small{display:block;color:#8a99ab;font-size:11px;margin-bottom:12px}
+  .ws-konu-details{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ws-detail-item{padding:8px;background:#f8fafd;border-radius:8px;text-align:center;font-size:11px;font-weight:600;color:#546e8a}
+  .ws-detail-item span{display:block;font-size:14px;font-weight:800;margin-bottom:2px;color:#10233f}
+  .ws-detail-item span.ws-correct{color:#22c55e}
+  .ws-detail-item span.ws-wrong{color:#ef4444}
+  .ws-detail-item span.ws-blank{color:#cbd5e1}
   .ws-dashboard h2{margin:0 0 20px;font-size:24px;color:#10233f;font-weight:800}
   .ws-dashboard h3{margin:24px 0 16px;font-size:16px;color:#1f4f86;font-weight:700}
   .ws-dashboard-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
