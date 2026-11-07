@@ -938,26 +938,61 @@
   /* ---------- Sekme: sonuçlar ---------- */
 
   async function renderResultsTab(body, ctx) {
-    body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
+    body.innerHTML = '<div class="ws-loading"><p class="ws-hint">Yükleniyor…</p></div>';
     const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/worksheets/overview`);
     if (!response.ok) { body.innerHTML = `<div class="ws-alert">${esc(await readError(response))}</div>`; return; }
     const list = await response.json();
-    if (!list.length) { body.innerHTML = '<p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p>'; return; }
-    body.innerHTML = list.map(item => {
+    if (!list.length) { body.innerHTML = '<div class="ws-empty"><p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p></div>'; return; }
+
+    const totalSubmitted = list.reduce((sum, item) => sum + item.students.filter(s => s.attempts > 0).length, 0);
+    const totalStudents = list.reduce((sum, item) => sum + item.students.length, 0);
+    const avgNet = list.length > 0 ? (list.reduce((sum, item) => sum + (item.students.filter(s => s.last && s.last.net != null).reduce((s, st) => s + st.last.net, 0)), 0) / Math.max(1, list.reduce((sum, item) => sum + item.students.filter(s => s.last && s.last.net != null).length, 0))).toFixed(2) : 0;
+
+    const statsHtml = `<div class="ws-stats-row">
+      <div class="ws-stat-card"><span class="ws-stat-label">Gelen Cevaplar</span><strong class="ws-stat-value">${totalSubmitted}</strong><small>${totalStudents} öğrenciden</small></div>
+      <div class="ws-stat-card"><span class="ws-stat-label">Ortalama Net</span><strong class="ws-stat-value">${esc(avgNet)}</strong><small>son gönderimlerde</small></div>
+      <div class="ws-stat-card"><span class="ws-stat-label">Teslim Oranı</span><strong class="ws-stat-value">${totalStudents > 0 ? Math.round((totalSubmitted / totalStudents) * 100) : 0}%</strong><small>tüm öğrencilerde</small></div>
+    </div>`;
+
+    body.innerHTML = statsHtml + list.map(item => {
       const submitted = item.students.filter(s => s.attempts > 0).length;
+      const completed = item.students.filter(s => s.attempts > 0 && s.status === 'Completed').length;
+      const reopened = item.students.filter(s => s.attempts > 0 && s.status !== 'Completed').length;
+      const notOpened = item.students.filter(s => !s.openedAtUtc).length;
+
       const rows = item.students.map(s => {
         const last = s.last;
-        const stateTag = s.attempts > 0 && s.status === 'Completed' ? '<span class="ws-tag ok">Teslim etti</span>' : s.attempts > 0 ? '<span class="ws-tag warn">Yeniden açıldı</span>' : s.openedAtUtc ? '<span class="ws-tag">Açtı</span>' : '<span class="ws-tag muted">Açmadı</span>';
-        return `<tr data-student="${esc(s.studentId)}"><td>${esc(s.firstName)} ${esc(s.lastName)}</td><td>${stateTag}</td>
-          <td>${last ? (item.hasKey ? `<strong>${esc(formatNet(last.net))}</strong> net` : '—') : '—'}</td>
-          <td>${last && item.hasKey ? `${last.correct} D · ${last.wrong} Y · ${last.blank} B` : last ? `${last.blank} boş` : ''}</td>
-          <td>${last ? esc(formatDuration(last.timeSpentSeconds)) : ''}</td>
-          <td class="ws-actions">${last ? '<button type="button" class="ws-link" data-detail>Detay</button>' : ''}${s.attempts > 0 && s.status === 'Completed' ? '<button type="button" class="ws-link" data-reopen>Yeniden aç</button>' : ''}</td></tr>`;
+        let stateTag = '<span class="ws-tag muted">Açmadı</span>';
+        if (s.attempts > 0 && s.status === 'Completed') {
+          stateTag = '<span class="ws-tag ok">✓ Teslim</span>';
+        } else if (s.attempts > 0) {
+          stateTag = '<span class="ws-tag warn">⟲ Yeniden açıldı</span>';
+        } else if (s.openedAtUtc) {
+          stateTag = '<span class="ws-tag">◐ Açtı</span>';
+        }
+        return `<tr data-student="${esc(s.studentId)}"><td class="ws-student-name">${esc(s.firstName)} ${esc(s.lastName)}</td><td class="ws-status-cell">${stateTag}</td>
+          <td class="ws-net-cell">${last ? (item.hasKey ? `<strong>${esc(formatNet(last.net))}</strong>` : '—') : '—'}</td>
+          <td class="ws-result-cell">${last && item.hasKey ? `<span class="ws-result-item correct">${last.correct}D</span><span class="ws-result-item wrong">${last.wrong}Y</span><span class="ws-result-item blank">${last.blank}B</span>` : last ? `<span class="ws-result-item blank">${last.blank} boş</span>` : ''}</td>
+          <td class="ws-time-cell">${last ? esc(formatDuration(last.timeSpentSeconds)) : ''}</td>
+          <td class="ws-actions-cell">${last ? '<button type="button" class="ws-link-btn" data-detail title="Detayları görüntüle">Detay</button>' : ''}${s.attempts > 0 && s.status === 'Completed' ? '<button type="button" class="ws-link-btn" data-reopen title="Yeniden çözmesine izin ver">↻ Aç</button>' : ''}</td></tr>`;
       }).join('');
       return `<article class="ws-ws" data-resource="${esc(item.resourceId)}" data-count="${item.questionCount}" data-options="${item.optionCount}">
-        <header><div><strong>${esc(item.subject)} · ${esc(item.topic)}</strong><small>${esc(item.fileName)} · ${item.questionCount} soru · ${item.optionCount} şık · ${item.hasKey ? 'anahtar var' : '<em>anahtar yok</em>'}${item.durationMinutes ? ` · ${item.durationMinutes} dk` : ''}</small></div>
-        <div class="ws-head-actions"><span class="ws-tag">${submitted}/${item.students.length} teslim</span><button type="button" class="ws-link" data-analysis>Soru analizi</button><button type="button" class="ws-link" data-key>${item.hasKey ? 'Anahtarı düzenle' : 'Anahtar ekle'}</button></div></header>
-        <div class="ws-table-wrap"><table class="ws-table"><thead><tr><th>Öğrenci</th><th>Durum</th><th>Net</th><th>Sonuç</th><th>Süre</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="ws-hint">Öğrenci atanmamış.</td></tr>'}</tbody></table></div>
+        <header>
+          <div>
+            <strong>${esc(item.subject)} · ${esc(item.topic)}</strong>
+            <small>${esc(item.fileName)} · ${item.questionCount} soru · ${item.optionCount} şık · ${item.hasKey ? '<span class="ws-badge">Anahtar: ✓</span>' : '<span class="ws-badge warn">Anahtar yok</span>'}${item.durationMinutes ? ` · ${item.durationMinutes} dk` : ''}</small>
+          </div>
+          <div class="ws-head-actions">
+            <div class="ws-status-badges">
+              <span class="ws-badge success" title="Teslim eden">✓ ${completed}</span>
+              ${reopened > 0 ? `<span class="ws-badge warn" title="Yeniden açılan">⟲ ${reopened}</span>` : ''}
+              ${notOpened > 0 ? `<span class="ws-badge muted" title="Açmayan">✕ ${notOpened}</span>` : ''}
+            </div>
+            <button type="button" class="ws-link-btn" data-analysis title="Soru analizi">📊 Analiz</button>
+            <button type="button" class="ws-link-btn" data-key title="Cevap anahtarı">${item.hasKey ? '✎ Düzenle' : '➕ Anahtar'}</button>
+          </div>
+        </header>
+        <div class="ws-table-wrap"><table class="ws-table"><thead><tr><th>Öğrenci</th><th>Durum</th><th>Net</th><th>Sonuç</th><th>Süre</th><th>İşlem</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="ws-hint">Öğrenci atanmamış.</td></tr>'}</tbody></table></div>
         <div class="ws-detail" data-detail-box></div></article>`;
     }).join('');
 
@@ -983,28 +1018,80 @@
         if (!mine.length) { box.innerHTML = '<p class="ws-hint">Gönderim bulunamadı.</p>'; return; }
         const latest = mine[0];
         const rows = compareSheets(latest.answers, sheet?.answerKey || null, count);
-        box.innerHTML = `<h4>${esc(latest.firstName)} ${esc(latest.lastName)} · ${new Date(latest.submittedAtUtc).toLocaleString('tr-TR')}${mine.length > 1 ? ` · ${mine.length}. deneme` : ''}</h4>
-          <div class="ws-chips">${rows.map(r => `<div class="ws-chip ${r.status}" title="Soru ${r.no}"><span>${r.no}</span><b>${esc(r.status === 'wrong' ? r.picked + '→' + r.correct : (r.picked || '—'))}</b></div>`).join('')}</div>
-          ${mine.length > 1 ? `<p class="ws-hint">Önceki denemeler: ${mine.slice(1).map(m => `${new Date(m.submittedAtUtc).toLocaleDateString('tr-TR')} (${m.net == null ? '—' : formatNet(m.net)} net)`).join(', ')}</p>` : ''}`;
+        const resultStats = { correct: 0, wrong: 0, blank: 0, total: 0 };
+        rows.forEach(r => { resultStats.total++; if (r.status === 'correct') resultStats.correct++; else if (r.status === 'wrong') resultStats.wrong++; else if (r.status === 'blank') resultStats.blank++; });
+        const successRate = resultStats.total > 0 ? Math.round((resultStats.correct / resultStats.total) * 100) : 0;
+        box.innerHTML = `<div class="ws-detail-header">
+          <div><h4>${esc(latest.firstName)} ${esc(latest.lastName)}</h4><small>${new Date(latest.submittedAtUtc).toLocaleString('tr-TR')}${mine.length > 1 ? ` · ${mine.length}. deneme` : ''}</small></div>
+          <div class="ws-detail-stats">
+            <div class="ws-detail-stat"><span>${resultStats.correct}</span>Doğru</div>
+            <div class="ws-detail-stat"><span>${resultStats.wrong}</span>Yanlış</div>
+            <div class="ws-detail-stat"><span>${resultStats.blank}</span>Boş</div>
+            <div class="ws-detail-stat rate"><span>${successRate}%</span>Başarı</div>
+          </div>
+        </div>
+        <div class="ws-chips">${rows.map(r => `<div class="ws-chip ${r.status}" title="Soru ${r.no}"><span>${r.no}</span><b>${esc(r.status === 'wrong' ? r.picked + '→' + r.correct : (r.picked || '—'))}</b></div>`).join('')}</div>
+        ${mine.length > 1 ? `<div class="ws-attempts"><p class="ws-hint">📋 Önceki denemeler:</p><div class="ws-attempt-list">${mine.slice(1).map((m, i) => `<div class="ws-attempt-item"><span>${i + 2}. deneme</span><span>${new Date(m.submittedAtUtc).toLocaleDateString('tr-TR')}</span><span class="ws-attempt-net">${m.net == null ? '—' : formatNet(m.net)} net</span></div>`).join('')}</div></div>` : ''}`;
       } else if (event.target.matches('[data-analysis]')) {
         const { submissions, sheet } = await loadAll();
         if (!sheet?.hasKey) { box.innerHTML = '<p class="ws-hint">Soru analizi için önce cevap anahtarı ekle.</p>'; return; }
         const stats = questionStats(submissions, sheet.answerKey, count);
         if (!stats[0]?.total) { box.innerHTML = '<p class="ws-hint">Henüz teslim eden öğrenci yok.</p>'; return; }
-        box.innerHTML = `<h4>Soru bazlı analiz (${stats[0].total} öğrenci)</h4><div class="ws-bars">${stats.map(x => `<div class="ws-bar" title="Soru ${x.no}: %${x.percent} doğru"><div class="ws-bar-fill ${x.percent < 40 ? 'low' : x.percent < 70 ? 'mid' : 'high'}" style="height:${Math.max(4, x.percent)}%"></div><span>${x.no}</span></div>`).join('')}</div><p class="ws-hint">Çubuk yüksekliği o soruyu doğru yapan öğrenci yüzdesidir. Kırmızı çubuklar tekrar edilmesi gereken sorulardır.</p>`;
+        const avgPercent = Math.round(stats.reduce((sum, x) => sum + x.percent, 0) / stats.length);
+        const problematicQuestions = stats.filter(x => x.percent < 40).length;
+        box.innerHTML = `<div class="ws-analysis-header">
+          <h4>📊 Soru Bazlı Analiz</h4>
+          <div class="ws-analysis-stats">
+            <div class="ws-stat-mini"><span>${stats[0].total}</span>Öğrenci</div>
+            <div class="ws-stat-mini"><span>${avgPercent}%</span>Ort. Başarı</div>
+            ${problematicQuestions > 0 ? `<div class="ws-stat-mini warn"><span>${problematicQuestions}</span>Zor Soru</div>` : ''}
+          </div>
+        </div>
+        <div class="ws-bars">${stats.map(x => `<div class="ws-bar" title="Soru ${x.no}: %${x.percent} doğru (${x.total} öğrenci)"><div class="ws-bar-fill ${x.percent < 40 ? 'low' : x.percent < 70 ? 'mid' : 'high'}" style="height:${Math.max(4, x.percent)}%"></div><span>${x.no}</span></div>`).join('')}</div>
+        <div class="ws-analysis-legend">
+          <div class="ws-legend-item"><div class="ws-legend-box high"></div>Güçlü (%70+)</div>
+          <div class="ws-legend-item"><div class="ws-legend-box mid"></div>Orta (%40-69)</div>
+          <div class="ws-legend-item"><div class="ws-legend-box low"></div>Zayıf (%0-39)</div>
+        </div>`;
       } else if (event.target.matches('[data-key]')) {
         const { sheet } = await loadAll();
-        box.innerHTML = `<h4>Cevap anahtarı</h4><textarea rows="2" data-keyedit placeholder="ABCDEABCDE… veya 1-A 2-C …">${esc(sheet?.answerKey && sheet.answerKey.replace(/-/g, '') ? sheet.answerKey : '')}</textarea><div class="ws-keystat" data-keyinfo></div><div class="ws-send-foot"><button type="button" class="ws-btn ws-primary" data-keysave>Kaydet ve yeniden puanla</button><span class="ws-status" data-keystatus></span></div>`;
+        box.innerHTML = `<div class="ws-key-editor">
+          <div class="ws-key-header">
+            <h4>🔑 Cevap Anahtarı</h4>
+            <p class="ws-hint">${count} sorunun cevaplarını girin. Biçim: ABCDE… veya 1-A 2-C 3.B vb.</p>
+          </div>
+          <textarea rows="3" data-keyedit placeholder="Örnek: ABCDEABCDE… veya 1-A 2-C 3-D…" class="ws-keyarea">${esc(sheet?.answerKey && sheet.answerKey.replace(/-/g, '') ? sheet.answerKey : '')}</textarea>
+          <div class="ws-key-info">
+            <div class="ws-keystat" data-keyinfo></div>
+            <div class="ws-key-preview" data-preview></div>
+          </div>
+          <div class="ws-send-foot">
+            <button type="button" class="ws-btn ws-primary" data-keysave>💾 Kaydet ve Puanları Yenile</button>
+            <span class="ws-status" data-keystatus></span>
+          </div>
+        </div>`;
         const area = box.querySelector('[data-keyedit]');
         const info = box.querySelector('[data-keyinfo]');
-        const update = () => { const p = parseKeyInput(area.value, count, optionCount); info.textContent = `${p.filled} / ${count} soru girildi${p.errors[0] ? ' · ' + p.errors[0] : ''}`; return p; };
+        const preview = box.querySelector('[data-preview]');
+        const update = () => {
+          const p = parseKeyInput(area.value, count, optionCount);
+          const status = p.filled === count ? `✓ Tümü girildi` : `${p.filled} / ${count} soru girildi`;
+          const error = p.errors[0] ? ` · ⚠️ ${p.errors[0]}` : '';
+          info.innerHTML = `<strong>${status}</strong>${error}`;
+
+          // Preview çubukları
+          const filled = Math.max(1, p.filled);
+          const empty = Math.max(1, count - p.filled);
+          preview.innerHTML = `<div class="ws-key-progress"><div class="ws-key-bar-fill" style="width:${Math.round((filled / count) * 100)}%"></div></div>`;
+          return p;
+        };
         area.addEventListener('input', update); update();
         box.querySelector('[data-keysave]').addEventListener('click', async () => {
           const p = update();
           const st = box.querySelector('[data-keystatus]');
-          const r = await ctx.authRequest(`${base}/worksheet`, { method: 'PUT', body: JSON.stringify({ questionCount: count, optionCount, answerKey: p.filled ? p.answers : null, durationMinutes: sheet?.durationMinutes ?? null }) });
-          if (r.ok) { st.textContent = 'Kaydedildi ✓ Sonuçlar yeniden hesaplandı.'; st.className = 'ws-status ok'; setTimeout(() => renderResultsTab(body, ctx), 900); }
-          else { st.textContent = await readError(r); st.className = 'ws-status err'; }
+          const r = await ctx.authRequest(\`\${base}/worksheet\`, { method: 'PUT', body: JSON.stringify({ questionCount: count, optionCount, answerKey: p.filled ? p.answers : null, durationMinutes: sheet?.durationMinutes ?? null }) });
+          if (r.ok) { st.textContent = '✓ Kaydedildi! Sonuçlar yeniden hesaplandı.'; st.className = 'ws-status ok'; setTimeout(() => renderResultsTab(body, ctx), 1000); }
+          else { st.textContent = '❌ ' + await readError(r); st.className = 'ws-status err'; }
         });
       }
     };
@@ -1240,6 +1327,13 @@
   const STYLES = `
   .ws-root{--ws-ink:#173452;--ws-muted:#5d7088;--ws-line:#dbe7f1;--ws-bg:#f6f9fc;--ws-blue:#2563eb;--ws-green:#15803d;--ws-red:#c62828;--ws-amber:#b45309;color:var(--ws-ink);text-align:left}
   .ws-root *{box-sizing:border-box}
+  .ws-loading,.ws-empty{padding:32px 20px;text-align:center}
+  .ws-stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+  .ws-stat-card{background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);border:1px solid #e0e8f2;border-radius:14px;padding:18px 20px;box-shadow:0 2px 8px rgba(23,52,82,.06);transition:all 0.2s ease}
+  .ws-stat-card:hover{border-color:#d4dfe8;box-shadow:0 4px 16px rgba(23,52,82,.12);transform:translateY(-2px)}
+  .ws-stat-label{display:block;font-size:12px;color:#546e8a;font-weight:650;margin-bottom:8px;letter-spacing:.3px}
+  .ws-stat-value{display:block;font-size:28px;font-weight:800;color:#10233f;margin-bottom:6px}
+  .ws-stat-card small{display:block;font-size:12px;color:#8a99ab}
   .ws-btn{border:1px solid #d4dfe8;background:#fff;color:#2d3f52;border-radius:11px;padding:10px 16px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block;font-size:13px;transition:all 0.15s ease}
   .ws-btn:hover{background:#f8fafd;border-color:#c0cad6;box-shadow:0 2px 6px rgba(23,52,82,.08)}.ws-btn:disabled{opacity:.55;cursor:default;box-shadow:none}
   .ws-primary{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-color:#2563eb;color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.2)}.ws-primary:hover{background:linear-gradient(135deg,#1d4ed8 0%,#1c3fb0 100%);border-color:#1d4ed8;box-shadow:0 5px 15px rgba(37,99,235,.3)}
@@ -1327,8 +1421,19 @@
   .ws-keybox{margin-top:6px;border:1px solid var(--ws-line);border-radius:10px;padding:10px 12px;background:var(--ws-bg)}.ws-keybox summary{cursor:pointer;font-weight:700}
   .ws-keygrid{max-height:440px;overflow:auto;margin-top:8px;background:#fff;border-radius:10px;border:1px solid var(--ws-line)}
   .ws-keygrid .ws-bubble{width:30px;height:30px;font-size:13px}.ws-keystat{font-size:12px;color:var(--ws-muted);margin:6px 0}
-  .ws-send-foot{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
-  .ws-status{font-weight:600;font-size:13px}.ws-status.ok{color:var(--ws-green)}.ws-status.err{color:var(--ws-red)}
+  .ws-key-editor{padding:12px 0}
+  .ws-key-header h4{margin:0 0 6px;font-size:15px}
+  .ws-key-header .ws-hint{margin:6px 0 12px}
+  .ws-keyarea{width:100%;border:1px solid #d4dfe8;border-radius:10px;padding:12px;font:inherit;font-family:'Courier New',monospace;font-size:14px;color:#173452;resize:vertical;transition:border-color 0.15s ease}
+  .ws-keyarea:focus{border-color:#2563eb;outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .ws-key-info{margin-top:12px;display:grid;gap:10px}
+  .ws-keystat{padding:10px 12px;background:#f0f4f9;border-radius:10px;border:1px solid #e8eef7;font-size:12px;color:#546e8a;font-weight:600}
+  .ws-keystat strong{display:block;color:#10233f;margin-bottom:4px}
+  .ws-key-preview{padding:8px 0}
+  .ws-key-progress{height:6px;background:#e8eef7;border-radius:6px;overflow:hidden;border:1px solid #dbe7f1}
+  .ws-key-bar-fill{height:100%;background:linear-gradient(90deg,#22c55e,#15803d);transition:width 0.3s ease;display:block}
+  .ws-send-foot{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}
+  .ws-status{font-weight:600;font-size:13px;border-radius:6px;padding:6px 10px}.ws-status.ok{color:#15803d;background:#e8f8ee}.ws-status.err{color:#c62828;background:#fde8e8}
   .ws-ws{border:1px solid #e0e8f2;border-radius:16px;margin-bottom:18px;overflow:hidden;box-shadow:0 2px 8px rgba(23,52,82,.06);background:#fff;transition:box-shadow 0.2s ease,border-color 0.2s ease}
   .ws-ws:hover{box-shadow:0 4px 16px rgba(23,52,82,.12);border-color:#d4dfe8}
   .ws-ws>header{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:18px 20px;background:linear-gradient(135deg,#10233f 0%,#1e4a7a 100%);flex-wrap:wrap;position:relative;overflow:hidden}
@@ -1337,20 +1442,88 @@
   .ws-ws>header strong{display:block;font-size:16px;font-weight:800;color:#fff;margin-bottom:6px}
   .ws-ws small{display:block;color:#b4c8e1;font-size:12px;line-height:1.5;margin-top:4px}
   .ws-head-actions{display:flex;gap:10px;align-items:center;position:relative;z-index:1;flex-wrap:wrap;justify-content:flex-end}
-  .ws-table-wrap{overflow:auto}.ws-table{width:100%;border-collapse:collapse;font-size:14px}.ws-table thead{background:#f8fafd}.ws-table th{text-align:left;color:#546e8a;font-size:12px;font-weight:700;padding:12px 16px;border-bottom:2px solid #e8eef7}
-  .ws-table td{padding:12px 16px;border-top:1px solid #f3f6fa;color:#2d3f52}.ws-table tbody tr{transition:background-color 0.15s ease}
+  .ws-table-wrap{overflow:auto;margin-top:0}.ws-table{width:100%;border-collapse:collapse;font-size:13px}.ws-table thead{background:linear-gradient(90deg,#f8fafd,#f3f7fb);sticky:0}.ws-table th{text-align:left;color:#546e8a;font-size:11px;font-weight:800;padding:13px 16px;border-bottom:2px solid #e8eef7;letter-spacing:.3px;text-transform:uppercase}
+  .ws-table td{padding:13px 16px;border-bottom:1px solid #f3f6fa;color:#2d3f52}.ws-table tbody tr{transition:background-color 0.15s ease}
   .ws-table tbody tr:hover{background-color:#fafbfe}
-  .ws-actions{white-space:nowrap;display:flex;gap:8px}.ws-link{border:0;background:none;color:#2563eb;font:inherit;font-weight:700;cursor:pointer;padding:6px 0;font-size:13px;transition:color 0.15s ease}.ws-link:hover{color:#1d4ed8}.ws-link.danger{color:#c62828}.ws-link.danger:hover{color:#a01f1f}
+  .ws-student-name{font-weight:650;color:#10233f}
+  .ws-status-cell{text-align:center}
+  .ws-net-cell{text-align:center;font-weight:700;color:#10233f}
+  .ws-result-cell{display:flex;gap:6px;flex-wrap:wrap}
+  .ws-result-item{display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700}
+  .ws-result-item.correct{background:#e8f8ee;color:#15803d}
+  .ws-result-item.wrong{background:#fde8e8;color:#c62828}
+  .ws-result-item.blank{background:#f1f5f9;color:#475569}
+  .ws-time-cell{text-align:center;font-size:12px;color:#6b85a0}
+  .ws-actions-cell{text-align:right;white-space:nowrap}.ws-link-btn{border:0;background:none;color:#2563eb;font:inherit;font-weight:700;cursor:pointer;padding:4px 8px;font-size:12px;transition:all 0.15s ease;border-radius:5px}
+  .ws-link-btn:hover{color:#1d4ed8;background:#eef4ff}.ws-link-btn.danger{color:#c62828}.ws-link-btn.danger:hover{background:#fde8e8;color:#a01f1f}
+  .ws-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f0f4f9;color:#5d7088}
+  .ws-badge.success{background:#e8f8ee;color:#15803d}
+  .ws-badge.warn{background:#fff8e8;color:#a97600}
+  .ws-badge.muted{background:#f3f6fa;color:#8a99ab}
+  .ws-status-badges{display:flex;gap:8px;flex-wrap:wrap}
   .ws-tag{display:inline-block;padding:5px 12px;border-radius:20px;background:#f0f4f9;font-size:12px;font-weight:700;color:#5d7088;border:1px solid #e8eef7}.ws-tag.ok{background:#e8f8ee;color:#15803d;border-color:#c6f0d8}.ws-tag.warn{background:#fff8e8;color:#a97600;border-color:#fde5a8}.ws-tag.muted{background:#f3f6fa;color:#8a99ab;border-color:#e8eef7}
   .ws-detail{padding:0 20px}.ws-detail:not(:empty){padding:16px 20px;border-top:1px solid #f3f6fa;background:#fafbfe}.ws-detail h4{margin:0 0 12px;font-size:14px;font-weight:700;color:#1f4f86}
-  .ws-bars{display:flex;align-items:flex-end;gap:4px;height:140px;padding:8px 0;background:linear-gradient(180deg,transparent 0%,#f8fafd 100%);border-radius:12px;padding:12px 8px}
-  .ws-bar{flex:1;min-width:8px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-size:10px;color:#546e8a;font-weight:600}
+  .ws-detail-header{display:flex;justify-content:space-between;gap:16px;margin-bottom:16px;align-items:flex-start}
+  .ws-detail-header h4{margin:0}
+  .ws-detail-header small{display:block;color:#8a99ab;font-size:12px;margin-top:4px}
+  .ws-detail-stats{display:flex;gap:12px}
+  .ws-detail-stat{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 12px;background:#f8fafd;border-radius:10px;min-width:70px;border:1px solid #e8eef7}
+  .ws-detail-stat span{font-size:16px;font-weight:800;color:#10233f}
+  .ws-detail-stat{font-size:11px;color:#6b85a0;font-weight:600}
+  .ws-detail-stat.rate span{color:#22c55e}
+  .ws-detail-stat.rate{background:#e8f8ee;border-color:#c6f0d8}
+  .ws-attempts{margin-top:16px;padding:12px;background:#fff8e8;border-radius:10px;border-left:4px solid #f59e0b}
+  .ws-attempt-list{margin-top:8px;display:grid;gap:8px}
+  .ws-attempt-item{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:10px;background:#fff;border-radius:8px;font-size:12px}
+  .ws-attempt-net{font-weight:700;color:#a97600;text-align:right}
+  .ws-analysis-header{margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .ws-analysis-header h4{margin:0}
+  .ws-analysis-stats{display:flex;gap:10px}
+  .ws-stat-mini{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 12px;background:#f0f4f9;border-radius:9px;border:1px solid #e8eef7;min-width:65px}
+  .ws-stat-mini span{font-size:14px;font-weight:800;color:#10233f}
+  .ws-stat-mini{font-size:10px;color:#6b85a0;font-weight:600}
+  .ws-stat-mini.warn{background:#fff8e8;border-color:#fde5a8}
+  .ws-stat-mini.warn span{color:#a97600}
+  .ws-bars{display:flex;align-items:flex-end;gap:4px;height:160px;padding:12px 8px;background:linear-gradient(180deg,transparent 0%,#f8fafd 100%);border-radius:12px;margin:16px 0}
+  .ws-bar{flex:1;min-width:8px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-size:10px;color:#546e8a;font-weight:600;transition:all 0.2s ease;cursor:pointer}
+  .ws-bar:hover{color:#173452}.ws-bar:hover .ws-bar-fill{filter:brightness(1.1)}
   .ws-bar-fill{width:100%;border-radius:6px 6px 0 0;transition:all 0.3s ease;box-shadow:0 2px 4px rgba(0,0,0,.1)}.ws-bar-fill.high{background:linear-gradient(180deg,#22c55e,#15803d)}.ws-bar-fill.mid{background:linear-gradient(180deg,#f59e0b,#d97706)}.ws-bar-fill.low{background:linear-gradient(180deg,#ef4444,#c62828)}
+  .ws-analysis-legend{display:flex;gap:16px;padding:12px;background:#f8fafd;border-radius:10px;margin-top:12px;border:1px solid #e8eef7}
+  .ws-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#546e8a;font-weight:600}
+  .ws-legend-box{width:12px;height:12px;border-radius:3px}
+  .ws-legend-box.high{background:linear-gradient(135deg,#22c55e,#15803d)}
+  .ws-legend-box.mid{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .ws-legend-box.low{background:linear-gradient(135deg,#ef4444,#c62828)}
   .ws-review-bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:14px 0 8px}.ws-review-bar label{margin:0}
   .ws-q{border:1px solid var(--ws-line);border-radius:12px;padding:12px;margin-bottom:10px}.ws-q.warn{border-color:#f1d38a;background:#fffdf6}
   .ws-q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
   .ws-optline{display:flex!important;align-items:center;gap:8px;margin:6px 0!important}.ws-optline b{width:18px}.ws-optline input[data-opt]{flex:1;margin:0!important}
-  @media (max-width:600px){.ws-grid3{grid-template-columns:1fr}.ws-grid2{grid-template-columns:1fr}}
+  @media (max-width:900px){.ws-stats-row{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
+  @media (max-width:768px){
+    .ws-stats-row{grid-template-columns:1fr;gap:12px}
+    .ws-stat-card{padding:16px}
+    .ws-table-wrap{font-size:12px}
+    .ws-table th{padding:10px 12px;font-size:10px}
+    .ws-table td{padding:10px 12px}
+    .ws-result-cell{gap:4px}
+    .ws-result-item{padding:3px 6px;font-size:10px}
+    .ws-head-actions{flex-direction:column;align-items:flex-start;gap:10px}
+    .ws-status-badges{flex-wrap:wrap}
+  }
+  @media (max-width:600px){
+    .ws-grid3{grid-template-columns:1fr}.ws-grid2{grid-template-columns:1fr}
+    .ws-ws>header{flex-direction:column;padding:14px 12px}
+    .ws-table{font-size:11px}
+    .ws-table th{padding:8px 10px;font-size:9px}
+    .ws-table td{padding:8px 10px}
+    .ws-student-name{max-width:100px;overflow:hidden;text-overflow:ellipsis}
+    .ws-result-cell{flex-direction:column}
+    .ws-time-cell{display:none}
+    .ws-actions-cell{text-align:left}
+    .ws-link-btn{padding:3px 6px;font-size:11px}
+    .ws-head-actions{flex-direction:row;flex-wrap:wrap;gap:6px}
+    .ws-badge{padding:3px 8px;font-size:10px}
+  }
   `;
 
   return {
