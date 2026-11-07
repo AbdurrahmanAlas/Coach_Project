@@ -748,8 +748,10 @@
       </div>
       <div class="ws-subtabs" role="tablist">
         <button type="button" class="ws-subtab on" data-tab="send">Çalışma gönder</button>
-        <button type="button" class="ws-subtab" data-tab="cards">PDF'den soru kartı</button>
-        <button type="button" class="ws-subtab" data-tab="results">Gönderilenler ve sonuçlar</button>
+        <button type="button" class="ws-subtab" data-tab="results">📊 Gelen cevaplar</button>
+        <button type="button" class="ws-subtab" data-tab="dashboard">📈 Pano</button>
+        <button type="button" class="ws-subtab" data-tab="alerts">⚠️ Uyarılar</button>
+        <button type="button" class="ws-subtab" data-tab="cards">🎴 PDF'den soru</button>
       </div>
       <div class="ws-tabbody" data-body></div>`;
     parent.appendChild(card);
@@ -758,7 +760,9 @@
     const tabs = {
       send: () => renderSendTab(body, ctx, state),
       cards: () => renderCardsTab(body, ctx, state),
-      results: () => renderResultsTab(body, ctx, state)
+      results: () => renderResultsTab(body, ctx),
+      dashboard: () => renderDashboard(body, ctx),
+      alerts: () => renderAlertsTab(body, ctx)
     };
     card.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
       card.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b === button));
