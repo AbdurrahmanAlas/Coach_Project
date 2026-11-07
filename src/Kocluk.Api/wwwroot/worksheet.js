@@ -935,6 +935,124 @@
     });
   }
 
+  /* ---------- Uyarılar: Öğrenci Durumu ---------- */
+
+  async function renderAlertsTab(body, ctx) {
+    body.innerHTML = '<div class="ws-loading"><p class="ws-hint">Uyarılar yükleniyor…</p></div>';
+    const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/worksheets/overview`);
+    if (!response.ok) { body.innerHTML = `<div class="ws-alert">${esc(await readError(response))}</div>`; return; }
+    const list = await response.json();
+
+    const alerts = { notOpened: [], lowScore: [], noAttempts: [] };
+
+    list.forEach(item => {
+      item.students.forEach(s => {
+        if (!s.openedAtUtc) {
+          alerts.notOpened.push({ name: `${s.firstName} ${s.lastName}`, resource: item.topic, daysAgo: 0 });
+        } else if (s.last && s.last.net < 40) {
+          alerts.lowScore.push({ name: `${s.firstName} ${s.lastName}`, resource: item.topic, score: s.last.net });
+        } else if (s.openedAtUtc && s.attempts === 0) {
+          alerts.noAttempts.push({ name: `${s.firstName} ${s.lastName}`, resource: item.topic });
+        }
+      });
+    });
+
+    const alertsHtml = `
+      <div class="ws-alerts-container">
+        <h2>⚠️ Öğrenci Uyarıları</h2>
+        <div class="ws-alert-summary">
+          <div class="ws-alert-badge critical" title="Açmayan">${alerts.notOpened.length}</div>
+          <div class="ws-alert-badge warning" title="Düşük puan">${alerts.lowScore.length}</div>
+          <div class="ws-alert-badge info" title="Açtı ama yanıtlamadı">${alerts.noAttempts.length}</div>
+        </div>
+
+        ${alerts.notOpened.length > 0 ? `
+          <div class="ws-alert-section critical">
+            <h3>🔴 Açmayan Öğrenciler</h3>
+            <div class="ws-alert-list">
+              ${alerts.notOpened.map(a => `<div class="ws-alert-item"><span>${esc(a.name)}</span><small>${esc(a.resource)}</small></div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${alerts.lowScore.length > 0 ? `
+          <div class="ws-alert-section warning">
+            <h3>🟠 Düşük Puan Alanlar (<40)</h3>
+            <div class="ws-alert-list">
+              ${alerts.lowScore.map(a => `<div class="ws-alert-item"><span>${esc(a.name)}</span><small>${esc(a.resource)} - ${a.score} net</small></div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        ${alerts.noAttempts.length > 0 ? `
+          <div class="ws-alert-section info">
+            <h3>🔵 Açtı Ama Yanıtlamadı</h3>
+            <div class="ws-alert-list">
+              ${alerts.noAttempts.map(a => `<div class="ws-alert-item"><span>${esc(a.name)}</span><small>${esc(a.resource)}</small></div>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    body.innerHTML = alertsHtml;
+  }
+
+  /* ---------- Dashboard: Performans Özeti ---------- */
+
+  async function renderDashboard(body, ctx) {
+    body.innerHTML = '<div class="ws-loading"><p class="ws-hint">Pano yükleniyor…</p></div>';
+    const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/worksheets/overview`);
+    if (!response.ok) { body.innerHTML = `<div class="ws-alert">${esc(await readError(response))}</div>`; return; }
+    const list = await response.json();
+    if (!list.length) { body.innerHTML = '<div class="ws-empty"><p class="ws-hint">Henüz veri yok</p></div>'; return; }
+
+    const allSubmissions = list.flatMap(item => item.students.filter(s => s.last)).map(s => s.last);
+    const totalStudents = list.reduce((sum, item) => sum + item.students.length, 0);
+    const activeStudents = list.reduce((sum, item) => sum + item.students.filter(s => s.attempts > 0).length, 0);
+    const avgNet = allSubmissions.length > 0 ? (allSubmissions.reduce((sum, s) => sum + (s.net || 0), 0) / allSubmissions.length).toFixed(1) : 0;
+    const avgTime = allSubmissions.length > 0 ? Math.round(allSubmissions.reduce((sum, s) => sum + (s.timeSpentSeconds || 0), 0) / allSubmissions.length) : 0;
+
+    const topicStats = {};
+    list.forEach(item => {
+      const topic = item.topic;
+      if (!topicStats[topic]) topicStats[topic] = { submissions: 0, totalNet: 0, count: 0 };
+      item.students.forEach(s => {
+        if (s.last) {
+          topicStats[topic].submissions++;
+          topicStats[topic].totalNet += s.last.net || 0;
+          topicStats[topic].count++;
+        }
+      });
+    });
+
+    const topicsHtml = Object.entries(topicStats).map(([topic, stats]) => {
+      const avgTopicNet = stats.count > 0 ? (stats.totalNet / stats.count).toFixed(1) : 0;
+      return `<div class="ws-topic-card">
+        <strong>${esc(topic)}</strong>
+        <small>${stats.submissions} gönderim</small>
+        <div class="ws-topic-stats">
+          <span class="ws-topic-net">${avgTopicNet}</span>
+          <span class="ws-topic-label">ort. net</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="ws-dashboard">
+        <h2>📊 Performans Panosu</h2>
+        <div class="ws-dashboard-stats">
+          <div class="ws-dash-stat"><span>${totalStudents}</span>Toplam Öğrenci</div>
+          <div class="ws-dash-stat"><span>${activeStudents}</span>Aktif</div>
+          <div class="ws-dash-stat"><span>${avgNet}</span>Ort. Net</div>
+          <div class="ws-dash-stat"><span>${Math.round(avgTime / 60)}</span>Ort. Süre (dk)</div>
+        </div>
+        <h3>Konu Performansı</h3>
+        <div class="ws-topics-grid">${topicsHtml}</div>
+      </div>
+    `;
+  }
+
   /* ---------- Sekme: sonuçlar ---------- */
 
   async function renderResultsTab(body, ctx) {
@@ -943,6 +1061,21 @@
     if (!response.ok) { body.innerHTML = `<div class="ws-alert">${esc(await readError(response))}</div>`; return; }
     const list = await response.json();
     if (!list.length) { body.innerHTML = '<div class="ws-empty"><p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p></div>'; return; }
+
+    // Date range setup
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    const dateRangeHtml = `
+      <div class="ws-date-filter">
+        <label>Tarih Aralığı:</label>
+        <input type="date" id="ws-date-from" value="${formatDate(weekAgo)}" class="ws-date-input">
+        <span>-</span>
+        <input type="date" id="ws-date-to" value="${formatDate(today)}" class="ws-date-input">
+        <button type="button" class="ws-btn" id="ws-filter-btn">Filtrele</button>
+        <button type="button" class="ws-btn" id="ws-clear-filter">Temizle</button>
+      </div>
+    `;
 
     const totalSubmitted = list.reduce((sum, item) => sum + item.students.filter(s => s.attempts > 0).length, 0);
     const totalStudents = list.reduce((sum, item) => sum + item.students.length, 0);
@@ -954,7 +1087,7 @@
       <div class="ws-stat-card"><span class="ws-stat-label">Teslim Oranı</span><strong class="ws-stat-value">${totalStudents > 0 ? Math.round((totalSubmitted / totalStudents) * 100) : 0}%</strong><small>tüm öğrencilerde</small></div>
     </div>`;
 
-    body.innerHTML = statsHtml + list.map(item => {
+    body.innerHTML = dateRangeHtml + statsHtml + list.map(item => {
       const submitted = item.students.filter(s => s.attempts > 0).length;
       const completed = item.students.filter(s => s.attempts > 0 && s.status === 'Completed').length;
       const reopened = item.students.filter(s => s.attempts > 0 && s.status !== 'Completed').length;
@@ -995,6 +1128,35 @@
         <div class="ws-table-wrap"><table class="ws-table"><thead><tr><th>Öğrenci</th><th>Durum</th><th>Net</th><th>Sonuç</th><th>Süre</th><th>İşlem</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="ws-hint">Öğrenci atanmamış.</td></tr>'}</tbody></table></div>
         <div class="ws-detail" data-detail-box></div></article>`;
     }).join('');
+
+    // Date filter handlers
+    const filterBtn = body.querySelector('#ws-filter-btn');
+    const clearBtn = body.querySelector('#ws-clear-filter');
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        const from = body.querySelector('#ws-date-from').value;
+        const to = body.querySelector('#ws-date-to').value;
+        const articles = body.querySelectorAll('.ws-ws');
+        let count = 0;
+        articles.forEach(a => {
+          const rows = a.querySelectorAll('tbody tr');
+          let show = false;
+          rows.forEach(r => {
+            const cells = r.querySelectorAll('td');
+            if (cells.length > 0) show = true;
+          });
+          a.style.display = show ? 'block' : 'none';
+          if (show) count++;
+        });
+      });
+      clearBtn?.addEventListener('click', () => {
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        body.querySelector('#ws-date-from').value = weekAgo.toISOString().split('T')[0];
+        body.querySelector('#ws-date-to').value = today.toISOString().split('T')[0];
+        body.querySelectorAll('.ws-ws').forEach(a => a.style.display = 'block');
+      });
+    }
 
     body.onclick = async event => {
       const article = event.target.closest('.ws-ws');
@@ -1328,6 +1490,48 @@
   .ws-root{--ws-ink:#173452;--ws-muted:#5d7088;--ws-line:#dbe7f1;--ws-bg:#f6f9fc;--ws-blue:#2563eb;--ws-green:#15803d;--ws-red:#c62828;--ws-amber:#b45309;color:var(--ws-ink);text-align:left}
   .ws-root *{box-sizing:border-box}
   .ws-loading,.ws-empty{padding:32px 20px;text-align:center}
+  .ws-alerts-container{padding:0}
+  .ws-alerts-container h2{margin:0 0 16px;font-size:24px;color:#10233f;font-weight:800}
+  .ws-alert-summary{display:flex;gap:12px;margin-bottom:24px}
+  .ws-alert-badge{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 18px;border-radius:12px;min-width:90px;font-weight:700;font-size:18px;color:#fff}
+  .ws-alert-badge.critical{background:linear-gradient(135deg,#ef4444,#c62828)}
+  .ws-alert-badge.warning{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .ws-alert-badge.info{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+  .ws-alert-badge::after{content:attr(title);font-size:11px;font-weight:600;opacity:.9}
+  .ws-alert-section{margin-bottom:18px;padding:16px;border-radius:12px;border-left:4px solid}
+  .ws-alert-section.critical{background:#fde8e8;border-color:#ef4444}
+  .ws-alert-section.warning{background:#fff8e8;border-color:#f59e0b}
+  .ws-alert-section.info{background:#e0e7ff;border-color:#3b82f6}
+  .ws-alert-section h3{margin:0 0 12px;font-size:14px;font-weight:700}
+  .ws-alert-section.critical h3{color:#991b1b}
+  .ws-alert-section.warning h3{color:#8a5a00}
+  .ws-alert-section.info h3{color:#1e40af}
+  .ws-alert-list{display:grid;gap:8px}
+  .ws-alert-item{padding:10px 12px;background:#fff;border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .ws-alert-item span{font-weight:650;color:#173452}
+  .ws-alert-item small{color:#6b85a0;font-size:12px}
+  .ws-dashboard{padding:0}
+  .ws-dashboard h2{margin:0 0 20px;font-size:24px;color:#10233f;font-weight:800}
+  .ws-dashboard h3{margin:24px 0 16px;font-size:16px;color:#1f4f86;font-weight:700}
+  .ws-dashboard-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+  .ws-dash-stat{background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);border:1px solid #e0e8f2;border-radius:12px;padding:16px;text-align:center;transition:all 0.2s ease}
+  .ws-dash-stat:hover{border-color:#d4dfe8;box-shadow:0 4px 12px rgba(23,52,82,.1)}
+  .ws-dash-stat span{display:block;font-size:20px;font-weight:800;color:#10233f;margin-bottom:6px}
+  .ws-dash-stat{font-size:12px;color:#6b85a0;font-weight:600}
+  .ws-topics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+  .ws-topic-card{background:linear-gradient(135deg,#e8f8ee 0%,#f3fbf8 100%);border:1px solid #c6f0d8;border-radius:12px;padding:14px;transition:all 0.2s ease;cursor:pointer}
+  .ws-topic-card:hover{border-color:#a8e0c5;box-shadow:0 4px 12px rgba(34,197,94,.15)}
+  .ws-topic-card strong{display:block;color:#087e69;font-weight:700;margin-bottom:4px}
+  .ws-topic-card small{display:block;color:#6b9b8b;font-size:12px;margin-bottom:10px}
+  .ws-topic-stats{display:flex;align-items:baseline;gap:6px}
+  .ws-topic-net{font-size:18px;font-weight:800;color:#22c55e}
+  .ws-topic-label{font-size:11px;color:#6b9b8b;font-weight:600}
+  .ws-date-filter{display:flex;align-items:center;gap:10px;padding:14px;background:#f8fafd;border:1px solid #e8eef7;border-radius:12px;margin-bottom:20px;flex-wrap:wrap}
+  .ws-date-filter label{font-weight:650;color:#1f4f86;min-width:80px}
+  .ws-date-input{border:1px solid #d4dfe8;border-radius:8px;padding:8px 12px;font-size:13px;background:#fff;cursor:pointer}
+  .ws-date-input:focus{border-color:#2563eb;outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .ws-date-filter span{color:#8a99ab;font-weight:600}
+  .ws-date-filter button{padding:8px 14px;font-size:12px}
   .ws-stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
   .ws-stat-card{background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);border:1px solid #e0e8f2;border-radius:14px;padding:18px 20px;box-shadow:0 2px 8px rgba(23,52,82,.06);transition:all 0.2s ease}
   .ws-stat-card:hover{border-color:#d4dfe8;box-shadow:0 4px 16px rgba(23,52,82,.12);transform:translateY(-2px)}
@@ -1528,6 +1732,6 @@
 
   return {
     LETTERS, computeNet, formatNet, formatDuration, parseKeyInput, answersToString, compareSheets, questionStats,
-    splitAnswerKeySection, splitOptions, parseWorksheetText, detectTests, openStudent, mountCoachPanel, mountCoachView
+    splitAnswerKeySection, splitOptions, parseWorksheetText, detectTests, openStudent, mountCoachPanel, mountCoachView, renderDashboard, renderAlertsTab
   };
 });
