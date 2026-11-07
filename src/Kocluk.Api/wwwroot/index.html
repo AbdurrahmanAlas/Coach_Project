@@ -1405,6 +1405,24 @@
     });
     loadCurrentUser();
   </script>
+  <script>
+    // PROFESYONEL TASARIM - Cache'ye aldırmaz
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.textContent = `
+        .stat { background: linear-gradient(135deg, #fff 0%, #f8fbff 100%) !important; box-shadow: 0 12px 28px rgba(16,35,63,.12) !important; }
+        .stat:hover { transform: translateY(-3px) !important; }
+        .card { transition: all .2s ease !important; }
+        .card:hover { box-shadow: 0 8px 24px rgba(22,44,76,.08) !important; }
+        .primary { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; box-shadow: 0 4px 14px rgba(37,99,235,.28) !important; }
+        .primary:hover { transform: translateY(-2px) !important; }
+        .task { transition: all .2s ease !important; }
+        .task:hover { transform: translateX(3px) !important; box-shadow: 0 6px 16px rgba(16,35,63,.06) !important; }
+      `;
+      document.head.appendChild(style);
+      console.log('✅ PROFESYONELTASARıM YÜKLENDİ!');
+    });
+  </script>
 </body>
 </html>
 
