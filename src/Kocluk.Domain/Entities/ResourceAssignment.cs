@@ -18,4 +18,6 @@ public sealed class ResourceAssignment
     public DateTime AssignedAtUtc { get; private set; }
     public DateTime? OpenedAtUtc { get; private set; }
     public void MarkOpened() { OpenedAtUtc ??= DateTime.UtcNow; }
+    public void MarkCompleted() { Status = "Completed"; }
+    public void Reopen() { Status = "Assigned"; }
 }

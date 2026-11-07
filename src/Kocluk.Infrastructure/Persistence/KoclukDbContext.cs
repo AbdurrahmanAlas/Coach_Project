@@ -30,6 +30,8 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
     public DbSet<QuestionAssignment> QuestionAssignments => Set<QuestionAssignment>();
     public DbSet<StudyResource> StudyResources => Set<StudyResource>();
     public DbSet<ResourceAssignment> ResourceAssignments => Set<ResourceAssignment>();
+    public DbSet<ResourceWorksheet> ResourceWorksheets => Set<ResourceWorksheet>();
+    public DbSet<ResourceSubmission> ResourceSubmissions => Set<ResourceSubmission>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -200,6 +202,28 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AssignedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        builder.Entity<ResourceWorksheet>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.AnswerKey).HasMaxLength(ResourceWorksheet.MaxQuestions);
+            entity.HasIndex(x => x.ResourceId).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ResourceSubmission>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.AnswersJson).IsRequired();
+            entity.Property(x => x.Answers).HasMaxLength(ResourceWorksheet.MaxQuestions);
+            entity.HasIndex(x => new { x.TenantId, x.ResourceId, x.StudentId, x.SubmittedAtUtc });
+            entity.HasIndex(x => x.StudentId);
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<TenantMembership>(entity =>

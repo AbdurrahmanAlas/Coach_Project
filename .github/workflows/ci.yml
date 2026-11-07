@@ -20,6 +20,9 @@ jobs:
         run: |
           python3 -c "import re,pathlib; s=re.search(r'<script>(.*?)</script>', pathlib.Path('src/Kocluk.Api/wwwroot/index.html').read_text(), re.S).group(1); pathlib.Path('/tmp/kocluk-inline.js').write_text(s)"
           node --check /tmp/kocluk-inline.js
+          node --check src/Kocluk.Api/wwwroot/worksheet.js
+      - name: Run worksheet.js unit tests
+        run: node --test tests/worksheet.test.js
       - name: Publish API artifact
         run: dotnet publish src/Kocluk.Api/Kocluk.Api.csproj --configuration Release --no-restore --output ./artifacts/api
       - name: Upload API artifact

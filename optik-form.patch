@@ -1,0 +1,2076 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index cb7b41b..b2e25cd 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -20,6 +20,9 @@ jobs:
+         run: |
+           python3 -c "import re,pathlib; s=re.search(r'<script>(.*?)</script>', pathlib.Path('src/Kocluk.Api/wwwroot/index.html').read_text(), re.S).group(1); pathlib.Path('/tmp/kocluk-inline.js').write_text(s)"
+           node --check /tmp/kocluk-inline.js
++          node --check src/Kocluk.Api/wwwroot/worksheet.js
++      - name: Run worksheet.js unit tests
++        run: node --test tests/worksheet.test.js
+       - name: Publish API artifact
+         run: dotnet publish src/Kocluk.Api/Kocluk.Api.csproj --configuration Release --no-restore --output ./artifacts/api
+       - name: Upload API artifact
+diff --git a/README.md b/README.md
+index 87e6387..4ead1df 100644
+--- a/README.md
++++ b/README.md
+@@ -64,6 +64,10 @@ Performans özeti `GET /api/tenants/{tenantId}/students/{studentId}/question-sum
+ 
+ Koç/admin toplu raporu `GET /api/tenants/{tenantId}/question-summary` ile tüm öğrencilerin ve derslerin soru performansını döndürür; koç dashboard'unda otomatik gösterilir.
+ 
++## Optik formlu çalışma kâğıdı
++
++Koç bir kaynak (PDF/görsel) yüklerken soru ve şık sayısını, isteğe bağlı cevap anahtarını `PUT /api/tenants/{tenantId}/resources/{resourceId}/worksheet` ile tanımlar. Öğrenci dosyayı solda görür, A-E optik formu sağda doldurur; `POST .../submissions` ile gönderir. Anahtar varsa net/doğru/yanlış/boş sunucuda hesaplanır (`Kocluk.Domain.Entities.WorksheetGrader`); yoksa yalnızca cevaplar koça iletilir. Koç `GET .../worksheets/overview` ile tüm gönderimleri ve soru bazlı analizi görür, `POST .../students/{studentId}/reopen` ile çalışmayı yeniden açabilir. Ayrıca metin katmanlı PDF'lerden soru/şık ayıklayıp (kontrol ettikten sonra) soru bankasına çoktan seçmeli kart olarak göndermek mümkündür (arayüzde "PDF'den soru kartı" sekmesi). Ön yüz mantığı `src/Kocluk.Api/wwwroot/worksheet.js` dosyasındadır; saf fonksiyonları `node --test tests/worksheet.test.js` ile test edilir.
++
+ ## Geliştirme notu
+ 
+ Development ortamında EF Core ilk şemayı `EnsureCreated` ile oluşturur. Üretimde PostgreSQL migration’ları uygulama başlangıcında çalışır. Docker Compose parolası yalnızca yerel geliştirme içindir; üretimde gizli bilgiler ortam üzerinden sağlanmalıdır. Tenant izolasyonu üyelikle yapılır. Öğrenci/veli daveti, görüşme onayı, bildirim ve rol bazlı yetkiler eklenmiştir.
+diff --git a/src/Kocluk.Api/Program.cs b/src/Kocluk.Api/Program.cs
+index a76ea38..d6847fb 100644
+--- a/src/Kocluk.Api/Program.cs
++++ b/src/Kocluk.Api/Program.cs
+@@ -746,6 +746,7 @@ app.MapPost("/api/tenants", async (
+ var tenantApi = app.MapGroup("/api/tenants/{tenantId:guid}")
+     .RequireAuthorization()
+     .AddEndpointFilter<TenantMembershipFilter>();
++tenantApi.MapWorksheetEndpoints();
+ 
+ tenantApi.MapGet("/plans", async (Guid tenantId, KoclukDbContext db, CancellationToken ct) =>
+ {
+@@ -951,13 +952,20 @@ tenantApi.MapGet("/resources/{resourceId:guid}/download", async (Guid tenantId,
+     // PDF ve görseller platformdaki iframe/img önizlemesinde açılabilsin.
+     // Dosya adı verilen overload Content-Disposition: attachment döndürdüğü için
+     // tarayıcı iframe'i boş bırakabiliyordu.
+-    var contentType = resource.ContentType ?? string.Empty;
+-    var extension = Path.GetExtension(resource.FileName);
+-    if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
+-        || extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+-        || contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+-        return Results.File(path, contentType, enableRangeProcessing: true);
+-    return Results.File(path, contentType, resource.FileName, enableRangeProcessing: true);
++    // İstemcinin yüklerken bildirdiği Content-Type güvenilmez (ör. .pdf uzantılı dosya text/html olarak
++    // yüklenip aynı origin'de çalıştırılabilir). Tür yalnızca uzantıdan, sabit bir izin listesiyle belirlenir.
++    var extension = Path.GetExtension(resource.FileName).ToLowerInvariant();
++    var inlineType = extension switch
++    {
++        ".pdf" => "application/pdf",
++        ".png" => "image/png",
++        ".jpg" or ".jpeg" => "image/jpeg",
++        ".webp" => "image/webp",
++        _ => null
++    };
++    if (inlineType is not null)
++        return Results.File(path, inlineType, enableRangeProcessing: true);
++    return Results.File(path, "application/octet-stream", resource.FileName, enableRangeProcessing: true);
+ });
+ 
+ tenantApi.MapGet("/resources/{resourceId:guid}/text", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IWebHostEnvironment environment, CancellationToken ct) =>
+@@ -997,41 +1005,6 @@ tenantApi.MapGet("/resources/{resourceId:guid}/text", async (Guid tenantId, Guid
+     return Results.Ok(new { resource.Id, resource.FileName, supported = !string.IsNullOrWhiteSpace(text), text = text.Length > 100000 ? text[..100000] : text });
+ });
+ 
+-tenantApi.MapPost("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ResourceSubmissionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+-{
+-    await EnsureResourceTablesAsync(db, ct);
+-    // Öğrenci-kaynak eşleşmesi aşağıda doğrulanır; rol claim farklılıkları gönderimi engellemez.
+-    var current = await users.GetUserAsync(principal); if (current is null) return Results.Unauthorized();
+-    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
+-    var student = await db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
+-    var assigned = student is null ? null : await db.ResourceAssignments.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
+-    if (resource is null) return Results.NotFound(new { error = "Kaynak bulunamadı." }); if (student is null) return Results.BadRequest(new { error = "Öğrenci hesabı eşleştirilemedi." }); if (assigned is null) return Results.BadRequest(new { error = "Bu kaynak size atanmış görünmüyor." });
+-    var submissionId = Guid.NewGuid();
+-    await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO ResourceSubmissions (Id, TenantId, ResourceId, StudentId, AnswersJson, SubmittedAtUtc) VALUES ({submissionId}, {tenantId}, {resourceId}, {student.Id}, {request.AnswersJson}, {DateTime.UtcNow})", ct); await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ResourceAssignments SET Status = 'Completed' WHERE TenantId = {tenantId} AND ResourceId = {resourceId} AND StudentId = {student.Id}", ct);
+-    if (resource.UploadedByUserId.HasValue)
+-    {
+-        try
+-        {
+-            db.UserNotifications.Add(new UserNotification(resource.UploadedByUserId.Value, "Öğrenci cevapları gönderdi", $"{student.FirstName} {student.LastName} · {resource.Subject} · {resource.Topic} cevaplarını gönderdi.", "ResourceSubmission"));
+-            await db.SaveChangesAsync(ct);
+-        }
+-        catch
+-        {
+-            // Cevap kaydı başarılıysa bildirim oluşturulamaması gönderimi başarısız saymaz.
+-        }
+-    }
+-    return Results.Ok(new { submissionId, sent = true });
+-});
+-
+-tenantApi.MapGet("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+-{
+-    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+-    await EnsureResourceTablesAsync(db, ct);
+-    var rows = await (from submission in db.Database.SqlQueryRaw<ResourceSubmissionRow>("SELECT Id, StudentId, AnswersJson, SubmittedAtUtc FROM ResourceSubmissions WHERE TenantId = {0} AND ResourceId = {1} ORDER BY SubmittedAtUtc DESC", tenantId, resourceId)
+-                      join student in db.Students.AsNoTracking() on submission.StudentId equals student.Id
+-                      select new { submission.Id, submission.StudentId, student.FirstName, student.LastName, submission.AnswersJson, submission.SubmittedAtUtc }).ToListAsync(ct);
+-    return Results.Ok(rows);
+-});
+ tenantApi.MapGet("/question-assignments", async (Guid tenantId, string? status, Guid? studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+ {
+     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+@@ -1865,8 +1838,6 @@ public sealed record QuestionAssignmentRequest(Guid QuestionBankItemId, Guid Stu
+ public sealed record QuestionAssignmentCompleteRequest(string? Answer, bool? IsCorrect, string? ErrorReason, string? Note, int TimeSpentSeconds = 0);
+ public sealed record QuestionAssignmentResponse(Guid Id, Guid TenantId, Guid QuestionBankItemId, Guid StudentId, string? StudentName, string Subject, string Topic, string Prompt, string Difficulty, string ExamType, string QuestionType, string? OptionsJson, DateTime? DueDateUtc, string? Note, string Status, string? ErrorReason, string? StudentNote, DateTime AssignedAtUtc, DateTime? CompletedAtUtc, bool? IsCorrect = null, string? CorrectAnswer = null, string? Explanation = null);
+ public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, DateTime? DueDateUtc, string? Note);
+-public sealed record ResourceSubmissionRequest(string AnswersJson);
+-public sealed record ResourceSubmissionRow(Guid Id, Guid StudentId, string AnswersJson, DateTime SubmittedAtUtc);
+ public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
+ public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
+ 
+diff --git a/src/Kocluk.Api/WorksheetEndpoints.cs b/src/Kocluk.Api/WorksheetEndpoints.cs
+new file mode 100644
+index 0000000..77a37e3
+--- /dev/null
++++ b/src/Kocluk.Api/WorksheetEndpoints.cs
+@@ -0,0 +1,320 @@
++using System.Security.Claims;
++using Kocluk.Domain.Entities;
++using Kocluk.Infrastructure.Identity;
++using Kocluk.Infrastructure.Persistence;
++using Microsoft.AspNetCore.Identity;
++using Microsoft.EntityFrameworkCore;
++
++public sealed record WorksheetRequest(int QuestionCount, int OptionCount, string? AnswerKey, int? DurationMinutes);
++
++/// <summary>
++/// Öğrencinin çalışma gönderimi. Optik form için <c>Answers</c> ("ABC-D..." biçimi) kullanılır;
++/// eski PDF-üzerine-çizim gönderimleri için <c>AnswersJson</c> geçerlidir.
++/// </summary>
++public sealed record ResourceSubmissionRequest(string? AnswersJson = null, string? Answers = null, int TimeSpentSeconds = 0);
++
++/// <summary>
++/// Kaynak dosyalarına bağlı optik form (cevap kâğıdı) uç noktaları. Tenant grubuna eklenir, bu nedenle
++/// <see cref="TenantMembershipFilter"/> üyelik kontrolü zaten uygulanır. Cevap anahtarı yalnızca
++/// koç/admin yanıtlarında bulunur; öğrenci çalışmayı gönderene kadar anahtarı göremez.
++/// </summary>
++public static class WorksheetEndpoints
++{
++    public static RouteGroupBuilder MapWorksheetEndpoints(this RouteGroupBuilder tenantApi)
++    {
++        tenantApi.MapGet("/resources/{resourceId:guid}/worksheet", GetWorksheet);
++        tenantApi.MapPut("/resources/{resourceId:guid}/worksheet", PutWorksheet);
++        tenantApi.MapPost("/resources/{resourceId:guid}/submissions", PostSubmission);
++        tenantApi.MapGet("/resources/{resourceId:guid}/submissions", ListSubmissions);
++        tenantApi.MapGet("/resources/{resourceId:guid}/my-submission", GetMySubmission);
++        tenantApi.MapPost("/resources/{resourceId:guid}/students/{studentId:guid}/reopen", ReopenAssignment);
++        tenantApi.MapGet("/worksheets/overview", Overview);
++        return tenantApi;
++    }
++
++    private static bool IsCoachOrAdmin(ClaimsPrincipal principal) => principal.IsInRole("Coach") || principal.IsInRole("Admin");
++
++    private static Task<Student?> FindStudentAsync(KoclukDbContext db, ApplicationUser current, Guid tenantId, CancellationToken ct) =>
++        db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
++
++    private static object BuildResult(ResourceSubmission submission, ResourceWorksheet sheet) => new
++    {
++        submissionId = submission.Id,
++        sent = true,
++        graded = sheet.HasKey,
++        correct = submission.Correct,
++        wrong = submission.Wrong,
++        blank = submission.Blank,
++        net = submission.Net,
++        timeSpentSeconds = submission.TimeSpentSeconds,
++        submittedAtUtc = submission.SubmittedAtUtc,
++        questionCount = sheet.QuestionCount,
++        optionCount = sheet.OptionCount,
++        answers = submission.Answers,
++        // Anahtar yalnızca öğrenci çalışmayı gönderdikten sonra bu yanıtla birlikte görünür.
++        answerKey = sheet.HasKey ? sheet.AnswerKey : null
++    };
++
++    private static async Task<IResult> GetWorksheet(Guid tenantId, Guid resourceId, ClaimsPrincipal principal,
++        UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct)
++    {
++        await WorksheetStorage.EnsureAsync(db, ct);
++        var sheet = await db.ResourceWorksheets.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId, ct);
++        if (sheet is null) return Results.NotFound();
++        if (IsCoachOrAdmin(principal))
++            return Results.Ok(new { sheet.ResourceId, sheet.QuestionCount, sheet.OptionCount, sheet.DurationMinutes, hasKey = sheet.HasKey, answerKey = sheet.AnswerKey, assignmentStatus = (string?)null });
++        var current = await users.GetUserAsync(principal);
++        if (current is null) return Results.Unauthorized();
++        var student = await FindStudentAsync(db, current, tenantId, ct);
++        var assignment = student is null ? null : await db.ResourceAssignments.AsNoTracking()
++            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
++        if (assignment is null) return Results.Forbid();
++        return Results.Ok(new { sheet.ResourceId, sheet.QuestionCount, sheet.OptionCount, sheet.DurationMinutes, hasKey = sheet.HasKey, answerKey = (string?)null, assignmentStatus = (string?)assignment.Status });
++    }
++
++    private static async Task<IResult> PutWorksheet(Guid tenantId, Guid resourceId, WorksheetRequest request,
++        ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct)
++    {
++        if (!IsCoachOrAdmin(principal)) return Results.Forbid();
++        await WorksheetStorage.EnsureAsync(db, ct);
++        if (!await db.StudyResources.AsNoTracking().AnyAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct))
++            return Results.NotFound(new { error = "Kaynak bulunamadı." });
++        var sheet = await db.ResourceWorksheets.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId, ct);
++        try
++        {
++            if (sheet is null)
++            {
++                sheet = new ResourceWorksheet(tenantId, resourceId, request.QuestionCount, request.OptionCount, request.AnswerKey, request.DurationMinutes);
++                db.ResourceWorksheets.Add(sheet);
++            }
++            else
++            {
++                var shapeChanged = sheet.QuestionCount != request.QuestionCount || sheet.OptionCount != request.OptionCount;
++                var submissions = await db.ResourceSubmissions.Where(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.Answers != null).ToListAsync(ct);
++                if (shapeChanged && submissions.Count > 0)
++                    return Results.Conflict(new { error = "Öğrenci gönderimleri varken soru veya şık sayısı değiştirilemez. Yalnızca cevap anahtarı güncellenebilir." });
++                sheet.Update(request.QuestionCount, request.OptionCount, request.AnswerKey, request.DurationMinutes);
++                // Anahtar değiştiyse daha önce gönderilen çalışmaların sonuçları yeniden hesaplanır.
++                foreach (var submission in submissions)
++                    submission.Regrade(WorksheetGrader.Grade(sheet, submission.Answers!));
++            }
++            await db.SaveChangesAsync(ct);
++        }
++        catch (ArgumentException ex)
++        {
++            return Results.BadRequest(new { error = ex.Message });
++        }
++        return Results.Ok(new { sheet.ResourceId, sheet.QuestionCount, sheet.OptionCount, sheet.DurationMinutes, hasKey = sheet.HasKey, answerKey = sheet.AnswerKey });
++    }
++
++    private static async Task<IResult> PostSubmission(Guid tenantId, Guid resourceId, ResourceSubmissionRequest request,
++        ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct)
++    {
++        await WorksheetStorage.EnsureAsync(db, ct);
++        var current = await users.GetUserAsync(principal);
++        if (current is null) return Results.Unauthorized();
++        var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
++        if (resource is null) return Results.NotFound(new { error = "Kaynak bulunamadı." });
++        var student = await FindStudentAsync(db, current, tenantId, ct);
++        if (student is null) return Results.BadRequest(new { error = "Öğrenci hesabı eşleştirilemedi." });
++        var assignment = await db.ResourceAssignments.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
++        if (assignment is null) return Results.BadRequest(new { error = "Bu kaynak size atanmış görünmüyor." });
++
++        ResourceSubmission submission;
++        ResourceWorksheet? sheet = null;
++        WorksheetResult? result = null;
++        if (request.Answers is not null)
++        {
++            sheet = await db.ResourceWorksheets.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId, ct);
++            if (sheet is null) return Results.BadRequest(new { error = "Bu kaynak için optik form tanımlanmamış." });
++            if (assignment.Status == "Completed")
++                return Results.Conflict(new { error = "Bu çalışmayı zaten gönderdin. Yeniden çözmek için koçundan çalışmayı yeniden açmasını iste." });
++            try
++            {
++                var normalized = ResourceWorksheet.NormalizeSheet(request.Answers, sheet.QuestionCount, sheet.OptionCount);
++                result = WorksheetGrader.Grade(sheet, normalized);
++                submission = ResourceSubmission.CreateOptical(tenantId, resourceId, student.Id, normalized, result, request.TimeSpentSeconds);
++            }
++            catch (ArgumentException ex)
++            {
++                return Results.BadRequest(new { error = ex.Message });
++            }
++        }
++        else
++        {
++            try
++            {
++                submission = ResourceSubmission.CreateLegacy(tenantId, resourceId, student.Id, request.AnswersJson ?? string.Empty);
++            }
++            catch (ArgumentException ex)
++            {
++                return Results.BadRequest(new { error = ex.Message });
++            }
++        }
++
++        db.ResourceSubmissions.Add(submission);
++        assignment.MarkCompleted();
++        await db.SaveChangesAsync(ct);
++
++        if (resource.UploadedByUserId.HasValue)
++        {
++            try
++            {
++                var detail = result != null && result.Graded ? $" Net: {result.Net:0.##}" : string.Empty;
++                db.UserNotifications.Add(new UserNotification(resource.UploadedByUserId.Value, "Öğrenci çalışmasını gönderdi",
++                    $"{student.FirstName} {student.LastName} · {resource.Subject} · {resource.Topic} çalışmasını gönderdi.{detail}", "ResourceSubmission"));
++                await db.SaveChangesAsync(ct);
++            }
++            catch
++            {
++                // Gönderim kaydedildiyse bildirim oluşturulamaması gönderimi başarısız saymaz.
++            }
++        }
++        return sheet is null
++            ? Results.Ok(new { submissionId = submission.Id, sent = true })
++            : Results.Ok(BuildResult(submission, sheet));
++    }
++
++    private static async Task<IResult> ListSubmissions(Guid tenantId, Guid resourceId, ClaimsPrincipal principal,
++        KoclukDbContext db, CancellationToken ct)
++    {
++        if (!IsCoachOrAdmin(principal)) return Results.Forbid();
++        await WorksheetStorage.EnsureAsync(db, ct);
++        var rows = await (from submission in db.ResourceSubmissions.AsNoTracking()
++                          join student in db.Students.AsNoTracking() on submission.StudentId equals student.Id
++                          where submission.TenantId == tenantId && submission.ResourceId == resourceId
++                          orderby submission.SubmittedAtUtc descending
++                          select new
++                          {
++                              submission.Id,
++                              submission.StudentId,
++                              student.FirstName,
++                              student.LastName,
++                              submission.Answers,
++                              submission.Correct,
++                              submission.Wrong,
++                              submission.Blank,
++                              submission.Net,
++                              submission.TimeSpentSeconds,
++                              submission.SubmittedAtUtc,
++                              LegacyJson = submission.Answers == null ? submission.AnswersJson : null
++                          }).ToListAsync(ct);
++        return Results.Ok(rows);
++    }
++
++    private static async Task<IResult> GetMySubmission(Guid tenantId, Guid resourceId, ClaimsPrincipal principal,
++        UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct)
++    {
++        await WorksheetStorage.EnsureAsync(db, ct);
++        var current = await users.GetUserAsync(principal);
++        if (current is null) return Results.Unauthorized();
++        var student = await FindStudentAsync(db, current, tenantId, ct);
++        if (student is null) return Results.NotFound();
++        var sheet = await db.ResourceWorksheets.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId, ct);
++        if (sheet is null) return Results.NotFound();
++        var submission = await db.ResourceSubmissions.AsNoTracking()
++            .Where(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id && x.Answers != null)
++            .OrderByDescending(x => x.SubmittedAtUtc)
++            .FirstOrDefaultAsync(ct);
++        return submission is null ? Results.NotFound() : Results.Ok(BuildResult(submission, sheet));
++    }
++
++    private static async Task<IResult> ReopenAssignment(Guid tenantId, Guid resourceId, Guid studentId, ClaimsPrincipal principal,
++        KoclukDbContext db, CancellationToken ct)
++    {
++        if (!IsCoachOrAdmin(principal)) return Results.Forbid();
++        var assignment = await db.ResourceAssignments.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == studentId, ct);
++        if (assignment is null) return Results.NotFound();
++        assignment.Reopen();
++        await db.SaveChangesAsync(ct);
++        return Results.NoContent();
++    }
++
++    private static async Task<IResult> Overview(Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct)
++    {
++        if (!IsCoachOrAdmin(principal)) return Results.Forbid();
++        await WorksheetStorage.EnsureAsync(db, ct);
++        var sheets = await (from w in db.ResourceWorksheets.AsNoTracking()
++                            join r in db.StudyResources.AsNoTracking() on w.ResourceId equals r.Id
++                            where w.TenantId == tenantId
++                            orderby r.CreatedAtUtc descending
++                            select new
++                            {
++                                w.ResourceId,
++                                r.Subject,
++                                r.Topic,
++                                r.FileName,
++                                w.QuestionCount,
++                                w.OptionCount,
++                                w.DurationMinutes,
++                                HasKey = w.AnswerKey != null,
++                                r.CreatedAtUtc
++                            }).Take(100).ToListAsync(ct);
++        if (sheets.Count == 0) return Results.Ok(Array.Empty<object>());
++        var ids = sheets.Select(x => x.ResourceId).ToList();
++        var assignments = await (from a in db.ResourceAssignments.AsNoTracking()
++                                 join st in db.Students.AsNoTracking() on a.StudentId equals st.Id
++                                 where a.TenantId == tenantId && ids.Contains(a.ResourceId)
++                                 select new { a.ResourceId, a.StudentId, st.FirstName, st.LastName, a.Status, a.AssignedAtUtc, a.OpenedAtUtc }).ToListAsync(ct);
++        var submissions = await db.ResourceSubmissions.AsNoTracking()
++            .Where(s => s.TenantId == tenantId && ids.Contains(s.ResourceId) && s.Answers != null)
++            .OrderByDescending(s => s.SubmittedAtUtc)
++            .Select(s => new { s.ResourceId, s.StudentId, s.Correct, s.Wrong, s.Blank, s.Net, s.TimeSpentSeconds, s.SubmittedAtUtc })
++            .ToListAsync(ct);
++        var result = sheets.Select(sheet => new
++        {
++            sheet.ResourceId,
++            sheet.Subject,
++            sheet.Topic,
++            sheet.FileName,
++            sheet.QuestionCount,
++            sheet.OptionCount,
++            sheet.DurationMinutes,
++            sheet.HasKey,
++            sheet.CreatedAtUtc,
++            students = assignments.Where(a => a.ResourceId == sheet.ResourceId).Select(a =>
++            {
++                var mine = submissions.Where(s => s.ResourceId == sheet.ResourceId && s.StudentId == a.StudentId).ToList();
++                return new
++                {
++                    a.StudentId,
++                    a.FirstName,
++                    a.LastName,
++                    status = a.Status,
++                    a.AssignedAtUtc,
++                    a.OpenedAtUtc,
++                    attempts = mine.Count,
++                    last = mine.FirstOrDefault()
++                };
++            }).ToList()
++        }).ToList();
++        return Results.Ok(result);
++    }
++}
++
++/// <summary>
++/// Geliştirme ortamındaki SQLite için tabloları tembel oluşturur. PostgreSQL'de tablolar EF migration ile gelir.
++/// </summary>
++public static class WorksheetStorage
++{
++    private static volatile bool ready;
++
++    public static async Task EnsureAsync(KoclukDbContext db, CancellationToken ct)
++    {
++        if (ready || !db.Database.IsSqlite()) return;
++        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceWorksheets (Id TEXT NOT NULL CONSTRAINT PK_ResourceWorksheets PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, QuestionCount INTEGER NOT NULL, OptionCount INTEGER NOT NULL, AnswerKey TEXT NULL, DurationMinutes INTEGER NULL, CreatedAtUtc TEXT NOT NULL, UpdatedAtUtc TEXT NOT NULL);", ct);
++        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_ResourceWorksheets_ResourceId ON ResourceWorksheets (ResourceId);", ct);
++        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceSubmissions (Id TEXT NOT NULL CONSTRAINT PK_ResourceSubmissions PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AnswersJson TEXT NOT NULL, Answers TEXT NULL, Correct INTEGER NULL, Wrong INTEGER NULL, Blank INTEGER NULL, Net REAL NULL, TimeSpentSeconds INTEGER NOT NULL DEFAULT 0, SubmittedAtUtc TEXT NOT NULL);", ct);
++        // Eski geliştirme veritabanlarında tablo yalnızca ilk altı sütunla oluşturulmuş olabilir.
++        foreach (var column in new[]
++        {
++            "Answers TEXT NULL", "Correct INTEGER NULL", "Wrong INTEGER NULL", "Blank INTEGER NULL",
++            "Net REAL NULL", "TimeSpentSeconds INTEGER NOT NULL DEFAULT 0"
++        })
++        {
++            try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE ResourceSubmissions ADD COLUMN " + column + ";", ct); }
++            catch (Microsoft.Data.Sqlite.SqliteException) { }
++        }
++        ready = true;
++    }
++}
+diff --git a/src/Kocluk.Api/wwwroot/index.html b/src/Kocluk.Api/wwwroot/index.html
+index 7dbda5a..af569fa 100644
+--- a/src/Kocluk.Api/wwwroot/index.html
++++ b/src/Kocluk.Api/wwwroot/index.html
+@@ -8,6 +8,7 @@
+   <title>Koçluk | Öğrenci gelişim paneli</title>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
++  <script src="/worksheet.js"></script>
+   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
+     :root{--navy:#10233f;--navy-2:#172f52;--ink:#17243a;--muted:#71809a;--line:#e8edf4;--bg:#f5f8fc;--mint:#2cc6a7;--blue:#4f83ff;--orange:#ffad61;--white:#fff}
+     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px Inter,Segoe UI,Arial,sans-serif}button{font:inherit;border:0;cursor:pointer}
+@@ -418,45 +419,7 @@
+       try { return await fetch(url, requestOptions); } finally { clearTimeout(timeout); }
+     };
+     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+-    async function ocrPdfText(url) {
+-      const response = await authRequest(url);
+-      if (!response.ok) return '';
+-      const bytes = new Uint8Array(await response.arrayBuffer());
+-      const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+-      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+-      const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+-      // Önce PDF'nin gerçek metin katmanını kullan. Böylece metin içeren PDF'ler
+-      // OCR beklemeden soru/şık kartlarına dönüşür.
+-      let text = '';
+-      for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, 60); pageNumber++) {
+-        const page = await pdf.getPage(pageNumber);
+-        const content = await page.getTextContent();
+-        const rows = [];
+-        for (const item of content.items) {
+-          const value = String(item.str || '').trim(); if (!value) continue;
+-          const y = Number(item.transform?.[5] || 0); const x = Number(item.transform?.[4] || 0);
+-          let row = rows.find(candidate => Math.abs(candidate.y - y) < 3);
+-          if (!row) { row = { y, items: [] }; rows.push(row); }
+-          row.items.push({ x, value });
+-        }
+-        rows.sort((a, b) => b.y - a.y);
+-        text += '\n' + rows.map(row => row.items.sort((a, b) => a.x - b.x).map(item => item.value).join(' ')).join('\n');
+-      }
+-      if (text.replace(/\s+/g, ' ').trim().length >= 120) return text;
+-      // Görsel/taranmış PDF için OCR yedeği.
+-      if (!window.Tesseract) return text;
+-      const worker = await window.Tesseract.createWorker('tur', 1);
+-      try {
+-        text = '';
+-        for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, 30); pageNumber++) {
+-          const page = await pdf.getPage(pageNumber); const viewport = page.getViewport({ scale: 1.7 });
+-          const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height;
+-          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+-          const result = await worker.recognize(canvas); text += '\n' + (result?.data?.text || '');
+-        }
+-      } finally { await worker.terminate(); }
+-      return text;
+-    }    async function loadMessagesPage() {
++    async function loadMessagesPage() {
+       const tenantId = localStorage.getItem('tenantId'); if (!tenantId) return;
+       const [membersResponse, messagesResponse] = await Promise.all([authRequest(`/api/tenants/${tenantId}/members`), authRequest(`/api/tenants/${tenantId}/messages`) ]);
+       const members = membersResponse.ok ? await membersResponse.json() : [];
+@@ -472,18 +435,55 @@
+       const tenantId = localStorage.getItem('tenantId');
+       if (!tenantId) return;
+       if (!currentUserRoles.some(role => role.toLowerCase() === 'student')) { location.hash = '#question-bank'; return; }
+-      const shell = document.querySelector('.content'); shell.style.maxWidth='none'; shell.style.padding='20px 24px 40px';
+-      const resource = (() => { try { return JSON.parse(sessionStorage.getItem('platformResource') || 'null'); } catch { return null; } })(); const isPdfResource=!!resource && (String(resource.contentType||'').toLowerCase().includes('pdf') || String(resource.fileName||'').toLowerCase().endsWith('.pdf')); document.body.classList.toggle('pdf-focus-mode',isPdfResource);
+-      shell.innerHTML = `<div class="welcome"><div><h1>Soru çözme platformu</h1><p>Koçunun gönderdiği soruları sınav düzeninde çöz, cevaplarını gönder ve sonucunu gör.</p></div><button id="platform-back" class="tag blue" type="button">← Kaynaklara dön</button></div><div class="card section" style="background:linear-gradient(135deg,#12345a,#23659a);color:#fff;border:0"><div style="display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap"><div><span style="opacity:.8;font-size:13px">SANA ATANAN SINAV</span><h2 id="platform-title" style="margin:6px 0 0">Sorular hazırlanıyor…</h2><p style="margin:6px 0 0;opacity:.82">Cevaplarını tamamladığında koçun sonuçlarını görebilir.</p></div><span id="platform-progress" class="tag" style="background:#fff;color:#17456e">0 / 0</span></div></div><div id="platform-root" class="card section"><p style="color:var(--muted)">Sorular yükleniyor…</p></div>`;
+-      document.getElementById('platform-back')?.addEventListener('click', () => { document.body.classList.remove('pdf-focus-mode'); sessionStorage.removeItem('platformResource'); location.hash = '#question-bank'; });
++      document.body.classList.remove('pdf-focus-mode');
++      const shell = document.querySelector('.content'); shell.style.maxWidth = 'none'; shell.style.padding = '20px 24px 40px';
++      const resource = (() => { try { return JSON.parse(sessionStorage.getItem('platformResource') || 'null'); } catch { return null; } })();
++      const goBack = () => { sessionStorage.removeItem('platformResource'); location.hash = '#question-bank'; };
++      shell.innerHTML = `<div class="welcome"><div><h1>Soru çözme platformu</h1><p>Koçunun gönderdiği soruları çöz, cevaplarını gönder ve sonucunu gör.</p></div><button id="platform-back" class="tag blue" type="button">← Kaynaklara dön</button></div><div id="platform-root"></div>`;
++      document.getElementById('platform-back')?.addEventListener('click', goBack);
++      const platformRoot = document.getElementById('platform-root');
++
++      // Kaynağın optik formu varsa (koç "Çalışma gönder" ile göndermişse), çözüm/sonuç ekranını
++      // worksheet.js üstlenir: PDF/görsel solda, A-E optik form sağda, süre ve otomatik taslak dahil.
++      if (resource?.id && window.KoclukWorksheet) {
++        platformRoot.innerHTML = '<p style="color:var(--muted)">Yükleniyor…</p>';
++        const handled = await window.KoclukWorksheet.openStudent(platformRoot, { tenantId, resource, authRequest, onBack: goBack });
++        if (handled) return;
++      }
++
++      platformRoot.innerHTML = '<div class="card section"><p style="color:var(--muted)">Sorular yükleniyor…</p></div>';
+       const response = await authRequest(`/api/tenants/${tenantId}/my/question-assignments?status=Assigned${resource?.id ? '&resourceId=' + encodeURIComponent(resource.id) : ''}`);
+       const assignments = response.ok ? await response.json() : [];
+-      document.getElementById('platform-title').textContent = resource ? `${resource.subject || 'Kaynak'} · ${resource.topic || 'Soru görevi'}` : 'Sana atanan sorular';
+-      const root = document.getElementById('platform-root');
+-      if (!assignments.length) { const fileName = String(resource?.fileName || '').toLowerCase(); const contentType = String(resource?.contentType || '').toLowerCase(); const isPdf = contentType.includes('pdf') || fileName.endsWith('.pdf'); const isImage = contentType.startsWith('image/') || /\.(png|jpe?g|webp)$/i.test(fileName); const source = resource ? (isPdf ? '<div style="width:100%;padding:4px;border:1px solid #dbe7f1;border-radius:14px;background:#f7fbff"><div style="display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-bottom:10px"><button id="pdf-ink-open" class="primary" type="button">✎ Kalem araçlarını aç</button><a class="tag" href="' + resource.downloadUrl + '" target="_blank" rel="noopener">Dosyayı indir</a></div><div id="pdf-workspace" style="position:relative;height:94vh;border:1px solid #dbe7f1;border-radius:14px;background:#fff;overflow:hidden"><div id="pdf-preview" style="position:absolute;inset:0;display:grid;place-items:center;color:#52627a">PDF yükleniyor…</div><canvas id="pdf-ink" style="display:none;position:absolute;inset:0;width:100%;height:100%;z-index:3;touch-action:none"></canvas></div><div id="pdf-tools" style="display:none;position:sticky;bottom:0;z-index:6;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:10px;border-radius:12px;background:#fff;box-shadow:0 6px 18px rgba(20,50,90,.12)"><button type="button" class="tag blue" data-ink-mode="pan">↕ Kaydır</button><button type="button" class="tag" data-ink-mode="check">✓ Şık işaretle</button><button type="button" class="tag" data-ink-mode="pen">✎ Kalem</button><button type="button" class="tag" data-ink-mode="highlighter">▰ Fosforlu kalem</button><button type="button" class="tag" data-ink-mode="eraser">⌫ Silgi</button><button type="button" id="pdf-clear-ink" class="tag">Temizle</button><span id="pdf-save-status" class="tag">İşaretler kaydedilmeye hazır</span><button id="pdf-submit-work" type="button" class="primary">Koça gönder</button></div><pre id="resource-text-panel" style="display:none;text-align:left;white-space:pre-wrap;max-height:48vh;overflow:auto;margin-top:16px;padding:14px;background:#fff;border-radius:10px;border:1px solid #dbe7f1"></pre></div>' : isImage ? '<img alt="Kaynak görsel" src="' + resource.downloadUrl + '" style="max-width:100%;max-height:62vh;border-radius:14px;object-fit:contain;background:#fff">' : '<div style="padding:22px;border:1px solid #dbe7f1;border-radius:14px;background:#f7fbff"><div style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap"><strong style="font-size:16px">Kaynak dosyası</strong><div style="display:flex;align-items:center;gap:8px;margin-left:auto"><button id="load-resource-text" class="primary" type="button">Soruları aç</button> <a class="tag" href="' + resource.downloadUrl + '" target="_blank" rel="noopener">Dosyayı indir</a></div></div><p style="color:var(--muted);margin:8px 0 14px">Word ve Excel içeriğini platformda metin olarak açabilir, istersen dosyayı da indirebilirsin.</p><pre id="resource-text-panel" style="display:none;text-align:left;white-space:pre-wrap;max-height:48vh;overflow:auto;margin-top:16px;padding:14px;background:#fff;border-radius:10px;border:1px solid #dbe7f1"></pre></div>') : ''; root.innerHTML = '<div style="text-align:center;padding:28px 18px">' + source + '<div style="margin-top:18px"><button id="platform-empty-back" class="primary" type="button">Soru bankasına dön</button></div></div>'; document.getElementById('platform-empty-back')?.addEventListener('click', () => location.hash = '#question-bank'); if (isPdf && resource?.downloadUrl) { const preview=document.getElementById('pdf-preview'); const workspace=document.getElementById('pdf-workspace'); authRequest(resource.downloadUrl).then(async response => { if (!response.ok) throw new Error('PDF alınamadı'); const blob=await response.blob(); const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs'); pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs'; const pdf=await pdfjs.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise; workspace.style.overflow='hidden'; preview.style.cssText='position:absolute;inset:0;display:block;overflow:auto;background:#fff'; const pages=document.createElement('div'); pages.style.cssText='position:relative;min-width:100%;width:max-content;padding:14px 28px 40px;box-sizing:border-box;background:#fff'; preview.replaceChildren(pages); const pageCanvases=[]; let maxWidth=0,totalHeight=0; const fitWidth=Math.max(320,(preview.clientWidth||workspace.clientWidth)-56); for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++){const page=await pdf.getPage(pageNumber);const baseViewport=page.getViewport({scale:1});const viewport=page.getViewport({scale:Math.max(.5,fitWidth/baseViewport.width)});const pageCanvas=document.createElement('canvas');pageCanvas.width=Math.ceil(viewport.width);pageCanvas.height=Math.ceil(viewport.height);pageCanvas.style.cssText='display:block;margin:0 auto 14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.28);pointer-events:none';pages.appendChild(pageCanvas);await page.render({canvasContext:pageCanvas.getContext('2d'),viewport}).promise;pageCanvases.push(pageCanvas);maxWidth=Math.max(maxWidth,pageCanvas.width);totalHeight+=pageCanvas.height+14;} pages.style.width=(maxWidth+56)+'px'; pages.style.minWidth=(maxWidth+56)+'px'; const inkLayer=document.getElementById('pdf-ink'); if(inkLayer){inkLayer.style.position='absolute';inkLayer.style.left='28px';inkLayer.style.top='14px';inkLayer.style.width=maxWidth+'px';inkLayer.style.height=Math.max(1,totalHeight)+'px';inkLayer.width=Math.ceil(maxWidth);inkLayer.height=Math.ceil(totalHeight);inkLayer.style.inset='auto';pages.appendChild(inkLayer);}const ink=document.getElementById('pdf-ink'); if(ink&&workspace){ const ctx=ink.getContext('2d'); let mode='pen',drawing=false,lastX=0,lastY=0; const resizeInk=()=>{}; document.querySelectorAll('[data-ink-mode]').forEach(tool=>tool.addEventListener('click',()=>{mode=tool.dataset.inkMode;ink.style.pointerEvents=mode==='pan'?'none':'auto';document.querySelectorAll('[data-ink-mode]').forEach(x=>x.classList.toggle('blue',x===tool));})); document.getElementById('pdf-clear-ink')?.addEventListener('click',()=>ctx.clearRect(0,0,ink.width,ink.height)); const point=e=>{const r=ink.getBoundingClientRect();return{x:(e.clientX-r.left)*(ink.width/r.width),y:(e.clientY-r.top)*(ink.height/r.height)}}; ink.addEventListener('pointerdown',e=>{const p=point(e);if(mode==='check'){ctx.globalCompositeOperation='source-over';ctx.strokeStyle='#145da0';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p.x-16,p.y);ctx.lineTo(p.x-5,p.y+12);ctx.lineTo(p.x+18,p.y-15);ctx.stroke();return;}drawing=true;ink.setPointerCapture(e.pointerId);lastX=p.x;lastY=p.y;}); ink.addEventListener('pointermove',e=>{if(!drawing)return;const p=point(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=mode==='highlighter'?18:mode==='eraser'?28:3;ctx.globalCompositeOperation=mode==='eraser'?'destination-out':'source-over';ctx.strokeStyle=mode==='highlighter'?'rgba(255,215,0,.38)':'#145da0';ctx.stroke();lastX=p.x;lastY=p.y;}); ['pointerup','pointercancel'].forEach(type=>ink.addEventListener(type,()=>{drawing=false;})); workspace.addEventListener('pointerdown',e=>{if(e.target===ink||mode==='pan')return;const p=point(e);if(mode==='check'){ctx.globalCompositeOperation='source-over';ctx.strokeStyle='#145da0';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p.x-16,p.y);ctx.lineTo(p.x-5,p.y+12);ctx.lineTo(p.x+18,p.y-15);ctx.stroke();return;}drawing=true;lastX=p.x;lastY=p.y;workspace.setPointerCapture?.(e.pointerId);}); workspace.addEventListener('pointermove',e=>{if(!drawing||e.target===ink)return;const p=point(e);ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(p.x,p.y);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=mode==='highlighter'?18:mode==='eraser'?28:3;ctx.globalCompositeOperation=mode==='eraser'?'destination-out':'source-over';ctx.strokeStyle=mode==='highlighter'?'rgba(255,215,0,.38)':'#145da0';ctx.stroke();lastX=p.x;lastY=p.y;}); workspace.addEventListener('pointerup',()=>{drawing=false}); } }).catch(() => { if(preview){ const fallback=document.createElement('iframe'); fallback.title='Kaynak PDF'; fallback.src=URL.createObjectURL(blob)+'#zoom=121'; fallback.style.cssText='width:100%;height:100%;border:0;background:#fff'; preview.replaceChildren(fallback); const fallbackInk=document.getElementById('pdf-ink'); const fallbackWorkspace=document.getElementById('pdf-workspace'); if(fallbackInk&&fallbackWorkspace){fallbackInk.style.display='block';fallbackInk.style.position='absolute';fallbackInk.style.inset='0';fallbackInk.style.width='100%';fallbackInk.style.height='100%';fallbackInk.style.zIndex='4';fallbackInk.width=fallbackWorkspace.clientWidth;fallbackInk.height=fallbackWorkspace.clientHeight;fallbackInk.style.pointerEvents='none';const fallbackCtx=fallbackInk.getContext('2d');let fallbackMode='pen',fallbackDrawing=false,fx=0,fy=0;document.querySelectorAll('[data-ink-mode]').forEach(tool=>tool.addEventListener('click',()=>{fallbackMode=tool.dataset.inkMode;fallbackInk.style.pointerEvents=fallbackMode==='pan'?'none':'auto';document.querySelectorAll('[data-ink-mode]').forEach(x=>x.classList.toggle('blue',x===tool));}));document.getElementById('pdf-clear-ink')?.addEventListener('click',()=>fallbackCtx.clearRect(0,0,fallbackInk.width,fallbackInk.height));const fallbackPoint=e=>{const r=fallbackInk.getBoundingClientRect();return{x:(e.clientX-r.left)*(fallbackInk.width/r.width),y:(e.clientY-r.top)*(fallbackInk.height/r.height)}};fallbackInk.addEventListener('pointerdown',e=>{const p=fallbackPoint(e);if(fallbackMode==='check'){fallbackCtx.strokeStyle='#145da0';fallbackCtx.lineWidth=5;fallbackCtx.lineCap='round';fallbackCtx.beginPath();fallbackCtx.moveTo(p.x-16,p.y);fallbackCtx.lineTo(p.x-5,p.y+12);fallbackCtx.lineTo(p.x+18,p.y-15);fallbackCtx.stroke();return;}fallbackDrawing=true;fallbackInk.setPointerCapture(e.pointerId);fx=p.x;fy=p.y;});fallbackInk.addEventListener('pointermove',e=>{if(!fallbackDrawing)return;const p=fallbackPoint(e);fallbackCtx.globalCompositeOperation=fallbackMode==='eraser'?'destination-out':'source-over';fallbackCtx.strokeStyle=fallbackMode==='highlighter'?'rgba(255,215,0,.38)':'#145da0';fallbackCtx.lineWidth=fallbackMode==='highlighter'?18:fallbackMode==='eraser'?28:3;fallbackCtx.lineCap='round';fallbackCtx.beginPath();fallbackCtx.moveTo(fx,fy);fallbackCtx.lineTo(p.x,p.y);fallbackCtx.stroke();fx=p.x;fy=p.y;});['pointerup','pointercancel'].forEach(type=>fallbackInk.addEventListener(type,()=>fallbackDrawing=false));} } }); } document.getElementById('pdf-ink-open')?.addEventListener('click',()=>{const tools=document.getElementById('pdf-tools');const ink=document.getElementById('pdf-ink');if(tools)tools.style.display='flex';if(ink){ink.style.display='block';ink.style.pointerEvents='none';}}); document.addEventListener('click',event=>{const tool=event.target.closest?.('[data-ink-mode]');if(!tool)return;window.__pdfInkMode=tool.dataset.inkMode;const ink=document.getElementById('pdf-ink');const tools=document.getElementById('pdf-tools');if(tools)tools.style.display='flex';if(ink){ink.style.display='block';ink.style.pointerEvents=window.__pdfInkMode==='pan'?'none':'auto';ink.style.zIndex='20';if(!ink.width||!ink.height){const r=ink.getBoundingClientRect();ink.width=Math.max(1,r.width);ink.height=Math.max(1,r.height);}}document.querySelectorAll('[data-ink-mode]').forEach(x=>x.classList.toggle('blue',x===tool));}); let globalInkDrawing=false,globalInkX=0,globalInkY=0; const globalInkPoint=e=>{const ink=document.getElementById('pdf-ink');if(!ink)return null;const r=ink.getBoundingClientRect();return{x:(e.clientX-r.left)*(ink.width/Math.max(1,r.width)),y:(e.clientY-r.top)*(ink.height/Math.max(1,r.height))}}; document.addEventListener('pointerdown',e=>{const ink=document.getElementById('pdf-ink');if(!ink||e.target===ink||!e.target.closest?.('#pdf-preview')||window.__pdfInkMode==='pan')return;const p=globalInkPoint(e);if(!p)return;const ctx=ink.getContext('2d');if(window.__pdfInkMode==='check'){ctx.globalCompositeOperation='source-over';ctx.strokeStyle='#145da0';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p.x-16,p.y);ctx.lineTo(p.x-5,p.y+12);ctx.lineTo(p.x+18,p.y-15);ctx.stroke();return;}globalInkDrawing=true;globalInkX=p.x;globalInkY=p.y;}); document.addEventListener('pointermove',e=>{if(!globalInkDrawing)return;const ink=document.getElementById('pdf-ink');const p=globalInkPoint(e);if(!ink||!p)return;const ctx=ink.getContext('2d');ctx.globalCompositeOperation=window.__pdfInkMode==='eraser'?'destination-out':'source-over';ctx.strokeStyle=window.__pdfInkMode==='highlighter'?'rgba(255,215,0,.38)':'#145da0';ctx.lineWidth=window.__pdfInkMode==='highlighter'?18:window.__pdfInkMode==='eraser'?28:3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(globalInkX,globalInkY);ctx.lineTo(p.x,p.y);ctx.stroke();globalInkX=p.x;globalInkY=p.y;}); document.addEventListener('pointerup',()=>{globalInkDrawing=false;}); document.addEventListener('mousedown',e=>{if(e.button!==0||!e.target.closest?.('#pdf-preview'))return;const ink=document.getElementById('pdf-ink');if(!ink||window.__pdfInkMode==='pan')return;const p=globalInkPoint(e);if(!p)return;const ctx=ink.getContext('2d');if(window.__pdfInkMode==='check'){ctx.globalCompositeOperation='source-over';ctx.strokeStyle='#145da0';ctx.lineWidth=5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(p.x-16,p.y);ctx.lineTo(p.x-5,p.y+12);ctx.lineTo(p.x+18,p.y-15);ctx.stroke();return;}globalInkDrawing=true;globalInkX=p.x;globalInkY=p.y;e.preventDefault();}); document.addEventListener('mousemove',e=>{if(!globalInkDrawing)return;const ink=document.getElementById('pdf-ink');const p=globalInkPoint(e);if(!ink||!p)return;const ctx=ink.getContext('2d');ctx.globalCompositeOperation=window.__pdfInkMode==='eraser'?'destination-out':'source-over';ctx.strokeStyle=window.__pdfInkMode==='highlighter'?'rgba(255,215,0,.38)':'#145da0';ctx.lineWidth=window.__pdfInkMode==='highlighter'?18:window.__pdfInkMode==='eraser'?28:3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(globalInkX,globalInkY);ctx.lineTo(p.x,p.y);ctx.stroke();globalInkX=p.x;globalInkY=p.y;}); document.addEventListener('mouseup',()=>{globalInkDrawing=false;}); document.getElementById('pdf-submit-work')?.addEventListener('click',async()=>{const button=document.getElementById('pdf-submit-work');const status=document.getElementById('pdf-save-status');button.disabled=true;button.textContent='Gönderiliyor…';const drawing=document.getElementById('pdf-ink')?.toDataURL()||null;const sent=await authRequest('/api/tenants/'+tenantId+'/resources/'+resource.id+'/submissions',{method:'POST',body:JSON.stringify({answersJson:JSON.stringify({type:'pdf-annotation',drawing,submittedFrom:'pdf-workspace'})})});if(sent.ok){button.textContent='Koça gönderildi ✓';status.textContent='PDF üzerindeki işaretlerin koçuna gönderildi.';}else{button.disabled=false;button.textContent='Koça gönder';status.textContent='Gönderim başarısız ('+sent.status+')';}}); document.getElementById('load-resource-text')?.addEventListener('click', async event => { const panel=document.getElementById('resource-text-panel'); event.target.disabled=true; event.target.textContent='İçerik okunuyor…'; const result=await authRequest('/api/tenants/' + tenantId + '/resources/' + resource.id + '/text'); let body=result.ok ? await result.json() : null; if ((!body?.text || body.text.length < 80) && isPdf) { event.target.textContent='PDF soruları taranıyor…'; try { body={text:await Promise.race([ocrPdfText(resource.downloadUrl), new Promise(resolve=>setTimeout(()=>resolve(''),90000))])}; } catch (ocrError) { console.warn('PDF OCR başarısız', ocrError); body={text:''}; } } const raw=String(body?.text || '').replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/(?<!\n)(\d{1,3})\s*[\.)]\s+/g,'\n$1. ').replace(/(?<!\()(?<!\n)([A-E])\s*[\)]\s+/g,'\n$1) ').trim(); const starts=[...raw.matchAll(/^\s*(\d{1,3})[\.)]\s+/gm)]; const questions=[]; for(let i=0;i<starts.length;i++){ const part=raw.slice(starts[i].index + starts[i][0].length, i+1<starts.length ? starts[i+1].index : raw.length).trim(); const marks=[...part.matchAll(/^\s*([A-E])[\)][ \t]+/gm)]; if(!marks.length) continue; const prompt=part.slice(0,marks[0].index).trim(); const options=marks.map((mark,j)=>part.slice(mark.index + mark[0].length, j+1<marks.length ? marks[j+1].index : part.length).trim()).filter(Boolean).map((text,j)=>({letter:String.fromCharCode(65+j),text:text.replace(/Doğru cevap:.*$/i,'').trim()})); if(prompt && options.length>=2) questions.push({number:starts[i][1],prompt,options}); } if(!questions.length){ document.getElementById('pdf-workspace')?.style.removeProperty('display'); panel.style.display='block'; panel.style.whiteSpace='normal'; panel.innerHTML='<div style="padding:18px;border:1px solid #dbe7f1;border-radius:14px;background:#fff"><h3 style="margin:0 0 8px;color:#12385e">PDF çözüm modu</h3><p style="color:var(--muted);margin:0 0 14px">PDF’yi yukarıdan incele, cevabını seç ve gerekiyorsa çözüm notunu yaz. Yanıtın koçuna gönderilir.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'+['A','B','C','D','E'].map(letter=>'<button type="button" class="pdf-answer-option" data-value="'+letter+'" style="min-width:58px;padding:12px 18px;border:1px solid #b9d4ef;border-radius:10px;background:#f7fbff;color:#12385e;font-size:18px;font-weight:800;cursor:pointer">'+letter+'</button>').join('')+'</div><textarea id="resource-manual-answer" rows="6" placeholder="Çözümünü veya açıklamanı yaz…" style="width:100%;box-sizing:border-box;border:1px solid #b9d4ef;border-radius:10px;padding:12px;font-size:16px"></textarea><div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px"><span id="resource-manual-status" class="tag"></span><button id="resource-manual-submit" type="button" class="primary">Cevabı koça gönder</button></div></div>'; let selectedPdfAnswer=''; panel.querySelectorAll('.pdf-answer-option').forEach(button=>button.addEventListener('click',()=>{selectedPdfAnswer=button.dataset.value; panel.querySelectorAll('.pdf-answer-option').forEach(item=>{const active=item.dataset.value===selectedPdfAnswer;item.style.background=active?'#fff1b8':'#f7fbff';item.style.borderColor=active?'#e3a719':'#b9d4ef';item.style.boxShadow=active?'0 0 0 2px rgba(227,167,25,.2)':'none';});})); event.target.textContent='Kalem açık ✓'; const openTools=()=>{const tools=document.getElementById('pdf-tools');const ink=document.getElementById('pdf-ink');if(tools)tools.style.display='flex';if(ink)ink.style.display='block';event.target.style.display='none';}; event.target.addEventListener('click',openTools,{once:true}); document.getElementById('resource-manual-submit')?.addEventListener('click',async()=>{const button=document.getElementById('resource-manual-submit'); const status=document.getElementById('resource-manual-status'); const answer=document.getElementById('resource-manual-answer').value.trim(); if(!selectedPdfAnswer && !answer){status.textContent='Şık seçin veya çözüm yazın';return;} button.disabled=true; button.textContent='Gönderiliyor…'; const sent=await authRequest('/api/tenants/'+tenantId+'/resources/'+resource.id+'/submissions',{method:'POST',body:JSON.stringify({answersJson:JSON.stringify({selectedOption:selectedPdfAnswer,manualAnswer:answer,drawing:document.getElementById('pdf-ink')?.toDataURL() || null})})}); if(sent.ok){button.textContent='Koça gönderildi ✓'; status.textContent='Cevabın koça iletildi.';}else{button.disabled=false;button.textContent='Cevabı koça gönder';status.textContent='Gönderim başarısız ('+sent.status+')';}}); return; } let index=0; const answers={}; const renderQuiz=()=>{ const q=questions[index]; document.getElementById('pdf-workspace')?.remove(); document.getElementById('pdf-tools')?.remove(); document.getElementById('pdf-preview')?.remove(); document.getElementById('load-resource-text')?.remove(); const emptyWrap=panel.parentElement; emptyWrap?.querySelector('h2')?.remove(); emptyWrap?.querySelector('p')?.remove(); emptyWrap?.querySelector('div[style*="font-size:42px"]')?.remove(); panel.style.display='block'; panel.style.whiteSpace='normal'; panel.style.background='linear-gradient(145deg,#0c1b2d,#142d48)'; panel.style.color='#eef6ff'; panel.style.padding='20px'; panel.style.borderRadius='18px'; panel.style.maxHeight='none'; panel.style.overflow='visible'; panel.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px"><strong>Soru '+(index+1)+' / '+questions.length+'</strong><span class="tag blue">'+escapeHtml(resource.subject)+' · '+escapeHtml(resource.topic)+'</span></div><article style="padding:26px;border:2px solid #8ebcf0;border-radius:18px;background:linear-gradient(145deg,#eef6ff,#fff8e8);box-shadow:0 10px 25px rgba(24,71,115,.16)"><h3 style="margin:0 0 22px;line-height:1.55;color:#12385e;font-size:22px;font-weight:800">'+escapeHtml(q.prompt)+'</h3><div style="display:grid;gap:9px">'+q.options.map(o=>'<button type="button" class="extracted-option" data-value="'+escapeHtml(o.letter)+'" style="text-align:left;border:1px solid '+(answers[index]===o.letter?'#e3a719':'#b9d4ef')+';background:'+(answers[index]===o.letter?'#fff1b8':'#ffffff')+';border-radius:12px;padding:17px 20px;cursor:pointer;font-size:21px;font-weight:750;line-height:1.5;color:#102f4e"><strong style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:'+(answers[index]===o.letter?'#f1b82d':'#dcecff')+';color:#153e66;margin-right:12px;font-size:19px;font-weight:800">'+o.letter+'</strong>'+escapeHtml(o.text)+'</button>').join('')+'</div></article><div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px"><button type="button" id="extracted-prev" class="tag" '+(index===0?'disabled':'')+'>← Önceki</button><button type="button" id="extracted-next" class="primary">'+(index===questions.length-1?'Tamamlandı ✓':'Sonraki soru →')+'</button></div>'; panel.querySelectorAll('.extracted-option').forEach(btn=>btn.addEventListener('click',()=>{answers[index]=btn.dataset.value; renderQuiz();})); document.getElementById('extracted-prev')?.addEventListener('click',()=>{if(index>0){index--;renderQuiz();}}); document.getElementById('extracted-next')?.addEventListener('click',async ()=>{if(index<questions.length-1){index++;renderQuiz();}else{const submitButton=document.getElementById('extracted-next'); const answeredCount=Object.keys(answers).length; const modal=document.createElement('div'); modal.style.cssText='position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(8,24,42,.58);backdrop-filter:blur(5px)'; modal.innerHTML=`<div role="dialog" aria-modal="true" style="width:min(460px,100%);padding:26px;border-radius:20px;background:linear-gradient(145deg,#fff,#f2f7ff);box-shadow:0 24px 60px rgba(7,31,57,.3)"><h2 style="margin:0 0 8px;color:#12385e">Cevapların hazır</h2><p style="margin:0 0 20px;color:#52627a">${answeredCount} / ${questions.length} soru cevaplandı. Yanıtlarını koçuna göndermek ister misin?</p><div id="answer-submit-error" style="display:none;margin-bottom:12px;padding:10px;border-radius:9px;background:#fff1f1;color:#b42318;font-size:13px"></div><div style="display:flex;justify-content:flex-end;gap:10px"><button id="answer-submit-cancel" type="button" class="tag">Vazgeç</button><button id="answer-submit-confirm" type="button" class="primary">Koça yanıtları gönder</button></div></div>`; document.body.appendChild(modal); const closeModal=()=>modal.remove(); modal.querySelector('#answer-submit-cancel').onclick=closeModal; modal.querySelector('#answer-submit-confirm').onclick=async()=>{const button=modal.querySelector('#answer-submit-confirm'); const error=modal.querySelector('#answer-submit-error'); button.disabled=true; button.textContent='Gönderiliyor…'; const sent=await authRequest('/api/tenants/'+tenantId+'/resources/'+resource.id+'/submissions',{method:'POST',body:JSON.stringify({answersJson:JSON.stringify(answers)})}); const body=await sent.json().catch(()=>({})); if(sent.ok){button.textContent='Gönderildi ✓'; submitButton.disabled=true; submitButton.textContent='Koça gönderildi ✓'; setTimeout(closeModal,800);}else{button.disabled=false; button.textContent='Koça yanıtları gönder'; error.textContent=body.error || ('Sunucu hatası ('+sent.status+')'); error.style.display='block';}};}});}; panel.scrollIntoView({block:'start',behavior:'auto'}); event.target.textContent='Soruları aç'; renderQuiz(); }); document.getElementById('pdf-ink-open')?.addEventListener('click',()=>{const tools=document.getElementById('pdf-tools');const ink=document.getElementById('pdf-ink');if(tools)tools.style.display='flex';if(ink){ink.style.display='block';ink.style.pointerEvents='none';}}); document.getElementById('pdf-submit-work')?.addEventListener('click',async()=>{const button=document.getElementById('pdf-submit-work');const status=document.getElementById('pdf-save-status');button.disabled=true;button.textContent='Gönderiliyor…';const drawing=document.getElementById('pdf-ink')?.toDataURL()||null;const sent=await authRequest('/api/tenants/'+tenantId+'/resources/'+resource.id+'/submissions',{method:'POST',body:JSON.stringify({answersJson:JSON.stringify({type:'pdf-annotation',drawing,submittedFrom:'pdf-workspace'})})});if(sent.ok){button.textContent='Koça gönderildi ✓';status.textContent='PDF üzerindeki işaretlerin koçuna gönderildi.';}else{button.disabled=false;button.textContent='Koça gönder';status.textContent='Gönderim başarısız ('+sent.status+')';}}); return; }
++
++      if (!assignments.length) {
++        // Optik formu olmayan, tek tek soru görevi de bulunmayan kaynak: koçun "Çalışma gönder" veya
++        // "PDF'den soru kartı" akışlarını henüz kullanmadığı eski bir gönderim olabilir.
++        if (!resource) { platformRoot.innerHTML = '<div class="card section" style="text-align:center;padding:34px 18px"><p style="color:var(--muted)">Şu an sana atanmış bekleyen bir sorun yok.</p></div>'; return; }
++        const downloadUrl = resource.downloadUrl;
++        platformRoot.innerHTML = `<div class="card section"><div style="padding:22px;border:1px solid #dbe7f1;border-radius:14px;background:#f7fbff;text-align:center"><strong style="font-size:16px">${escapeHtml(resource.subject || 'Kaynak')} · ${escapeHtml(resource.topic || '')}</strong><p style="color:var(--muted);margin:10px 0 16px">Bu çalışma için henüz optik form veya soru kartı tanımlanmamış. Dosyayı inceleyebilir, eksikse koçuna haber verebilirsin.</p><a class="primary" style="display:inline-block;padding:10px 18px;border-radius:10px;text-decoration:none" href="${downloadUrl}" target="_blank" rel="noopener">Dosyayı aç</a></div></div>`;
++        return;
++      }
++
+       const state = { index: 0, answers: {}, startedAt: Date.now() };
+-      const submit = async () => { const button = document.getElementById('platform-submit'); if (!button) return; button.disabled = true; button.textContent = 'Gönderiliyor…'; const results = await Promise.all(assignments.map(item => authRequest(`/api/tenants/${tenantId}/question-assignments/${item.id}/complete`, { method:'POST', body: JSON.stringify({ answer: state.answers[item.id] || '', note: null, timeSpentSeconds: Math.round((Date.now()-state.startedAt)/1000) }) }).then(async r => r.ok ? await r.json().catch(() => ({})) : { ok:false }))); const correct = results.filter(result => result.isCorrect === true).length; document.getElementById('platform-progress').textContent = 'Tamamlandı'; root.innerHTML = `<div style="text-align:center;padding:34px 18px"><div style="font-size:48px">🎉</div><h2>Sınav koçuna gönderildi</h2><p style="color:var(--muted)">${assignments.length} sorudan <strong>${correct}</strong> doğru cevapladın.</p><button id="platform-finish-back" class="primary" type="button">Kaynaklara dön</button></div>`; document.getElementById('platform-finish-back')?.addEventListener('click', () => location.hash='#question-bank'); };
+-      const render = () => { const item = assignments[state.index]; const options = item.questionType === 'MultipleChoice' && item.optionsJson ? String(item.optionsJson).split('|').map(x => x.trim()).filter(Boolean) : []; const answer = state.answers[item.id] || ''; document.getElementById('platform-progress').textContent = `${state.index + 1} / ${assignments.length}`; root.innerHTML = `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px"><div><span class="tag blue">Soru ${state.index + 1}</span><span style="color:var(--muted);margin-left:8px">${escapeHtml(item.subject)} · ${escapeHtml(item.topic)}</span></div><span class="tag">${item.dueDateUtc ? 'Son tarih: ' + new Date(item.dueDateUtc).toLocaleDateString('tr-TR') : 'Esnek tarih'}</span></div><article style="padding:22px;border:1px solid #dbe7f1;border-radius:16px;background:linear-gradient(135deg,#fbfdff,#f5f9ff)"><h2 style="margin:0 0 18px;line-height:1.45">${escapeHtml(item.prompt)}</h2>${options.length ? `<div style="display:grid;gap:10px">${options.map((option,index) => { const letter=String.fromCharCode(65+index); const selected=answer===option; return `<button type="button" class="platform-option" data-option="${escapeHtml(option)}" style="text-align:left;border:1px solid ${selected ? '#3e8cf7' : '#d5e1ee'};background:${selected ? '#eaf3ff' : '#fff'};border-radius:12px;padding:13px 15px;cursor:pointer;color:#173452"><strong style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${selected ? '#3e8cf7' : '#edf3f9'};color:${selected ? '#fff' : '#315475'};margin-right:9px">${letter}</strong>${escapeHtml(option)}</button>`; }).join('')}</div>` : `<label style="display:block;color:var(--muted);font-weight:700;margin-bottom:7px">Cevabın</label><textarea id="platform-answer" rows="5" maxlength="2000" placeholder="Cevabını buraya yaz…" style="width:100%;box-sizing:border-box">${escapeHtml(answer)}</textarea>`}</article><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap"><button id="platform-prev" class="tag" type="button" ${state.index === 0 ? 'disabled' : ''}>← Önceki</button><span style="color:var(--muted);font-size:13px">Cevabın cihazında tutuluyor.</span>${state.index === assignments.length - 1 ? '<button id="platform-submit" class="primary" type="button">Sınavı koça gönder ✓</button>' : '<button id="platform-next" class="primary" type="button">Sonraki soru →</button>'}</div>`; root.querySelectorAll('.platform-option').forEach(btn => btn.addEventListener('click', () => { state.answers[item.id] = btn.dataset.option; render(); })); document.getElementById('platform-answer')?.addEventListener('input', event => state.answers[item.id] = event.target.value); document.getElementById('platform-prev')?.addEventListener('click', () => { if (state.index > 0) { state.index--; render(); } }); document.getElementById('platform-next')?.addEventListener('click', () => { if (state.index < assignments.length - 1) { state.index++; render(); } }); document.getElementById('platform-submit')?.addEventListener('click', submit); };
++      const submit = async () => {
++        const button = document.getElementById('platform-submit'); if (!button) return;
++        button.disabled = true; button.textContent = 'Gönderiliyor…';
++        const results = await Promise.all(assignments.map(item => authRequest(`/api/tenants/${tenantId}/question-assignments/${item.id}/complete`, { method: 'POST', body: JSON.stringify({ answer: state.answers[item.id] || '', note: null, timeSpentSeconds: Math.round((Date.now() - state.startedAt) / 1000) }) }).then(async r => r.ok ? await r.json().catch(() => ({})) : { ok: false })));
++        const correct = results.filter(result => result.isCorrect === true).length;
++        platformRoot.innerHTML = `<div class="card section" style="text-align:center;padding:34px 18px"><div style="font-size:48px">🎉</div><h2>Sınav koçuna gönderildi</h2><p style="color:var(--muted)">${assignments.length} sorudan <strong>${correct}</strong> doğru cevapladın.</p><button id="platform-finish-back" class="primary" type="button">Kaynaklara dön</button></div>`;
++        document.getElementById('platform-finish-back')?.addEventListener('click', goBack);
++      };
++      const render = () => {
++        const item = assignments[state.index];
++        const options = item.questionType === 'MultipleChoice' && item.optionsJson ? String(item.optionsJson).split('|').map(x => x.trim()).filter(Boolean) : [];
++        const answer = state.answers[item.id] || '';
++        platformRoot.innerHTML = `<div class="card section"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px"><div><span class="tag blue">Soru ${state.index + 1} / ${assignments.length}</span><span style="color:var(--muted);margin-left:8px">${escapeHtml(item.subject)} · ${escapeHtml(item.topic)}</span></div><span class="tag">${item.dueDateUtc ? 'Son tarih: ' + new Date(item.dueDateUtc).toLocaleDateString('tr-TR') : 'Esnek tarih'}</span></div><article style="padding:22px;border:1px solid #dbe7f1;border-radius:16px;background:linear-gradient(135deg,#fbfdff,#f5f9ff)"><h2 style="margin:0 0 18px;line-height:1.45">${escapeHtml(item.prompt)}</h2>${options.length ? `<div style="display:grid;gap:10px">${options.map((option, index) => { const letter = String.fromCharCode(65 + index); const selected = answer === option; return `<button type="button" class="platform-option" data-option="${escapeHtml(option)}" style="text-align:left;border:1px solid ${selected ? '#3e8cf7' : '#d5e1ee'};background:${selected ? '#eaf3ff' : '#fff'};border-radius:12px;padding:13px 15px;cursor:pointer;color:#173452"><strong style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:${selected ? '#3e8cf7' : '#edf3f9'};color:${selected ? '#fff' : '#315475'};margin-right:9px">${letter}</strong>${escapeHtml(option)}</button>`; }).join('')}</div>` : `<label style="display:block;color:var(--muted);font-weight:700;margin-bottom:7px">Cevabın</label><textarea id="platform-answer" rows="5" maxlength="2000" placeholder="Cevabını buraya yaz…" style="width:100%;box-sizing:border-box">${escapeHtml(answer)}</textarea>`}</article><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap"><button id="platform-prev" class="tag" type="button" ${state.index === 0 ? 'disabled' : ''}>← Önceki</button><span style="color:var(--muted);font-size:13px">Cevabın cihazında tutuluyor.</span>${state.index === assignments.length - 1 ? '<button id="platform-submit" class="primary" type="button">Sınavı koça gönder ✓</button>' : '<button id="platform-next" class="primary" type="button">Sonraki soru →</button>'}</div></div>`;
++        platformRoot.querySelectorAll('.platform-option').forEach(btn => btn.addEventListener('click', () => { state.answers[item.id] = btn.dataset.option; render(); }));
++        document.getElementById('platform-answer')?.addEventListener('input', event => state.answers[item.id] = event.target.value);
++        document.getElementById('platform-prev')?.addEventListener('click', () => { if (state.index > 0) { state.index--; render(); } });
++        document.getElementById('platform-next')?.addEventListener('click', () => { if (state.index < assignments.length - 1) { state.index++; render(); } });
++        document.getElementById('platform-submit')?.addEventListener('click', submit);
++      };
+       render();
+     }
+     async function loadQuestionBankPage() {
+@@ -511,6 +511,8 @@
+         document.getElementById('hub-question-send')?.addEventListener('click', async () => { const studentId = document.getElementById('hub-question-student').value; const subject = document.getElementById('hub-question-subject').value.trim(); const topic = document.getElementById('hub-question-topic').value.trim(); const prompt = document.getElementById('hub-question-prompt').value.trim(); const type = document.getElementById('hub-question-type').value; const answerValue = document.getElementById('hub-question-answer').value.trim(); const status = document.getElementById('hub-question-status'); if (!studentId || !subject || !topic || !prompt || !answerValue) { status.textContent = 'Öğrenci, ders, konu, soru ve cevap alanlarını doldurun.'; status.className = 'auth-error'; return; } const optionsJson = type === 'MultipleChoice' ? answerValue : null; const answer = type === 'MultipleChoice' ? answerValue.split('|')[0].trim() : answerValue; const created = await authRequest('/api/tenants/' + tenantId + '/question-bank', { method: 'POST', body: JSON.stringify({ subject, topic, prompt, answer, explanation: null, difficulty: 'Orta', examType: '', isPublished: true, questionType: type, optionsJson, points: 1 }) }); if (!created.ok) { status.textContent = 'Soru kaydedilemedi.'; status.className = 'auth-error'; return; } const question = await created.json(); const assigned = await authRequest('/api/tenants/' + tenantId + '/question-assignments', { method: 'POST', body: JSON.stringify({ questionBankItemId: question.id, studentId, dueDateUtc: null, note: null }) }); status.textContent = assigned.ok ? 'Soru kaydedildi ve öğrenciye gönderildi.' : 'Soru kaydedildi fakat öğrenciye atanamadı.'; status.className = assigned.ok ? 'tag blue' : 'auth-error'; if (assigned.ok) document.getElementById('hub-question-prompt').value = ''; });
+         const studentResponse = await authRequest('/api/tenants/' + tenantId + '/students'); if (studentResponse.ok) fillHubStudents(await studentResponse.json());
+       }
++      // Optik formlu çalışma gönderme/sonuç paneli (çalışma merkezi kartının hemen altına yerleşir).
++      if (canManage) { const wsPanel = window.KoclukWorksheet?.mountCoachPanel(shell, { tenantId, authRequest }); if (wsPanel && library) library.insertAdjacentElement('afterend', wsPanel); }
+       const list = document.getElementById('question-list');
+       if (!canManage) document.getElementById('visual-upload-panel')?.remove();
+       if (!canManage) document.getElementById('library-questions')?.addEventListener('click', () => { const drawer=document.getElementById('assignment-drawer'); if (drawer) { drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none'; if (drawer.style.display === 'block') { document.getElementById('assignment-list')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } } });
+diff --git a/src/Kocluk.Api/wwwroot/worksheet.js b/src/Kocluk.Api/wwwroot/worksheet.js
+new file mode 100644
+index 0000000..9255722
+--- /dev/null
++++ b/src/Kocluk.Api/wwwroot/worksheet.js
+@@ -0,0 +1,1072 @@
++/*
++ * Koçluk · Çalışma kâğıdı (optik form) modülü
++ *
++ * Öğrenci: koçun gönderdiği PDF/görsel solda, optik form (A-E) sağda. Süre, otomatik taslak kaydı,
++ *          gönderim onayı ve gönderince net/doğru/yanlış/boş sonucu.
++ * Koç:     dosya + soru/şık sayısı + (isteğe bağlı) cevap anahtarı ile birden çok öğrenciye gönderim,
++ *          gönderilenler listesi, öğrenci bazlı ve soru bazlı analiz, "yeniden aç".
++ *          Ayrıca PDF'den soru/şıkları ayıklayıp koç onayıyla soru kartı olarak gönderme.
++ *
++ * Saf mantık (parseKeyInput, compareSheets, parseWorksheetText ...) DOM'dan bağımsızdır ve
++ * tests/worksheet.test.js ile Node altında test edilir. Cevap anahtarı yalnızca sunucuda puanlanır;
++ * bu dosyadaki karşılaştırma sadece gönderim sonrası gösterim içindir.
++ */
++(function (root, factory) {
++  const api = factory(root);
++  if (typeof module === 'object' && module.exports) module.exports = api;
++  else root.KoclukWorksheet = api;
++})(typeof window !== 'undefined' ? window : globalThis, function (root) {
++  'use strict';
++
++  const LETTERS = 'ABCDE';
++  const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs';
++  const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
++
++  /* ------------------------------------------------------------------ */
++  /* Saf mantık                                                          */
++  /* ------------------------------------------------------------------ */
++
++  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
++
++  /** Net: doğru − yanlış / (şık sayısı − 1). Sunucudaki WorksheetGrader ile aynı formül (yalnızca gösterim). */
++  function computeNet(correct, wrong, optionCount) {
++    const divisor = Math.max(1, optionCount - 1);
++    return Math.round((correct - wrong / divisor) * 100) / 100;
++  }
++
++  function formatNet(value) {
++    if (value === null || value === undefined) return '—';
++    return Number(value).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
++  }
++
++  function formatDuration(totalSeconds) {
++    const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
++    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
++    const mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
++    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
++  }
++
++  /**
++   * Cevap anahtarı/cevap metnini cevap dizgesine çevirir. Desteklenen biçimler:
++   *   "ABCDEABCDE"            (sıralı)
++   *   "1-A 2-B 3.C 4) D 5:E"  (numaralı; eksik sorular '-' kalır)
++   * Dönüş: { answers, filled, extra, errors }.
++   */
++  function parseKeyInput(text, count, optionCount) {
++    const last = LETTERS[Math.min(5, Math.max(2, optionCount)) - 1];
++    const raw = String(text || '');
++    const out = new Array(count).fill('-');
++    const errors = [];
++    let filled = 0, extra = 0;
++    const place = (index, letter) => {
++      if (letter > last) { errors.push(`Soru ${index + 1}: ${letter} şıkkı bu formda yok (en fazla ${last}).`); return; }
++      if (out[index] === '-') filled++;
++      out[index] = letter;
++    };
++    const numbered = [...raw.matchAll(/(\d{1,3})\s*[-.):=,]*\s*([A-Ea-e])(?![A-Za-z])/g)];
++    if (numbered.length >= 2) {
++      for (const m of numbered) {
++        const no = parseInt(m[1], 10);
++        if (no < 1 || no > count) continue;
++        place(no - 1, m[2].toUpperCase());
++      }
++    } else {
++      const letters = raw.toUpperCase().replace(/[^A-E-]/g, '');
++      for (let i = 0; i < letters.length && i < count; i++) if (letters[i] !== '-') place(i, letters[i]);
++      extra = Math.max(0, letters.length - count);
++    }
++    return { answers: out.join(''), filled, extra, errors };
++  }
++
++  /** {1:'A', 3:'C'} veya dizi → "A-C---" biçimi. */
++  function answersToString(source, count) {
++    let out = '';
++    for (let i = 0; i < count; i++) {
++      const value = Array.isArray(source) ? source[i] : source[i + 1];
++      out += value && LETTERS.includes(value) ? value : '-';
++    }
++    return out;
++  }
++
++  /** Cevap dizgesi + (varsa) anahtar → soru bazlı durum listesi. */
++  function compareSheets(answers, key, count) {
++    const rows = [];
++    for (let i = 0; i < count; i++) {
++      const picked = answers && answers[i] && answers[i] !== '-' ? answers[i] : null;
++      const correct = key && key[i] && key[i] !== '-' ? key[i] : null;
++      let status;
++      if (key && !correct) status = 'void';
++      else if (!picked) status = 'blank';
++      else if (!key) status = 'answered';
++      else status = picked === correct ? 'correct' : 'wrong';
++      rows.push({ no: i + 1, picked, correct, status });
++    }
++    return rows;
++  }
++
++  /** Her öğrencinin son gönderimine göre soru başına doğru yüzdesi. */
++  function questionStats(submissions, key, count) {
++    const latest = new Map();
++    for (const s of submissions) if (s.answers && !latest.has(s.studentId)) latest.set(s.studentId, s);
++    const stats = Array.from({ length: count }, (_, i) => ({ no: i + 1, correct: 0, wrong: 0, blank: 0, total: latest.size }));
++    for (const s of latest.values()) {
++      compareSheets(s.answers, key, count).forEach((row, i) => {
++        if (row.status === 'correct') stats[i].correct++;
++        else if (row.status === 'wrong') stats[i].wrong++;
++        else if (row.status === 'blank') stats[i].blank++;
++      });
++    }
++    return stats.map(x => ({ ...x, percent: x.total ? Math.round((x.correct / x.total) * 100) : 0 }));
++  }
++
++  /* ---------- PDF metninden soru/şık ayıklama ---------- */
++
++  /** Metnin sonundaki "Cevap Anahtarı" bölümünü ayırır. Yalnızca metnin ikinci yarısında ve yeterince numaralı cevap varsa. */
++  function splitAnswerKeySection(text) {
++    const re = /(cevap|yanıt|yanit)\s*anahtar[ıi]?/gi;
++    let match, found = null;
++    while ((match = re.exec(text)) !== null) found = match;
++    if (!found || found.index < text.length * 0.4) return { body: text, keyText: '' };
++    const keyText = text.slice(found.index + found[0].length, found.index + found[0].length + 4000);
++    const tokens = [...keyText.matchAll(/(\d{1,3})\s*[-.):=,]*\s*([A-Ea-e])(?![A-Za-z])/g)];
++    if (tokens.length < 5) return { body: text, keyText: '' };
++    return { body: text.slice(0, found.index), keyText };
++  }
++
++  /** "A) ... B) ... C) ..." biçimini sırayla (A→B→C...) bulur; sıra bozulursa durur. */
++  function splitOptions(text) {
++    const markerFrom = (letter, from) => {
++      const re = new RegExp('(?:^|\\s)\\(?' + letter + '[.)]\\s*', 'g');
++      re.lastIndex = from;
++      const m = re.exec(text);
++      return m ? { start: m.index, end: m.index + m[0].length } : null;
++    };
++    const markers = [];
++    let from = 0;
++    for (const letter of LETTERS) {
++      const m = markerFrom(letter, from);
++      if (!m) break;
++      markers.push({ letter, ...m });
++      from = m.end;
++    }
++    if (markers.length < 2) return { stem: text.trim(), options: [] };
++    const options = markers.map((m, i) => ({
++      letter: m.letter,
++      text: text.slice(m.end, i + 1 < markers.length ? markers[i + 1].start : text.length).trim()
++    }));
++    return { stem: text.slice(0, markers[0].start).trim(), options };
++  }
++
++  function scanBlocks(lines, startNo) {
++    const blocks = [];
++    let current = null, expected = startNo;
++    for (const line of lines) {
++      const m = /^(\d{1,3})\s*[.)]\s*(.*)$/.exec(line);
++      if (m && parseInt(m[1], 10) === expected) {
++        current = { no: expected, parts: [m[2]] };
++        blocks.push(current);
++        expected++;
++      } else if (current) {
++        current.parts.push(line);
++      }
++    }
++    return blocks;
++  }
++
++  /**
++   * Düz metinden soru listesi çıkarır: { questions:[{no, stem, options:[{letter,text}], warnings}], optionCount, answerKey }.
++   * Sonuç bir TASLAKTIR; koç göndermeden önce düzeltir. Taranmış/karışık sayfalarda hatalı olabilir.
++   */
++  function parseWorksheetText(text) {
++    const { body, keyText } = splitAnswerKeySection(String(text || ''));
++    const lines = body.replace(/\r/g, '').split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
++    let blocks = scanBlocks(lines, 1);
++    if (blocks.length < 2) {
++      const first = lines.map(l => /^(\d{1,3})\s*[.)]\s*\S/.exec(l)).find(Boolean);
++      if (first) blocks = scanBlocks(lines, parseInt(first[1], 10));
++    }
++    const questions = blocks.map(block => {
++      const joined = block.parts.join(' ').replace(/\s+/g, ' ').trim();
++      const { stem, options } = splitOptions(joined);
++      const warnings = [];
++      if (!stem || stem.length < 5) warnings.push('Soru metni kısa/boş');
++      if (options.length === 0) warnings.push('Şıklar algılanamadı');
++      else if (options.length < 4) warnings.push('Şık sayısı eksik görünüyor');
++      if (options.some(o => !o.text)) warnings.push('Boş şık var');
++      return { no: block.no, stem, options, warnings };
++    });
++    const maxOptions = questions.reduce((max, q) => Math.max(max, q.options.length), 0);
++    const optionCount = Math.min(5, Math.max(4, maxOptions || 4));
++    let answerKey = null;
++    if (keyText && questions.length) {
++      const parsed = parseKeyInput(keyText, questions.length, optionCount);
++      if (parsed.filled >= Math.ceil(questions.length * 0.5)) answerKey = parsed.answers;
++    }
++    return { questions, optionCount, answerKey };
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Yardımcılar (DOM / ağ)                                              */
++  /* ------------------------------------------------------------------ */
++
++  const isPdf = r => /pdf/i.test(String(r?.contentType || '')) || /\.pdf$/i.test(String(r?.fileName || ''));
++  const isImage = r => /^image\//i.test(String(r?.contentType || '')) || /\.(png|jpe?g|webp)$/i.test(String(r?.fileName || ''));
++
++  let pdfjsPromise = null;
++  function loadPdfJs() {
++    if (!pdfjsPromise) {
++      pdfjsPromise = import(PDFJS_URL).then(lib => { lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return lib; });
++      pdfjsPromise.catch(() => { pdfjsPromise = null; });
++    }
++    return pdfjsPromise;
++  }
++
++  async function readError(response) {
++    try { const body = await response.json(); if (body && body.error) return body.error; } catch { /* yoksay */ }
++    return `İşlem başarısız (${response.status}).`;
++  }
++
++  function storage(action, key, value) {
++    try {
++      if (action === 'get') return root.localStorage.getItem(key);
++      if (action === 'set') root.localStorage.setItem(key, value);
++      if (action === 'remove') root.localStorage.removeItem(key);
++    } catch { /* gizli sekme vb. */ }
++    return null;
++  }
++
++  function injectStyles() {
++    if (root.document.getElementById('ws-styles')) return;
++    const style = root.document.createElement('style');
++    style.id = 'ws-styles';
++    style.textContent = STYLES;
++    root.document.head.appendChild(style);
++  }
++
++  function bubbleRow(no, optionCount, selected, extraClass) {
++    const bubbles = Array.from({ length: optionCount }, (_, i) => {
++      const letter = LETTERS[i];
++      const on = selected === letter;
++      return `<button type="button" class="ws-bubble${on ? ' on' : ''}" data-q="${no}" data-l="${letter}" aria-pressed="${on}" aria-label="Soru ${no}, ${letter} şıkkı">${letter}</button>`;
++    }).join('');
++    return `<div class="ws-row${extraClass ? ' ' + extraClass : ''}" data-row="${no}"><span class="ws-no">${no}</span><div class="ws-opts">${bubbles}</div></div>`;
++  }
++
++  /** Bir cevap kâğıdı bileşeni: tıklama olaylarını toplar. */
++  function mountBubbleSheet(host, { count, optionCount, answers, onChange }) {
++    host.innerHTML = Array.from({ length: count }, (_, i) => bubbleRow(i + 1, optionCount, answers[i + 1])).join('');
++    // onclick ataması: aynı host yeniden çizildiğinde dinleyici birikmez.
++    host.onclick = event => {
++      const button = event.target.closest('.ws-bubble');
++      if (!button || !host.contains(button)) return;
++      const no = Number(button.dataset.q), letter = button.dataset.l;
++      const next = answers[no] === letter ? null : letter;
++      if (next) answers[no] = next; else delete answers[no];
++      host.querySelectorAll(`.ws-bubble[data-q="${no}"]`).forEach(b => {
++        const on = b.dataset.l === next;
++        b.classList.toggle('on', on);
++        b.setAttribute('aria-pressed', String(on));
++      });
++      onChange(no, next);
++    };
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Doküman görüntüleyici (PDF / görsel / metin)                         */
++  /* ------------------------------------------------------------------ */
++
++  async function mountDocument(host, ctx, resource, base) {
++    const scroll = host.querySelector('.ws-doc-scroll');
++    const label = host.querySelector('[data-ws-zoom]');
++    const pageLabel = host.querySelector('[data-ws-page]');
++    const setMessage = html => { scroll.innerHTML = `<div class="ws-doc-msg">${html}</div>`; };
++    const fileResponse = await ctx.authRequest(resource.downloadUrl);
++    if (!fileResponse.ok) { setMessage('Dosya yüklenemedi. Sayfayı yenilemeyi dene.'); return; }
++
++    if (isImage(resource)) {
++      const url = URL.createObjectURL(await fileResponse.blob());
++      scroll.innerHTML = `<img class="ws-doc-img" alt="Çalışma kâğıdı" src="${url}">`;
++      host.querySelector('.ws-zoom')?.remove();
++      return;
++    }
++    if (!isPdf(resource)) {
++      const blob = await fileResponse.blob();
++      const url = URL.createObjectURL(blob);
++      const textResponse = await ctx.authRequest(`${base}/text`);
++      const data = textResponse.ok ? await textResponse.json() : { supported: false };
++      scroll.innerHTML = `<div class="ws-doc-msg"><p>Bu dosya türü sayfada doğrudan gösterilemiyor. ${data.supported ? 'Metni aşağıda.' : ''} Dosyayı indirip açabilir, cevaplarını sağdaki optik forma işaretleyebilirsin.</p><p><a class="ws-btn" href="${url}" download="${esc(resource.fileName || 'calisma')}">Dosyayı indir</a></p>${data.supported ? `<pre class="ws-doc-text">${esc(data.text)}</pre>` : ''}</div>`;
++      host.querySelector('.ws-zoom')?.remove();
++      return;
++    }
++
++    // Gövde yalnızca bir kez okunur; hem pdf.js hem de iframe yedeği aynı blob'u kullanır.
++    const pdfBlob = await fileResponse.blob();
++    let pdf;
++    try {
++      const lib = await loadPdfJs();
++      pdf = await lib.getDocument({ data: new Uint8Array(await pdfBlob.arrayBuffer()) }).promise;
++    } catch (error) {
++      const url = URL.createObjectURL(pdfBlob);
++      scroll.innerHTML = `<iframe class="ws-doc-frame" title="Çalışma kâğıdı" src="${url}"></iframe>`;
++      host.querySelector('.ws-zoom')?.remove();
++      return;
++    }
++
++    const first = await pdf.getPage(1);
++    const baseWidth = first.getViewport({ scale: 1 }).width;
++    let scale = Math.max(0.6, Math.min(2, ((scroll.clientWidth || 700) - 32) / baseWidth));
++    let observer = null, generation = 0;
++    pageLabel.textContent = `1 / ${pdf.numPages}`;
++
++    const build = () => {
++      generation++;
++      const mine = generation;
++      observer?.disconnect();
++      scroll.innerHTML = '';
++      label.textContent = Math.round(scale * 100) + '%';
++      observer = new IntersectionObserver(entries => {
++        for (const entry of entries) {
++          if (entry.isIntersecting) renderPage(entry.target, mine);
++        }
++      }, { root: scroll, rootMargin: '900px 0px' });
++      for (let n = 1; n <= pdf.numPages; n++) {
++        const holder = root.document.createElement('div');
++        holder.className = 'ws-page';
++        holder.dataset.page = String(n);
++        const ratio = first.getViewport({ scale: 1 }).height / baseWidth;
++        holder.style.width = Math.round(baseWidth * scale) + 'px';
++        holder.style.height = Math.round(baseWidth * scale * ratio) + 'px';
++        scroll.appendChild(holder);
++        observer.observe(holder);
++      }
++    };
++
++    const renderPage = async (holder, mine) => {
++      if (holder.dataset.done === String(mine)) return;
++      holder.dataset.done = String(mine);
++      try {
++        const page = await pdf.getPage(Number(holder.dataset.page));
++        if (mine !== generation) return;
++        const dpr = Math.min(2, root.devicePixelRatio || 1);
++        const viewport = page.getViewport({ scale });
++        const canvas = root.document.createElement('canvas');
++        canvas.width = Math.ceil(viewport.width * dpr);
++        canvas.height = Math.ceil(viewport.height * dpr);
++        canvas.style.width = Math.ceil(viewport.width) + 'px';
++        canvas.style.height = Math.ceil(viewport.height) + 'px';
++        await page.render({ canvasContext: canvas.getContext('2d'), viewport, transform: dpr === 1 ? null : [dpr, 0, 0, dpr, 0, 0] }).promise;
++        if (mine !== generation) return;
++        holder.style.width = canvas.style.width;
++        holder.style.height = canvas.style.height;
++        holder.replaceChildren(canvas);
++      } catch { holder.dataset.done = ''; }
++    };
++
++    host.querySelector('[data-ws-zoom-in]').addEventListener('click', () => { scale = Math.min(3, scale + 0.2); build(); });
++    host.querySelector('[data-ws-zoom-out]').addEventListener('click', () => { scale = Math.max(0.4, scale - 0.2); build(); });
++    scroll.addEventListener('scroll', () => {
++      const probe = scroll.scrollTop + scroll.clientHeight / 3;
++      let current = 1;
++      for (const holder of scroll.children) { if (holder.offsetTop <= probe) current = Number(holder.dataset.page); else break; }
++      pageLabel.textContent = `${current} / ${pdf.numPages}`;
++    }, { passive: true });
++    build();
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Öğrenci: çöz                                                         */
++  /* ------------------------------------------------------------------ */
++
++  /**
++   * Çalışma ekranını açar. Kaynağın optik formu yoksa false döner (çağıran eski akışa devam eder).
++   * ctx: { tenantId, resource:{id,subject,topic,fileName,contentType,downloadUrl}, authRequest, userKey?, onBack? }
++   */
++  async function openStudent(host, ctx) {
++    injectStyles();
++    const base = `/api/tenants/${ctx.tenantId}/resources/${ctx.resource.id}`;
++    const response = await ctx.authRequest(`${base}/worksheet`);
++    if (response.status === 404) return false;
++    if (!response.ok) { host.innerHTML = `<div class="ws-root"><div class="ws-alert">${esc(await readError(response))}</div></div>`; return true; }
++    const sheet = await response.json();
++    if (sheet.assignmentStatus === 'Completed') {
++      const mine = await ctx.authRequest(`${base}/my-submission`);
++      if (mine.ok) { renderResult(host, ctx, sheet, await mine.json(), base); return true; }
++    }
++    renderSolve(host, ctx, sheet, base);
++    return true;
++  }
++
++  function renderSolve(host, ctx, sheet, base) {
++    const { resource } = ctx;
++    const count = sheet.questionCount, optionCount = sheet.optionCount;
++    const draftKey = `kocluk:ws-draft:${ctx.tenantId}:${resource.id}:${ctx.userKey || ''}`;
++    let answers = {}, elapsedBase = 0;
++    try {
++      const draft = JSON.parse(storage('get', draftKey) || 'null');
++      if (draft && draft.count === count) { answers = draft.answers || {}; elapsedBase = Number(draft.elapsed) || 0; }
++    } catch { /* bozuk taslak */ }
++    const startedAt = Date.now();
++    const elapsed = () => elapsedBase + Math.floor((Date.now() - startedAt) / 1000);
++
++    host.innerHTML = `
++      <div class="ws-root ws-solve" data-pane="doc">
++        <div class="ws-tabs" role="tablist">
++          <button type="button" class="ws-tab on" data-pane-btn="doc">Soru kâğıdı</button>
++          <button type="button" class="ws-tab" data-pane-btn="sheet">Optik form <span class="ws-pill" data-ws-mini>0/${count}</span></button>
++        </div>
++        <section class="ws-doc">
++          <div class="ws-doc-bar">
++            <div class="ws-doc-title"><strong>${esc(resource.subject || 'Çalışma')}</strong><span>${esc(resource.topic || '')}</span></div>
++            <div class="ws-zoom"><button type="button" class="ws-icon" data-ws-zoom-out aria-label="Uzaklaştır">−</button><span data-ws-zoom>100%</span><button type="button" class="ws-icon" data-ws-zoom-in aria-label="Yakınlaştır">+</button></div>
++            <span class="ws-pageno" data-ws-page></span>
++          </div>
++          <div class="ws-doc-scroll"><div class="ws-doc-msg">Dosya yükleniyor…</div></div>
++        </section>
++        <aside class="ws-sheet">
++          <div class="ws-sheet-head">
++            <div><strong>Optik form</strong><small>${count} soru · ${optionCount} şık</small></div>
++            <div class="ws-timer" data-ws-timer title="Geçen süre">00:00</div>
++          </div>
++          <div class="ws-progress"><div class="ws-progress-bar" data-ws-bar></div></div>
++          <div class="ws-count" data-ws-count></div>
++          <div class="ws-rows" data-ws-rows></div>
++          <div class="ws-sheet-foot">
++            <button type="button" class="ws-btn" data-ws-clear>Temizle</button>
++            <button type="button" class="ws-btn ws-primary" data-ws-submit>Koça gönder</button>
++          </div>
++        </aside>
++        <div class="ws-modal-host" data-ws-modal></div>
++      </div>`;
++
++    const rootEl = host.querySelector('.ws-solve');
++    const $ = selector => rootEl.querySelector(selector);
++    const countEl = $('[data-ws-count]'), barEl = $('[data-ws-bar]'), miniEl = $('[data-ws-mini]'), timerEl = $('[data-ws-timer]');
++    const answered = () => Object.keys(answers).length;
++
++    const save = () => storage('set', draftKey, JSON.stringify({ count, answers, elapsed: elapsed(), savedAt: Date.now() }));
++    const refresh = () => {
++      const n = answered();
++      countEl.textContent = `${n} / ${count} işaretlendi · ${count - n} boş`;
++      barEl.style.width = `${Math.round((n / count) * 100)}%`;
++      miniEl.textContent = `${n}/${count}`;
++    };
++    mountBubbleSheet($('[data-ws-rows]'), { count, optionCount, answers, onChange: () => { refresh(); save(); } });
++    refresh();
++
++    const tick = () => {
++      if (!rootEl.isConnected) { clearInterval(timerId); return; }
++      const seconds = elapsed();
++      if (sheet.durationMinutes) {
++        const remaining = sheet.durationMinutes * 60 - seconds;
++        timerEl.textContent = remaining >= 0 ? formatDuration(remaining) : '+' + formatDuration(-remaining);
++        timerEl.classList.toggle('warn', remaining <= 300 && remaining >= 0);
++        timerEl.classList.toggle('over', remaining < 0);
++        timerEl.title = remaining >= 0 ? 'Kalan süre' : 'Süre doldu';
++      } else {
++        timerEl.textContent = formatDuration(seconds);
++      }
++      if (seconds % 15 === 0) save();
++    };
++    const timerId = setInterval(tick, 1000);
++    tick();
++
++    rootEl.querySelectorAll('[data-pane-btn]').forEach(button => button.addEventListener('click', () => {
++      rootEl.dataset.pane = button.dataset.paneBtn;
++      rootEl.querySelectorAll('[data-pane-btn]').forEach(b => b.classList.toggle('on', b === button));
++    }));
++
++    $('[data-ws-clear]').addEventListener('click', () => {
++      if (!answered()) return;
++      openModal({
++        title: 'İşaretleri temizle?', body: 'Tüm işaretlerin silinecek.', confirm: 'Temizle',
++        onConfirm: () => { for (const key of Object.keys(answers)) delete answers[key]; mountBubbleSheet($('[data-ws-rows]'), { count, optionCount, answers, onChange: () => { refresh(); save(); } }); refresh(); save(); }
++      });
++    });
++
++    const openModal = ({ title, body, confirm, onConfirm, busy }) => {
++      const modalHost = $('[data-ws-modal]');
++      modalHost.innerHTML = `<div class="ws-modal-back"><div class="ws-modal" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${body}</p><div class="ws-modal-actions"><button type="button" class="ws-btn" data-m-cancel>Vazgeç</button><button type="button" class="ws-btn ws-primary" data-m-ok>${esc(confirm)}</button></div></div></div>`;
++      const close = () => { modalHost.innerHTML = ''; };
++      modalHost.querySelector('[data-m-cancel]').addEventListener('click', close);
++      modalHost.querySelector('[data-m-ok]').addEventListener('click', async event => {
++        event.target.disabled = true;
++        const keep = await onConfirm(modalHost);
++        if (!keep) close();
++      });
++      modalHost.querySelector('[data-m-ok]').focus();
++    };
++
++    $('[data-ws-submit]').addEventListener('click', () => {
++      const n = answered(), blank = count - n;
++      openModal({
++        title: 'Çalışmayı koça gönder?',
++        body: `${count} sorudan <strong>${n}</strong> tanesini işaretledin${blank ? `, <strong>${blank}</strong> soru boş` : ''}.<br>Gönderdikten sonra cevaplarını değiştiremezsin.`,
++        confirm: 'Gönder',
++        onConfirm: async modalHost => {
++          const response = await ctx.authRequest(`${base}/submissions`, {
++            method: 'POST',
++            body: JSON.stringify({ answers: answersToString(answers, count), timeSpentSeconds: elapsed() }),
++            timeoutMs: 30000
++          });
++          if (!response.ok) {
++            modalHost.querySelector('.ws-modal').insertAdjacentHTML('beforeend', `<div class="ws-alert">${esc(await readError(response))}</div>`);
++            modalHost.querySelector('[data-m-ok]').disabled = false;
++            return true;
++          }
++          storage('remove', draftKey);
++          clearInterval(timerId);
++          renderResult(host, ctx, sheet, await response.json(), base);
++          return false;
++        }
++      });
++    });
++
++    mountDocument(rootEl.querySelector('.ws-doc'), ctx, resource, base).catch(() => {
++      $('.ws-doc-scroll').innerHTML = '<div class="ws-doc-msg">Dosya açılamadı. Optik formu yine de doldurabilirsin.</div>';
++    });
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Öğrenci: sonuç                                                       */
++  /* ------------------------------------------------------------------ */
++
++  function renderResult(host, ctx, sheet, result, base) {
++    const graded = !!result.graded;
++    const rows = compareSheets(result.answers, result.answerKey, result.questionCount);
++    const chips = rows.map(row => {
++      const label = row.status === 'wrong' ? `${row.picked}→${row.correct}` : (row.picked || '—');
++      const title = { correct: 'Doğru', wrong: `Yanlış (doğru cevap ${row.correct})`, blank: 'Boş', void: 'Puanlanmadı', answered: 'İşaretlendi' }[row.status];
++      return `<div class="ws-chip ${row.status}" title="Soru ${row.no}: ${esc(title)}"><span>${row.no}</span><b>${esc(label)}</b></div>`;
++    }).join('');
++    host.innerHTML = `
++      <div class="ws-root ws-result">
++        <div class="ws-result-head"><div><h2>${esc(ctx.resource.subject || 'Çalışma')} · ${esc(ctx.resource.topic || '')}</h2><p>${graded ? 'Sonucun hazır.' : 'Cevapların koçuna gönderildi. Koçun değerlendirince net burada görünecek.'}</p></div></div>
++        ${graded ? `<div class="ws-cards">
++          <div class="ws-card big"><small>Net</small><strong>${esc(formatNet(result.net))}</strong></div>
++          <div class="ws-card ok"><small>Doğru</small><strong>${result.correct ?? 0}</strong></div>
++          <div class="ws-card bad"><small>Yanlış</small><strong>${result.wrong ?? 0}</strong></div>
++          <div class="ws-card"><small>Boş</small><strong>${result.blank ?? 0}</strong></div>
++          <div class="ws-card"><small>Süre</small><strong>${esc(formatDuration(result.timeSpentSeconds))}</strong></div>
++        </div>` : `<div class="ws-cards"><div class="ws-card"><small>İşaretlenen</small><strong>${count(result.answers)}</strong></div><div class="ws-card"><small>Boş</small><strong>${result.blank ?? 0}</strong></div><div class="ws-card"><small>Süre</small><strong>${esc(formatDuration(result.timeSpentSeconds))}</strong></div></div>`}
++        <div class="ws-legend"><span class="ws-dot correct"></span>Doğru <span class="ws-dot wrong"></span>Yanlış <span class="ws-dot blank"></span>Boş</div>
++        <div class="ws-chips">${chips}</div>
++        <div class="ws-result-actions">
++          ${graded ? '<button type="button" class="ws-btn" data-ws-wrong>Sadece yanlışlarım</button>' : ''}
++          <button type="button" class="ws-btn ws-primary" data-ws-back>Ödevlerime dön</button>
++        </div>
++      </div>`;
++    function count(answers) { return String(answers || '').replace(/-/g, '').length; }
++    const rootEl = host.querySelector('.ws-result');
++    rootEl.querySelector('[data-ws-wrong]')?.addEventListener('click', event => {
++      const on = rootEl.classList.toggle('only-wrong');
++      event.target.textContent = on ? 'Tüm soruları göster' : 'Sadece yanlışlarım';
++    });
++    rootEl.querySelector('[data-ws-back]').addEventListener('click', () => (ctx.onBack ? ctx.onBack() : (root.location.hash = '#question-bank')));
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Koç paneli                                                           */
++  /* ------------------------------------------------------------------ */
++
++  function mountCoachPanel(parent, ctx) {
++    injectStyles();
++    const card = root.document.createElement('section');
++    card.className = 'card section ws-root ws-coach';
++    card.innerHTML = `
++      <div class="ws-coach-head">
++        <div><h2>Optik formlu çalışma</h2><p>PDF veya görseli yükle, öğrencilerine gönder. Öğrenci soruyu görerek optik forma işaretler, sonuç sana gelir.</p></div>
++      </div>
++      <div class="ws-subtabs" role="tablist">
++        <button type="button" class="ws-subtab on" data-tab="send">Çalışma gönder</button>
++        <button type="button" class="ws-subtab" data-tab="cards">PDF'den soru kartı</button>
++        <button type="button" class="ws-subtab" data-tab="results">Gönderilenler ve sonuçlar</button>
++      </div>
++      <div class="ws-tabbody" data-body></div>`;
++    parent.appendChild(card);
++    const body = card.querySelector('[data-body]');
++    const state = { students: null };
++    const tabs = {
++      send: () => renderSendTab(body, ctx, state),
++      cards: () => renderCardsTab(body, ctx, state),
++      results: () => renderResultsTab(body, ctx, state)
++    };
++    card.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
++      card.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b === button));
++      tabs[button.dataset.tab]();
++    }));
++    tabs.send();
++    return card;
++  }
++
++  async function loadStudents(ctx, state) {
++    if (state.students) return state.students;
++    const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/students`);
++    state.students = response.ok ? await response.json() : [];
++    return state.students;
++  }
++
++  function studentPicker(students) {
++    if (!students.length) return '<p class="ws-hint">Henüz öğrencin yok. Önce Öğrenciler sayfasından öğrenci ekle.</p>';
++    return `<div class="ws-students"><label class="ws-check all"><input type="checkbox" data-all> Tümünü seç</label>${students.map(s => `<label class="ws-check"><input type="checkbox" value="${esc(s.id)}" data-student> ${esc(s.firstName)} ${esc(s.lastName)}</label>`).join('')}</div>`;
++  }
++
++  /* ---------- Sekme: çalışma gönder ---------- */
++
++  async function renderSendTab(body, ctx, state) {
++    body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
++    const students = await loadStudents(ctx, state);
++    const key = { count: 40, options: 5, answers: {} };
++    body.innerHTML = `
++      <div class="ws-form">
++        <div class="ws-col">
++          <h3>1 · Öğrenciler</h3>${studentPicker(students)}
++          <h3>2 · Dosya</h3>
++          <div class="ws-grid2">
++            <label>Ders<input data-f="subject" placeholder="Matematik" maxlength="100"></label>
++            <label>Konu<input data-f="topic" placeholder="Fonksiyonlar - Deneme 1" maxlength="180"></label>
++          </div>
++          <label>Soru dosyası (PDF, görsel, Word)<input type="file" data-f="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"></label>
++        </div>
++        <div class="ws-col">
++          <h3>3 · Optik form</h3>
++          <div class="ws-grid3">
++            <label>Soru sayısı<input type="number" data-f="count" min="1" max="200" value="40"></label>
++            <label>Şık sayısı<select data-f="options"><option value="5">5 (A-E)</option><option value="4">4 (A-D)</option></select></label>
++            <label>Süre (dk, isteğe bağlı)<input type="number" data-f="duration" min="1" max="600" placeholder="örn. 40"></label>
++          </div>
++          <label>Son teslim tarihi (isteğe bağlı)<input type="date" data-f="due"></label>
++          <details class="ws-keybox">
++            <summary>Cevap anahtarı gir (isteğe bağlı: otomatik puanlama)</summary>
++            <p class="ws-hint">Anahtarı girersen öğrencinin neti anında hesaplanır, soru bazlı analiz görürsün. Anahtar öğrenciye çalışmayı gönderene kadar gösterilmez. Sonradan da ekleyebilirsin.</p>
++            <textarea data-f="keytext" rows="2" placeholder="ABCDEABCDE… veya 1-A 2-C 3-B …"></textarea>
++            <div class="ws-keystat" data-keystat></div>
++            <div class="ws-keygrid" data-keygrid></div>
++          </details>
++        </div>
++      </div>
++      <div class="ws-send-foot"><button type="button" class="ws-btn ws-primary" data-send>Öğrencilere gönder</button><span class="ws-status" data-status></span></div>`;
++    const $ = s => body.querySelector(s);
++    const field = name => body.querySelector(`[data-f="${name}"]`);
++    const status = (text, kind) => { const el = $('[data-status]'); el.textContent = text; el.className = 'ws-status ' + (kind || ''); };
++
++    body.querySelector('[data-all]')?.addEventListener('change', e => body.querySelectorAll('[data-student]').forEach(c => { c.checked = e.target.checked; }));
++
++    const renderGrid = () => {
++      key.count = Math.max(1, Math.min(200, parseInt(field('count').value, 10) || 1));
++      key.options = parseInt(field('options').value, 10);
++      for (const no of Object.keys(key.answers)) if (Number(no) > key.count || LETTERS.indexOf(key.answers[no]) >= key.options) delete key.answers[no];
++      mountBubbleSheet($('[data-keygrid]'), { count: key.count, optionCount: key.options, answers: key.answers, onChange: stat });
++      Object.entries(key.answers).forEach(([no, letter]) => $(`[data-keygrid] .ws-bubble[data-q="${no}"][data-l="${letter}"]`)?.classList.add('on'));
++      stat();
++    };
++    const stat = () => { $('[data-keystat]').textContent = `Anahtar: ${Object.keys(key.answers).length} / ${key.count} soru girildi`; };
++    let gridHost = $('[data-keygrid]');
++    // mountBubbleSheet her çağrıda yeni dinleyici eklediği için ızgarayı yeniden yaratırız.
++    const resetGrid = () => { const fresh = gridHost.cloneNode(false); gridHost.replaceWith(fresh); gridHost = fresh; renderGrid(); };
++    field('count').addEventListener('change', resetGrid);
++    field('options').addEventListener('change', resetGrid);
++    field('keytext').addEventListener('input', () => {
++      const parsed = parseKeyInput(field('keytext').value, key.count, key.options);
++      key.answers = {};
++      [...parsed.answers].forEach((letter, i) => { if (letter !== '-') key.answers[i + 1] = letter; });
++      resetGrid();
++      if (parsed.errors.length) $('[data-keystat]').textContent += ' · ' + parsed.errors[0];
++      else if (parsed.extra) $('[data-keystat]').textContent += ` · ${parsed.extra} fazla harf yok sayıldı`;
++    });
++    resetGrid();
++
++    $('[data-send]').addEventListener('click', async () => {
++      const subject = field('subject').value.trim(), topic = field('topic').value.trim(), file = field('file').files[0];
++      const studentIds = [...body.querySelectorAll('[data-student]:checked')].map(c => c.value);
++      if (!studentIds.length) return status('En az bir öğrenci seç.', 'err');
++      if (!subject || !topic) return status('Ders ve konu zorunlu.', 'err');
++      if (!file) return status('Bir dosya seç.', 'err');
++      const filled = Object.keys(key.answers).length;
++      if (filled > 0 && filled < key.count && !root.confirm(`Cevap anahtarında ${key.count - filled} soru boş. Boş sorular puanlanmaz. Devam edilsin mi?`)) return;
++      const button = $('[data-send]');
++      button.disabled = true;
++      try {
++        status('Dosya yükleniyor…');
++        const form = new FormData();
++        form.append('subject', subject); form.append('topic', topic); form.append('file', file);
++        const upload = await fetch(`/api/tenants/${ctx.tenantId}/resources`, { method: 'POST', body: form, credentials: 'include' });
++        if (!upload.ok) return status(await readError(upload), 'err');
++        const resource = await upload.json();
++        status('Optik form hazırlanıyor…');
++        const put = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/resources/${resource.id}/worksheet`, {
++          method: 'PUT',
++          body: JSON.stringify({ questionCount: key.count, optionCount: key.options, answerKey: filled ? answersToString(key.answers, key.count) : null, durationMinutes: parseInt(field('duration').value, 10) || null })
++        });
++        if (!put.ok) return status(await readError(put), 'err');
++        const dueValue = field('due').value;
++        const dueDateUtc = dueValue ? new Date(dueValue + 'T23:59:00').toISOString() : null;
++        let sent = 0;
++        for (const studentId of studentIds) {
++          const assigned = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/resource-assignments`, {
++            method: 'POST', body: JSON.stringify({ resourceId: resource.id, studentId, dueDateUtc, note: 'Teslim şekli: platformda çöz (optik form).' })
++          });
++          if (assigned.ok) sent++;
++        }
++        status(sent === studentIds.length ? `${sent} öğrenciye gönderildi ✓` : `${sent}/${studentIds.length} öğrenciye gönderildi. Kalanlar için tekrar dene.`, sent ? 'ok' : 'err');
++        if (sent) { field('file').value = ''; }
++      } catch (error) {
++        status('Gönderilemedi. Bağlantını kontrol edip tekrar dene.', 'err');
++      } finally { button.disabled = false; }
++    });
++  }
++
++  /* ---------- Sekme: sonuçlar ---------- */
++
++  async function renderResultsTab(body, ctx) {
++    body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
++    const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/worksheets/overview`);
++    if (!response.ok) { body.innerHTML = `<div class="ws-alert">${esc(await readError(response))}</div>`; return; }
++    const list = await response.json();
++    if (!list.length) { body.innerHTML = '<p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p>'; return; }
++    body.innerHTML = list.map(item => {
++      const submitted = item.students.filter(s => s.attempts > 0).length;
++      const rows = item.students.map(s => {
++        const last = s.last;
++        const stateTag = s.attempts > 0 && s.status === 'Completed' ? '<span class="ws-tag ok">Teslim etti</span>' : s.attempts > 0 ? '<span class="ws-tag warn">Yeniden açıldı</span>' : s.openedAtUtc ? '<span class="ws-tag">Açtı</span>' : '<span class="ws-tag muted">Açmadı</span>';
++        return `<tr data-student="${esc(s.studentId)}"><td>${esc(s.firstName)} ${esc(s.lastName)}</td><td>${stateTag}</td>
++          <td>${last ? (item.hasKey ? `<strong>${esc(formatNet(last.net))}</strong> net` : '—') : '—'}</td>
++          <td>${last && item.hasKey ? `${last.correct} D · ${last.wrong} Y · ${last.blank} B` : last ? `${last.blank} boş` : ''}</td>
++          <td>${last ? esc(formatDuration(last.timeSpentSeconds)) : ''}</td>
++          <td class="ws-actions">${last ? '<button type="button" class="ws-link" data-detail>Detay</button>' : ''}${s.attempts > 0 && s.status === 'Completed' ? '<button type="button" class="ws-link" data-reopen>Yeniden aç</button>' : ''}</td></tr>`;
++      }).join('');
++      return `<article class="ws-ws" data-resource="${esc(item.resourceId)}" data-count="${item.questionCount}" data-options="${item.optionCount}">
++        <header><div><strong>${esc(item.subject)} · ${esc(item.topic)}</strong><small>${esc(item.fileName)} · ${item.questionCount} soru · ${item.optionCount} şık · ${item.hasKey ? 'anahtar var' : '<em>anahtar yok</em>'}${item.durationMinutes ? ` · ${item.durationMinutes} dk` : ''}</small></div>
++        <div class="ws-head-actions"><span class="ws-tag">${submitted}/${item.students.length} teslim</span><button type="button" class="ws-link" data-analysis>Soru analizi</button><button type="button" class="ws-link" data-key>${item.hasKey ? 'Anahtarı düzenle' : 'Anahtar ekle'}</button></div></header>
++        <div class="ws-table-wrap"><table class="ws-table"><thead><tr><th>Öğrenci</th><th>Durum</th><th>Net</th><th>Sonuç</th><th>Süre</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="ws-hint">Öğrenci atanmamış.</td></tr>'}</tbody></table></div>
++        <div class="ws-detail" data-detail-box></div></article>`;
++    }).join('');
++
++    body.onclick = async event => {
++      const article = event.target.closest('.ws-ws');
++      if (!article) return;
++      const resourceId = article.dataset.resource, count = Number(article.dataset.count), optionCount = Number(article.dataset.options);
++      const box = article.querySelector('[data-detail-box]');
++      const base = `/api/tenants/${ctx.tenantId}/resources/${resourceId}`;
++      const loadAll = async () => {
++        const [s, w] = await Promise.all([ctx.authRequest(`${base}/submissions`), ctx.authRequest(`${base}/worksheet`)]);
++        return { submissions: s.ok ? await s.json() : [], sheet: w.ok ? await w.json() : null };
++      };
++      if (event.target.matches('[data-reopen]')) {
++        const row = event.target.closest('tr');
++        if (!root.confirm('Öğrenci çalışmayı yeniden çözebilsin mi? Önceki sonuç geçmişte kalır.')) return;
++        const r = await ctx.authRequest(`${base}/students/${row.dataset.student}/reopen`, { method: 'POST' });
++        if (r.ok) renderResultsTab(body, ctx); else box.innerHTML = `<div class="ws-alert">${esc(await readError(r))}</div>`;
++      } else if (event.target.matches('[data-detail]')) {
++        const row = event.target.closest('tr');
++        const { submissions, sheet } = await loadAll();
++        const mine = submissions.filter(x => x.studentId === row.dataset.student && x.answers);
++        if (!mine.length) { box.innerHTML = '<p class="ws-hint">Gönderim bulunamadı.</p>'; return; }
++        const latest = mine[0];
++        const rows = compareSheets(latest.answers, sheet?.answerKey || null, count);
++        box.innerHTML = `<h4>${esc(latest.firstName)} ${esc(latest.lastName)} · ${new Date(latest.submittedAtUtc).toLocaleString('tr-TR')}${mine.length > 1 ? ` · ${mine.length}. deneme` : ''}</h4>
++          <div class="ws-chips">${rows.map(r => `<div class="ws-chip ${r.status}" title="Soru ${r.no}"><span>${r.no}</span><b>${esc(r.status === 'wrong' ? r.picked + '→' + r.correct : (r.picked || '—'))}</b></div>`).join('')}</div>
++          ${mine.length > 1 ? `<p class="ws-hint">Önceki denemeler: ${mine.slice(1).map(m => `${new Date(m.submittedAtUtc).toLocaleDateString('tr-TR')} (${m.net == null ? '—' : formatNet(m.net)} net)`).join(', ')}</p>` : ''}`;
++      } else if (event.target.matches('[data-analysis]')) {
++        const { submissions, sheet } = await loadAll();
++        if (!sheet?.hasKey) { box.innerHTML = '<p class="ws-hint">Soru analizi için önce cevap anahtarı ekle.</p>'; return; }
++        const stats = questionStats(submissions, sheet.answerKey, count);
++        if (!stats[0]?.total) { box.innerHTML = '<p class="ws-hint">Henüz teslim eden öğrenci yok.</p>'; return; }
++        box.innerHTML = `<h4>Soru bazlı analiz (${stats[0].total} öğrenci)</h4><div class="ws-bars">${stats.map(x => `<div class="ws-bar" title="Soru ${x.no}: %${x.percent} doğru"><div class="ws-bar-fill ${x.percent < 40 ? 'low' : x.percent < 70 ? 'mid' : 'high'}" style="height:${Math.max(4, x.percent)}%"></div><span>${x.no}</span></div>`).join('')}</div><p class="ws-hint">Çubuk yüksekliği o soruyu doğru yapan öğrenci yüzdesidir. Kırmızı çubuklar tekrar edilmesi gereken sorulardır.</p>`;
++      } else if (event.target.matches('[data-key]')) {
++        const { sheet } = await loadAll();
++        box.innerHTML = `<h4>Cevap anahtarı</h4><textarea rows="2" data-keyedit placeholder="ABCDEABCDE… veya 1-A 2-C …">${esc(sheet?.answerKey && sheet.answerKey.replace(/-/g, '') ? sheet.answerKey : '')}</textarea><div class="ws-keystat" data-keyinfo></div><div class="ws-send-foot"><button type="button" class="ws-btn ws-primary" data-keysave>Kaydet ve yeniden puanla</button><span class="ws-status" data-keystatus></span></div>`;
++        const area = box.querySelector('[data-keyedit]');
++        const info = box.querySelector('[data-keyinfo]');
++        const update = () => { const p = parseKeyInput(area.value, count, optionCount); info.textContent = `${p.filled} / ${count} soru girildi${p.errors[0] ? ' · ' + p.errors[0] : ''}`; return p; };
++        area.addEventListener('input', update); update();
++        box.querySelector('[data-keysave]').addEventListener('click', async () => {
++          const p = update();
++          const st = box.querySelector('[data-keystatus]');
++          const r = await ctx.authRequest(`${base}/worksheet`, { method: 'PUT', body: JSON.stringify({ questionCount: count, optionCount, answerKey: p.filled ? p.answers : null, durationMinutes: sheet?.durationMinutes ?? null }) });
++          if (r.ok) { st.textContent = 'Kaydedildi ✓ Sonuçlar yeniden hesaplandı.'; st.className = 'ws-status ok'; setTimeout(() => renderResultsTab(body, ctx), 900); }
++          else { st.textContent = await readError(r); st.className = 'ws-status err'; }
++        });
++      }
++    };
++  }
++
++  /* ---------- Sekme: PDF'den soru kartı ---------- */
++
++  /** pdf.js metin katmanından satır satır metin üretir; iki sütunlu sayfalarda önce sol sonra sağ sütunu okur. */
++  async function extractPdfText(pdf, maxPages, onProgress) {
++    let text = '';
++    for (let n = 1; n <= Math.min(pdf.numPages, maxPages); n++) {
++      onProgress?.(`Sayfa ${n}/${Math.min(pdf.numPages, maxPages)} okunuyor…`);
++      const page = await pdf.getPage(n);
++      const width = page.getViewport({ scale: 1 }).width;
++      const items = (await page.getTextContent()).items
++        .map(i => ({ str: String(i.str || '').trim(), x: i.transform[4], y: i.transform[5] }))
++        .filter(i => i.str);
++      const left = items.filter(i => i.x < width * 0.5), right = items.filter(i => i.x >= width * 0.5);
++      const twoColumns = items.length > 20 && left.length >= items.length * 0.3 && right.length >= items.length * 0.3;
++      const toLines = group => {
++        const rows = [];
++        for (const item of group) {
++          let row = rows.find(r => Math.abs(r.y - item.y) < 3);
++          if (!row) { row = { y: item.y, items: [] }; rows.push(row); }
++          row.items.push(item);
++        }
++        rows.sort((a, b) => b.y - a.y);
++        return rows.map(r => r.items.sort((a, b) => a.x - b.x).map(i => i.str).join(' ')).join('\n');
++      };
++      text += '\n' + (twoColumns ? toLines(left) + '\n' + toLines(right) : toLines(items));
++    }
++    return text;
++  }
++
++  async function ocrPdf(pdf, maxPages, onProgress) {
++    if (!root.Tesseract) return '';
++    const worker = await root.Tesseract.createWorker('tur', 1);
++    let text = '';
++    try {
++      for (let n = 1; n <= Math.min(pdf.numPages, maxPages); n++) {
++        onProgress?.(`Taranmış sayfa ${n}/${Math.min(pdf.numPages, maxPages)} okunuyor (OCR)…`);
++        const page = await pdf.getPage(n);
++        const viewport = page.getViewport({ scale: 1.7 });
++        const canvas = root.document.createElement('canvas');
++        canvas.width = viewport.width; canvas.height = viewport.height;
++        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
++        text += '\n' + ((await worker.recognize(canvas))?.data?.text || '');
++      }
++    } finally { await worker.terminate(); }
++    return text;
++  }
++
++  async function renderCardsTab(body, ctx, state) {
++    body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
++    const students = await loadStudents(ctx, state);
++    body.innerHTML = `
++      <p class="ws-hint">Metin katmanlı bir PDF seç; sorular ve şıklar ayıklanır. <strong>Gönderilmeden önce sen kontrol edip düzeltirsin</strong> (taranmış veya karışık sayfalarda ayıklama hata yapabilir). Öğrenci soruları tek tek kart olarak çözer.</p>
++      <div class="ws-form">
++        <div class="ws-col"><h3>1 · Öğrenciler</h3>${studentPicker(students)}</div>
++        <div class="ws-col"><h3>2 · PDF</h3>
++          <div class="ws-grid2"><label>Ders<input data-c="subject" maxlength="100"></label><label>Konu<input data-c="topic" maxlength="180"></label></div>
++          <div class="ws-grid2"><label>Zorluk<select data-c="difficulty"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></label><label>Sınav türü<input data-c="exam" value="TYT" maxlength="40"></label></div>
++          <label>PDF dosyası<input type="file" data-c="file" accept=".pdf"></label>
++          <button type="button" class="ws-btn" data-extract>Soruları ayıkla</button> <span class="ws-status" data-cstatus></span>
++        </div>
++      </div>
++      <div data-review></div>`;
++    body.querySelector('[data-all]')?.addEventListener('change', e => body.querySelectorAll('[data-student]').forEach(c => { c.checked = e.target.checked; }));
++    const c = name => body.querySelector(`[data-c="${name}"]`);
++    const status = (text, kind) => { const el = body.querySelector('[data-cstatus]'); el.textContent = text; el.className = 'ws-status ' + (kind || ''); };
++    const review = body.querySelector('[data-review]');
++    let draft = null;
++
++    body.querySelector('[data-extract]').addEventListener('click', async () => {
++      const file = c('file').files[0];
++      if (!file) return status('Bir PDF seç.', 'err');
++      try {
++        status('PDF açılıyor…');
++        const lib = await loadPdfJs();
++        const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
++        let text = await extractPdfText(pdf, 60, status);
++        if (text.replace(/\s+/g, '').length < 120) {
++          status('Metin katmanı yok, OCR deneniyor (yavaş olabilir)…');
++          text = await ocrPdf(pdf, 30, status);
++        }
++        draft = parseWorksheetText(text);
++        if (!draft.questions.length) { review.innerHTML = ''; return status('Soru bulunamadı. PDF numaralı sorular ("1.", "2)") içermiyor olabilir. Bunun yerine "Çalışma gönder" sekmesindeki optik formu kullan.', 'err'); }
++        status(`${draft.questions.length} soru bulundu. Kontrol edip gönder.`, 'ok');
++        renderReview();
++      } catch (error) {
++        status('PDF okunamadı. Dosya bozuk veya bağlantı sorunu olabilir.', 'err');
++      }
++    });
++
++    const renderReview = () => {
++      const keyArr = draft.answerKey ? [...draft.answerKey] : [];
++      review.innerHTML = `
++        <div class="ws-review-bar"><strong>${draft.questions.length} soru</strong>
++          <label>Cevap anahtarını yapıştır <input data-keypaste placeholder="ABCDE… veya 1-A 2-C …"></label>
++          <span class="ws-hint">Her soruda doğru şık zorunludur.</span></div>
++        <div class="ws-qlist">${draft.questions.map((q, i) => `
++          <div class="ws-q${q.warnings.length ? ' warn' : ''}" data-i="${i}">
++            <div class="ws-q-head"><strong>Soru ${q.no}</strong>${q.warnings.map(w => `<span class="ws-tag warn">${esc(w)}</span>`).join('')}<button type="button" class="ws-link danger" data-del>Sil</button></div>
++            <textarea rows="3" data-stem>${esc(q.stem)}</textarea>
++            <div class="ws-opts-edit">${LETTERS.slice(0, draft.optionCount).split('').map((letter, k) => `
++              <label class="ws-optline"><input type="radio" name="ok-${i}" value="${letter}" ${keyArr[i] === letter ? 'checked' : ''} aria-label="Doğru şık ${letter}"><b>${letter}</b><input data-opt="${k}" value="${esc(q.options[k]?.text || '')}"></label>`).join('')}</div>
++          </div>`).join('')}</div>
++        <div class="ws-send-foot"><button type="button" class="ws-btn ws-primary" data-publish>Öğrencilere soru kartı olarak gönder</button><span class="ws-status" data-pstatus></span></div>`;
++      review.querySelector('[data-keypaste]').addEventListener('input', e => {
++        const parsed = parseKeyInput(e.target.value, draft.questions.length, draft.optionCount);
++        [...parsed.answers].forEach((letter, i) => {
++          if (letter === '-') return;
++          const radio = review.querySelector(`input[name="ok-${i}"][value="${letter}"]`);
++          if (radio) radio.checked = true;
++        });
++      });
++      review.addEventListener('click', e => {
++        if (!e.target.matches('[data-del]')) return;
++        const i = Number(e.target.closest('.ws-q').dataset.i);
++        syncDraft();
++        draft.questions.splice(i, 1);
++        if (draft.answerKey) draft.answerKey = draft.answerKey.slice(0, i) + draft.answerKey.slice(i + 1);
++        renderReview();
++      });
++      review.querySelector('[data-publish]').addEventListener('click', publish);
++    };
++
++    // Ekrandaki düzenlemeleri taslağa yazar.
++    const syncDraft = () => {
++      const keyChars = [];
++      review.querySelectorAll('.ws-q').forEach((el, i) => {
++        const q = draft.questions[i];
++        q.stem = el.querySelector('[data-stem]').value.trim();
++        q.options = [...el.querySelectorAll('[data-opt]')].map((input, k) => ({ letter: LETTERS[k], text: input.value.trim() }));
++        keyChars[i] = el.querySelector('input[type="radio"]:checked')?.value || '-';
++      });
++      draft.answerKey = keyChars.join('');
++    };
++
++    const publish = async () => {
++      const pstatus = review.querySelector('[data-pstatus]');
++      const say = (text, kind) => { pstatus.textContent = text; pstatus.className = 'ws-status ' + (kind || ''); };
++      syncDraft();
++      const studentIds = [...body.querySelectorAll('[data-student]:checked')].map(x => x.value);
++      const subject = c('subject').value.trim(), topic = c('topic').value.trim();
++      if (!studentIds.length) return say('En az bir öğrenci seç.', 'err');
++      if (!subject || !topic) return say('Ders ve konu zorunlu.', 'err');
++      for (const [i, q] of draft.questions.entries()) {
++        const filled = q.options.filter(o => o.text);
++        if (!q.stem) return say(`Soru ${q.no}: metin boş.`, 'err');
++        if (filled.length < 2) return say(`Soru ${q.no}: en az 2 şık gerekli.`, 'err');
++        if (draft.answerKey[i] === '-' || !q.options[LETTERS.indexOf(draft.answerKey[i])]?.text) return say(`Soru ${q.no}: doğru şıkkı seç.`, 'err');
++      }
++      const button = review.querySelector('[data-publish]');
++      button.disabled = true;
++      let created = 0, assigned = 0;
++      try {
++        for (const [i, q] of draft.questions.entries()) {
++          say(`Gönderiliyor… ${i + 1}/${draft.questions.length}`);
++          const options = q.options.filter(o => o.text).map(o => o.text.replace(/\|/g, '/'));
++          const correct = q.options[LETTERS.indexOf(draft.answerKey[i])].text.replace(/\|/g, '/');
++          const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/question-bank`, {
++            method: 'POST',
++            body: JSON.stringify({ subject, topic, prompt: q.stem, answer: correct, explanation: null, difficulty: c('difficulty').value, examType: c('exam').value.trim() || 'TYT', isPublished: true, questionType: 'MultipleChoice', optionsJson: options.join('|'), resourceId: null, points: 1 })
++          });
++          if (!response.ok) { say(`Soru ${q.no} kaydedilemedi: ${await readError(response)}`, 'err'); button.disabled = false; return; }
++          const item = await response.json();
++          created++;
++          for (const studentId of studentIds) {
++            const a = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/question-assignments`, { method: 'POST', body: JSON.stringify({ questionBankItemId: item.id, studentId, dueDateUtc: null, note: null }) });
++            if (a.ok) assigned++;
++          }
++        }
++        say(`${created} soru oluşturuldu, ${assigned} görev öğrencilere gönderildi ✓`, 'ok');
++      } catch { say('Gönderim yarıda kesildi. Soru bankasını kontrol edip tekrar dene.', 'err'); button.disabled = false; }
++    };
++  }
++
++  /* ------------------------------------------------------------------ */
++  /* Stiller                                                              */
++  /* ------------------------------------------------------------------ */
++
++  const STYLES = `
++  .ws-root{--ws-ink:#173452;--ws-muted:#5d7088;--ws-line:#dbe7f1;--ws-bg:#f6f9fc;--ws-blue:#2563eb;--ws-green:#15803d;--ws-red:#c62828;--ws-amber:#b45309;color:var(--ws-ink);text-align:left}
++  .ws-root *{box-sizing:border-box}
++  .ws-btn{border:1px solid var(--ws-line);background:#fff;color:var(--ws-ink);border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
++  .ws-btn:hover{background:#f1f6fb}.ws-btn:disabled{opacity:.55;cursor:default}
++  .ws-primary{background:var(--ws-blue);border-color:var(--ws-blue);color:#fff}.ws-primary:hover{background:#1d4ed8}
++  .ws-alert{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fdecec;color:#8a1c1c;font-weight:600}
++  .ws-hint{color:var(--ws-muted);font-size:13px;margin:6px 0}
++  /* Öğrenci çözüm ekranı */
++  .ws-solve{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;height:calc(100vh - 150px);min-height:540px}
++  .ws-doc,.ws-sheet{background:#fff;border:1px solid var(--ws-line);border-radius:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
++  .ws-doc-bar{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--ws-line);background:var(--ws-bg)}
++  .ws-doc-title{display:flex;flex-direction:column;min-width:0;margin-right:auto}.ws-doc-title span{color:var(--ws-muted);font-size:12px}
++  .ws-zoom{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
++  .ws-icon{width:30px;height:30px;border-radius:8px;border:1px solid var(--ws-line);background:#fff;font-size:18px;line-height:1;cursor:pointer}
++  .ws-pageno{font-size:13px;color:var(--ws-muted);min-width:56px;text-align:right}
++  .ws-doc-scroll{flex:1;overflow:auto;background:#e8eef5;padding:16px;min-height:0}
++  .ws-page{margin:0 auto 14px;background:#fff;box-shadow:0 2px 10px rgba(20,50,90,.2)}.ws-page canvas{display:block}
++  .ws-doc-img{display:block;max-width:100%;margin:0 auto;background:#fff;box-shadow:0 2px 10px rgba(20,50,90,.2)}
++  .ws-doc-frame{width:100%;height:100%;min-height:480px;border:0;background:#fff}
++  .ws-doc-msg{padding:28px;color:var(--ws-muted);text-align:center}.ws-doc-text{white-space:pre-wrap;text-align:left;background:#fff;padding:14px;border-radius:10px;max-height:50vh;overflow:auto}
++  .ws-sheet-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 6px}.ws-sheet-head small{display:block;color:var(--ws-muted)}
++  .ws-timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;padding:4px 10px;border-radius:10px;background:var(--ws-bg)}
++  .ws-timer.warn{background:#fff4e0;color:var(--ws-amber)}.ws-timer.over{background:#fdecec;color:var(--ws-red)}
++  .ws-progress{height:6px;margin:6px 16px 0;background:#e7eef6;border-radius:99px;overflow:hidden}.ws-progress-bar{height:100%;width:0;background:var(--ws-blue);transition:width .2s}
++  .ws-count{padding:6px 16px 8px;color:var(--ws-muted);font-size:13px}
++  .ws-rows{flex:1;overflow:auto;padding:4px 10px 10px;min-height:0}
++  .ws-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px}.ws-row:nth-child(even){background:#fafcfe}
++  .ws-no{width:28px;text-align:right;font-weight:700;color:var(--ws-muted);font-variant-numeric:tabular-nums}
++  .ws-opts{display:flex;gap:7px}
++  .ws-bubble{width:36px;height:36px;border-radius:50%;border:2px solid #b9cadb;background:#fff;color:#4a617a;font:inherit;font-weight:800;cursor:pointer;transition:transform .08s}
++  .ws-bubble:hover{border-color:var(--ws-blue)}.ws-bubble:active{transform:scale(.92)}
++  .ws-bubble.on{background:#1b2b3f;border-color:#1b2b3f;color:#fff}
++  .ws-sheet-foot{display:flex;gap:10px;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--ws-line);background:var(--ws-bg)}
++  .ws-sheet-foot .ws-primary{flex:1}
++  .ws-tabs{display:none}
++  .ws-modal-back{position:fixed;inset:0;background:rgba(15,30,50,.45);display:grid;place-items:center;z-index:1000;padding:16px}
++  .ws-modal{background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}.ws-modal h3{margin:0 0 8px}.ws-modal p{margin:0 0 16px;line-height:1.5}
++  .ws-modal-actions{display:flex;justify-content:flex-end;gap:10px}
++  @media (max-width:900px){
++    .ws-solve{grid-template-columns:1fr;height:calc(100vh - 110px)}
++    .ws-tabs{display:flex;gap:8px}
++    .ws-tab{flex:1;border:1px solid var(--ws-line);background:#fff;border-radius:10px;padding:10px;font:inherit;font-weight:700;color:var(--ws-ink)}
++    .ws-tab.on{background:var(--ws-ink);color:#fff;border-color:var(--ws-ink)}
++    .ws-pill{background:rgba(255,255,255,.22);border-radius:99px;padding:1px 8px;font-size:12px;margin-left:4px}
++    .ws-tab:not(.on) .ws-pill{background:var(--ws-bg);color:var(--ws-muted)}
++    .ws-solve{grid-template-rows:auto minmax(0,1fr)}
++    .ws-solve[data-pane="doc"] .ws-sheet,.ws-solve[data-pane="sheet"] .ws-doc{display:none}
++    .ws-bubble{width:42px;height:42px}
++  }
++  /* Sonuç */
++  .ws-result{max-width:980px;margin:0 auto}.ws-result-head h2{margin:0 0 4px}.ws-result-head p{margin:0 0 14px;color:var(--ws-muted)}
++  .ws-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
++  .ws-card{background:#fff;border:1px solid var(--ws-line);border-radius:14px;padding:14px}.ws-card small{display:block;color:var(--ws-muted);font-weight:600}.ws-card strong{font-size:26px}
++  .ws-card.big{background:var(--ws-ink);color:#fff;border-color:var(--ws-ink)}.ws-card.big small{color:#b8c8da}.ws-card.ok strong{color:var(--ws-green)}.ws-card.bad strong{color:var(--ws-red)}
++  .ws-legend{display:flex;gap:14px;align-items:center;color:var(--ws-muted);font-size:13px;margin:6px 0 10px}
++  .ws-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:-8px}.ws-dot.correct{background:#22c55e}.ws-dot.wrong{background:#ef4444}.ws-dot.blank{background:#cbd5e1}
++  .ws-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
++  .ws-chip{border-radius:10px;padding:6px 4px;text-align:center;border:1px solid var(--ws-line);background:#fff}
++  .ws-chip span{display:block;font-size:11px;color:var(--ws-muted)}.ws-chip b{font-size:15px}
++  .ws-chip.correct{background:#e8f8ee;border-color:#9bdfb4}.ws-chip.wrong{background:#fdecec;border-color:#f3a6a6;color:#8a1c1c}
++  .ws-chip.blank{background:#f1f5f9}.ws-chip.void{background:#fff8e6;border-color:#f1d38a}.ws-chip.answered{background:#eef4ff;border-color:#b6ccf5}
++  .ws-result.only-wrong .ws-chip:not(.wrong){display:none}
++  .ws-result-actions{display:flex;gap:10px;margin-top:18px}
++  /* Koç paneli */
++  .ws-coach{background:#fff}.ws-coach-head h2{margin:0}.ws-coach-head p{margin:4px 0 12px;color:var(--ws-muted)}
++  .ws-subtabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--ws-line);margin-bottom:14px}
++  .ws-subtab{border:0;background:none;padding:10px 14px;font:inherit;font-weight:700;color:var(--ws-muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
++  .ws-subtab.on{color:var(--ws-blue);border-bottom-color:var(--ws-blue)}
++  .ws-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
++  .ws-col h3{margin:12px 0 8px;font-size:15px}
++  .ws-coach label{display:block;font-size:12px;font-weight:700;color:#52627a;margin-bottom:10px}
++  .ws-coach input:not([type=checkbox]):not([type=radio]),.ws-coach select,.ws-coach textarea{display:block;width:100%;margin-top:4px;padding:9px;border:1px solid #c9dceb;border-radius:8px;font:inherit;font-weight:400;color:var(--ws-ink);background:#fff}
++  .ws-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ws-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
++  .ws-students{max-height:190px;overflow:auto;border:1px solid var(--ws-line);border-radius:10px;padding:6px 10px}
++  .ws-check{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:5px 0;font-weight:600!important;font-size:14px!important;color:var(--ws-ink)!important}.ws-check.all{border-bottom:1px solid var(--ws-line);margin-bottom:4px!important}
++  .ws-keybox{margin-top:6px;border:1px solid var(--ws-line);border-radius:10px;padding:10px 12px;background:var(--ws-bg)}.ws-keybox summary{cursor:pointer;font-weight:700}
++  .ws-keygrid{max-height:260px;overflow:auto;margin-top:8px;background:#fff;border-radius:10px;border:1px solid var(--ws-line)}
++  .ws-keygrid .ws-bubble{width:30px;height:30px;font-size:13px}.ws-keystat{font-size:12px;color:var(--ws-muted);margin:6px 0}
++  .ws-send-foot{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
++  .ws-status{font-weight:600;font-size:13px}.ws-status.ok{color:var(--ws-green)}.ws-status.err{color:var(--ws-red)}
++  .ws-ws{border:1px solid var(--ws-line);border-radius:14px;margin-bottom:14px;overflow:hidden}
++  .ws-ws>header{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;background:var(--ws-bg);flex-wrap:wrap}.ws-ws small{display:block;color:var(--ws-muted)}
++  .ws-head-actions{display:flex;gap:12px;align-items:center}
++  .ws-table-wrap{overflow:auto}.ws-table{width:100%;border-collapse:collapse;font-size:14px}.ws-table th{text-align:left;color:var(--ws-muted);font-size:12px;padding:8px 14px}.ws-table td{padding:9px 14px;border-top:1px solid var(--ws-line)}
++  .ws-actions{white-space:nowrap}.ws-link{border:0;background:none;color:var(--ws-blue);font:inherit;font-weight:700;cursor:pointer;padding:0 8px 0 0}.ws-link.danger{color:var(--ws-red);margin-left:auto}
++  .ws-tag{display:inline-block;padding:3px 9px;border-radius:99px;background:#eef2f7;font-size:12px;font-weight:700;color:#41566f}.ws-tag.ok{background:#e8f8ee;color:var(--ws-green)}.ws-tag.warn{background:#fff4e0;color:var(--ws-amber)}.ws-tag.muted{color:#8a99ab}
++  .ws-detail{padding:0 14px}.ws-detail:not(:empty){padding:12px 14px;border-top:1px solid var(--ws-line)}.ws-detail h4{margin:0 0 10px}
++  .ws-bars{display:flex;align-items:flex-end;gap:3px;height:120px;padding:6px 0}
++  .ws-bar{flex:1;min-width:8px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-size:9px;color:var(--ws-muted)}
++  .ws-bar-fill{width:100%;border-radius:3px 3px 0 0}.ws-bar-fill.high{background:#22c55e}.ws-bar-fill.mid{background:#f59e0b}.ws-bar-fill.low{background:#ef4444}
++  .ws-review-bar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:14px 0 8px}.ws-review-bar label{margin:0}
++  .ws-q{border:1px solid var(--ws-line);border-radius:12px;padding:12px;margin-bottom:10px}.ws-q.warn{border-color:#f1d38a;background:#fffdf6}
++  .ws-q-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
++  .ws-optline{display:flex!important;align-items:center;gap:8px;margin:6px 0!important}.ws-optline b{width:18px}.ws-optline input[data-opt]{flex:1;margin:0!important}
++  @media (max-width:600px){.ws-grid3{grid-template-columns:1fr}.ws-grid2{grid-template-columns:1fr}}
++  `;
++
++  return {
++    LETTERS, computeNet, formatNet, formatDuration, parseKeyInput, answersToString, compareSheets, questionStats,
++    splitAnswerKeySection, splitOptions, parseWorksheetText, openStudent, mountCoachPanel
++  };
++});
+diff --git a/src/Kocluk.Domain/Entities/ResourceAssignment.cs b/src/Kocluk.Domain/Entities/ResourceAssignment.cs
+index 4eb442c..5c9878f 100644
+--- a/src/Kocluk.Domain/Entities/ResourceAssignment.cs
++++ b/src/Kocluk.Domain/Entities/ResourceAssignment.cs
+@@ -18,4 +18,6 @@ public sealed class ResourceAssignment
+     public DateTime AssignedAtUtc { get; private set; }
+     public DateTime? OpenedAtUtc { get; private set; }
+     public void MarkOpened() { OpenedAtUtc ??= DateTime.UtcNow; }
++    public void MarkCompleted() { Status = "Completed"; }
++    public void Reopen() { Status = "Assigned"; }
+ }
+diff --git a/src/Kocluk.Domain/Entities/ResourceSubmission.cs b/src/Kocluk.Domain/Entities/ResourceSubmission.cs
+new file mode 100644
+index 0000000..f133e80
+--- /dev/null
++++ b/src/Kocluk.Domain/Entities/ResourceSubmission.cs
+@@ -0,0 +1,70 @@
++using System.Text.Json;
++
++namespace Kocluk.Domain.Entities;
++
++/// <summary>
++/// Öğrencinin bir kaynak için koça gönderdiği çalışma. İki tür vardır:
++/// optik form (Answers dolu, sunucuda puanlanmış) ve eski PDF üzerine çizim (yalnızca AnswersJson).
++/// </summary>
++public sealed class ResourceSubmission
++{
++    public const int MaxLegacyJsonLength = 3_000_000;
++
++    private ResourceSubmission() { }
++
++    public static ResourceSubmission CreateOptical(Guid tenantId, Guid resourceId, Guid studentId, string answers, WorksheetResult result, int timeSpentSeconds)
++    {
++        return new ResourceSubmission
++        {
++            Id = Guid.NewGuid(),
++            TenantId = tenantId,
++            ResourceId = resourceId,
++            StudentId = studentId,
++            Answers = answers,
++            AnswersJson = JsonSerializer.Serialize(new { type = "optical", answers }),
++            Correct = result.Graded ? result.Correct : null,
++            Wrong = result.Graded ? result.Wrong : null,
++            Blank = result.Blank,
++            Net = result.Graded ? result.Net : null,
++            TimeSpentSeconds = Math.Clamp(timeSpentSeconds, 0, 24 * 3600),
++            SubmittedAtUtc = DateTime.UtcNow
++        };
++    }
++
++    public static ResourceSubmission CreateLegacy(Guid tenantId, Guid resourceId, Guid studentId, string answersJson)
++    {
++        if (string.IsNullOrWhiteSpace(answersJson)) throw new ArgumentException("Gönderilecek içerik boş olamaz.", nameof(answersJson));
++        if (answersJson.Length > MaxLegacyJsonLength) throw new ArgumentException("Gönderilen içerik çok büyük.", nameof(answersJson));
++        return new ResourceSubmission
++        {
++            Id = Guid.NewGuid(),
++            TenantId = tenantId,
++            ResourceId = resourceId,
++            StudentId = studentId,
++            AnswersJson = answersJson,
++            SubmittedAtUtc = DateTime.UtcNow
++        };
++    }
++
++    /// <summary>Cevap anahtarı güncellendiğinde sonucu yeniden yazar.</summary>
++    public void Regrade(WorksheetResult result)
++    {
++        Correct = result.Graded ? result.Correct : null;
++        Wrong = result.Graded ? result.Wrong : null;
++        Blank = result.Blank;
++        Net = result.Graded ? result.Net : null;
++    }
++
++    public Guid Id { get; private set; }
++    public Guid TenantId { get; private set; }
++    public Guid ResourceId { get; private set; }
++    public Guid StudentId { get; private set; }
++    public string AnswersJson { get; private set; } = string.Empty;
++    public string? Answers { get; private set; }
++    public int? Correct { get; private set; }
++    public int? Wrong { get; private set; }
++    public int? Blank { get; private set; }
++    public double? Net { get; private set; }
++    public int TimeSpentSeconds { get; private set; }
++    public DateTime SubmittedAtUtc { get; private set; }
++}
+diff --git a/src/Kocluk.Domain/Entities/ResourceWorksheet.cs b/src/Kocluk.Domain/Entities/ResourceWorksheet.cs
+new file mode 100644
+index 0000000..e78f09a
+--- /dev/null
++++ b/src/Kocluk.Domain/Entities/ResourceWorksheet.cs
+@@ -0,0 +1,102 @@
++namespace Kocluk.Domain.Entities;
++
++/// <summary>
++/// Bir kaynak dosyasının (PDF, görsel) optik form tanımı: soru sayısı, şık sayısı ve
++/// isteğe bağlı cevap anahtarı. Cevap anahtarı yalnızca sunucuda tutulur ve öğrenciye
++/// çalışmayı gönderene kadar gösterilmez.
++///
++/// Cevap dizgesi biçimi: her soru için tek karakter. A, B, C... işaretlenen şık;
++/// '-' boş bırakılan soru (anahtarda ise puanlanmayan/iptal soru).
++/// </summary>
++public sealed class ResourceWorksheet
++{
++    public const int MaxQuestions = 200;
++    public const int MaxDurationMinutes = 600;
++
++    private ResourceWorksheet() { }
++
++    public ResourceWorksheet(Guid tenantId, Guid resourceId, int questionCount, int optionCount, string? answerKey, int? durationMinutes)
++    {
++        if (tenantId == Guid.Empty) throw new ArgumentException("Kurum bilgisi zorunludur.", nameof(tenantId));
++        if (resourceId == Guid.Empty) throw new ArgumentException("Kaynak bilgisi zorunludur.", nameof(resourceId));
++        Id = Guid.NewGuid();
++        TenantId = tenantId;
++        ResourceId = resourceId;
++        CreatedAtUtc = DateTime.UtcNow;
++        Update(questionCount, optionCount, answerKey, durationMinutes);
++    }
++
++    public Guid Id { get; private set; }
++    public Guid TenantId { get; private set; }
++    public Guid ResourceId { get; private set; }
++    public int QuestionCount { get; private set; }
++    public int OptionCount { get; private set; }
++    public string? AnswerKey { get; private set; }
++    public int? DurationMinutes { get; private set; }
++    public DateTime CreatedAtUtc { get; private set; }
++    public DateTime UpdatedAtUtc { get; private set; }
++
++    public bool HasKey => !string.IsNullOrEmpty(AnswerKey);
++
++    public void Update(int questionCount, int optionCount, string? answerKey, int? durationMinutes)
++    {
++        if (questionCount < 1 || questionCount > MaxQuestions)
++            throw new ArgumentException($"Soru sayısı 1 ile {MaxQuestions} arasında olmalıdır.", nameof(questionCount));
++        if (optionCount < 2 || optionCount > 5)
++            throw new ArgumentException("Şık sayısı 2 ile 5 arasında olmalıdır.", nameof(optionCount));
++        if (durationMinutes is < 1 or > MaxDurationMinutes)
++            throw new ArgumentException($"Süre 1 ile {MaxDurationMinutes} dakika arasında olmalıdır.", nameof(durationMinutes));
++        var key = string.IsNullOrWhiteSpace(answerKey) ? null : NormalizeSheet(answerKey, questionCount, optionCount);
++        QuestionCount = questionCount;
++        OptionCount = optionCount;
++        AnswerKey = key;
++        DurationMinutes = durationMinutes;
++        UpdatedAtUtc = DateTime.UtcNow;
++    }
++
++    /// <summary>
++    /// Cevap dizgesini doğrular ve büyük harfe çevirir. Uzunluk soru sayısına eşit olmalı,
++    /// her karakter '-' veya geçerli bir şık harfi olmalıdır.
++    /// </summary>
++    public static string NormalizeSheet(string? raw, int questionCount, int optionCount)
++    {
++        var value = (raw ?? string.Empty).Trim().ToUpperInvariant();
++        if (value.Length != questionCount)
++            throw new ArgumentException($"Cevap sayısı {questionCount} olmalıdır (gönderilen: {value.Length}).");
++        var last = (char)('A' + optionCount - 1);
++        foreach (var c in value)
++        {
++            if (c != '-' && (c < 'A' || c > last))
++                throw new ArgumentException($"Geçersiz işaret '{c}'. Yalnızca A-{last} veya boş için '-' kullanılabilir.");
++        }
++        return value;
++    }
++}
++
++public sealed record WorksheetResult(bool Graded, int Correct, int Wrong, int Blank, double Net);
++
++public static class WorksheetGrader
++{
++    /// <summary>
++    /// Türkiye sınav usulü net: doğru sayısı − yanlış sayısı / (şık sayısı − 1).
++    /// 5 şıklı sınavlarda 4 yanlış 1 doğruyu, 4 şıklı sınavlarda 3 yanlış 1 doğruyu götürür.
++    /// Cevap anahtarı yoksa puanlama yapılmaz, yalnızca boş sayısı hesaplanır.
++    /// </summary>
++    public static WorksheetResult Grade(ResourceWorksheet sheet, string answers)
++    {
++        var normalized = ResourceWorksheet.NormalizeSheet(answers, sheet.QuestionCount, sheet.OptionCount);
++        if (!sheet.HasKey)
++            return new WorksheetResult(false, 0, 0, normalized.Count(c => c == '-'), 0);
++        var key = sheet.AnswerKey!;
++        int correct = 0, wrong = 0, blank = 0;
++        for (var i = 0; i < key.Length; i++)
++        {
++            if (key[i] == '-') continue;
++            if (normalized[i] == '-') blank++;
++            else if (normalized[i] == key[i]) correct++;
++            else wrong++;
++        }
++        var net = Math.Round(correct - wrong / (double)(sheet.OptionCount - 1), 2);
++        return new WorksheetResult(true, correct, wrong, blank, net);
++    }
++}
+diff --git a/src/Kocluk.Infrastructure/Persistence/KoclukDbContext.cs b/src/Kocluk.Infrastructure/Persistence/KoclukDbContext.cs
+index 09da429..903dcdc 100644
+--- a/src/Kocluk.Infrastructure/Persistence/KoclukDbContext.cs
++++ b/src/Kocluk.Infrastructure/Persistence/KoclukDbContext.cs
+@@ -30,6 +30,8 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
+     public DbSet<QuestionAssignment> QuestionAssignments => Set<QuestionAssignment>();
+     public DbSet<StudyResource> StudyResources => Set<StudyResource>();
+     public DbSet<ResourceAssignment> ResourceAssignments => Set<ResourceAssignment>();
++    public DbSet<ResourceWorksheet> ResourceWorksheets => Set<ResourceWorksheet>();
++    public DbSet<ResourceSubmission> ResourceSubmissions => Set<ResourceSubmission>();
+ 
+     protected override void OnModelCreating(ModelBuilder builder)
+     {
+@@ -202,6 +204,28 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
+             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AssignedByUserId).OnDelete(DeleteBehavior.SetNull);
+         });
+ 
++        builder.Entity<ResourceWorksheet>(entity =>
++        {
++            entity.HasKey(x => x.Id);
++            entity.Property(x => x.AnswerKey).HasMaxLength(ResourceWorksheet.MaxQuestions);
++            entity.HasIndex(x => x.ResourceId).IsUnique();
++            entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
++            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
++            entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
++        });
++
++        builder.Entity<ResourceSubmission>(entity =>
++        {
++            entity.HasKey(x => x.Id);
++            entity.Property(x => x.AnswersJson).IsRequired();
++            entity.Property(x => x.Answers).HasMaxLength(ResourceWorksheet.MaxQuestions);
++            entity.HasIndex(x => new { x.TenantId, x.ResourceId, x.StudentId, x.SubmittedAtUtc });
++            entity.HasIndex(x => x.StudentId);
++            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
++            entity.HasOne<StudyResource>().WithMany().HasForeignKey(x => x.ResourceId).OnDelete(DeleteBehavior.Cascade);
++            entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
++        });
++
+         builder.Entity<TenantMembership>(entity =>
+         {
+             entity.HasKey(x => new { x.TenantId, x.UserId });
+diff --git a/src/Kocluk.Infrastructure/Persistence/Migrations/20261106220000_ResourceWorksheets.cs b/src/Kocluk.Infrastructure/Persistence/Migrations/20261106220000_ResourceWorksheets.cs
+new file mode 100644
+index 0000000..d8f49f4
+--- /dev/null
++++ b/src/Kocluk.Infrastructure/Persistence/Migrations/20261106220000_ResourceWorksheets.cs
+@@ -0,0 +1,63 @@
++using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++
++#nullable disable
++
++namespace Kocluk.Infrastructure.Persistence.Migrations;
++
++[Migration("20261106220000_ResourceWorksheets")]
++public partial class ResourceWorksheets : Migration
++{
++    protected override void Up(MigrationBuilder migrationBuilder)
++    {
++        migrationBuilder.CreateTable("ResourceWorksheets", table => new
++        {
++            Id = table.Column<Guid>(type: "uuid", nullable: false),
++            TenantId = table.Column<Guid>(type: "uuid", nullable: false),
++            ResourceId = table.Column<Guid>(type: "uuid", nullable: false),
++            QuestionCount = table.Column<int>(type: "integer", nullable: false),
++            OptionCount = table.Column<int>(type: "integer", nullable: false),
++            AnswerKey = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
++            DurationMinutes = table.Column<int>(type: "integer", nullable: true),
++            CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
++            UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
++        }, constraints: table =>
++        {
++            table.PrimaryKey("PK_ResourceWorksheets", x => x.Id);
++            table.ForeignKey("FK_ResourceWorksheets_Tenants_TenantId", x => x.TenantId, "Tenants", "Id", onDelete: ReferentialAction.Cascade);
++            table.ForeignKey("FK_ResourceWorksheets_StudyResources_ResourceId", x => x.ResourceId, "StudyResources", "Id", onDelete: ReferentialAction.Cascade);
++        });
++        migrationBuilder.CreateIndex("IX_ResourceWorksheets_ResourceId", "ResourceWorksheets", "ResourceId", unique: true);
++        migrationBuilder.CreateIndex("IX_ResourceWorksheets_TenantId_CreatedAtUtc", "ResourceWorksheets", new[] { "TenantId", "CreatedAtUtc" });
++
++        migrationBuilder.CreateTable("ResourceSubmissions", table => new
++        {
++            Id = table.Column<Guid>(type: "uuid", nullable: false),
++            TenantId = table.Column<Guid>(type: "uuid", nullable: false),
++            ResourceId = table.Column<Guid>(type: "uuid", nullable: false),
++            StudentId = table.Column<Guid>(type: "uuid", nullable: false),
++            AnswersJson = table.Column<string>(type: "text", nullable: false),
++            Answers = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
++            Correct = table.Column<int>(type: "integer", nullable: true),
++            Wrong = table.Column<int>(type: "integer", nullable: true),
++            Blank = table.Column<int>(type: "integer", nullable: true),
++            Net = table.Column<double>(type: "double precision", nullable: true),
++            TimeSpentSeconds = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
++            SubmittedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
++        }, constraints: table =>
++        {
++            table.PrimaryKey("PK_ResourceSubmissions", x => x.Id);
++            table.ForeignKey("FK_ResourceSubmissions_Tenants_TenantId", x => x.TenantId, "Tenants", "Id", onDelete: ReferentialAction.Cascade);
++            table.ForeignKey("FK_ResourceSubmissions_StudyResources_ResourceId", x => x.ResourceId, "StudyResources", "Id", onDelete: ReferentialAction.Cascade);
++            table.ForeignKey("FK_ResourceSubmissions_Students_StudentId", x => x.StudentId, "Students", "Id", onDelete: ReferentialAction.Cascade);
++        });
++        migrationBuilder.CreateIndex("IX_ResourceSubmissions_TenantId_ResourceId_StudentId_SubmittedAtUtc", "ResourceSubmissions", new[] { "TenantId", "ResourceId", "StudentId", "SubmittedAtUtc" });
++        migrationBuilder.CreateIndex("IX_ResourceSubmissions_StudentId", "ResourceSubmissions", "StudentId");
++    }
++
++    protected override void Down(MigrationBuilder migrationBuilder)
++    {
++        migrationBuilder.DropTable("ResourceSubmissions");
++        migrationBuilder.DropTable("ResourceWorksheets");
++    }
++}
+diff --git a/tests/worksheet.test.js b/tests/worksheet.test.js
+new file mode 100644
+index 0000000..8c94122
+--- /dev/null
++++ b/tests/worksheet.test.js
+@@ -0,0 +1,107 @@
++// Çalıştırma: node tests/worksheet.test.js
++const assert = require('node:assert/strict');
++const test = require('node:test');
++const W = require('../src/Kocluk.Api/wwwroot/worksheet.js');
++
++test('net: 5 şıkta 4 yanlış 1 doğruyu götürür', () => {
++  assert.equal(W.computeNet(30, 8, 5), 28);
++  assert.equal(W.computeNet(10, 1, 5), 9.75);
++});
++test('net: 4 şıkta 3 yanlış 1 doğruyu götürür', () => {
++  assert.equal(W.computeNet(9, 3, 4), 8);
++});
++test('süre biçimi', () => {
++  assert.equal(W.formatDuration(65), '01:05');
++  assert.equal(W.formatDuration(3725), '1:02:05');
++  assert.equal(W.formatDuration(-5), '00:00');
++});
++test('anahtar: sıralı harfler', () => {
++  const r = W.parseKeyInput('abcde abcde', 10, 5);
++  assert.equal(r.answers, 'ABCDEABCDE'); assert.equal(r.filled, 10);
++});
++test('anahtar: numaralı biçim, eksikler boş kalır', () => {
++  const r = W.parseKeyInput('1-A 2.B 4) D 5:E', 6, 5);
++  assert.equal(r.answers, 'AB-DE-'); assert.equal(r.filled, 4);
++});
++test('anahtar: aralık dışı şık hata verir', () => {
++  const r = W.parseKeyInput('ABCDE', 5, 4);
++  assert.equal(r.errors.length, 1); assert.equal(r.answers, 'ABCD-');
++});
++test('anahtar: fazla harf yok sayılır ve bildirilir', () => {
++  const r = W.parseKeyInput('ABCABC', 4, 5);
++  assert.equal(r.answers, 'ABCA'); assert.equal(r.extra, 2);
++});
++test('anahtar: tek numaralı eşleşme sıralı sayılmaz', () => {
++  assert.equal(W.parseKeyInput('A', 3, 5).answers, 'A--');
++});
++test('cevap dizgesi', () => {
++  assert.equal(W.answersToString({ 1: 'A', 3: 'C' }, 4), 'A-C-');
++  assert.equal(W.answersToString({ 2: 'Z' }, 2), '--');
++});
++test('karşılaştırma durumları', () => {
++  const rows = W.compareSheets('AB-C', 'ACB-', 4).map(r => r.status);
++  assert.deepEqual(rows, ['correct', 'wrong', 'blank', 'void']);
++  assert.deepEqual(W.compareSheets('A-', null, 2).map(r => r.status), ['answered', 'blank']);
++});
++test('soru istatistiği: her öğrencinin son gönderimi sayılır', () => {
++  const subs = [
++    { studentId: 's1', answers: 'AB' }, { studentId: 's1', answers: 'BB' }, // ilk (en yeni) olan sayılır
++    { studentId: 's2', answers: 'A-' }
++  ];
++  const st = W.questionStats(subs, 'AB', 2);
++  assert.equal(st[0].total, 2); assert.equal(st[0].percent, 100); assert.equal(st[1].percent, 50);
++});
++
++const sample = `
++TYT Matematik Deneme
++1. 2+2 işleminin sonucu kaçtır?
++A) 3 B) 4 C) 5 D) 6 E) 7
++2. Başkent neresidir?
++A) Ankara
++B) İzmir
++C) Bursa
++D) Adana
++E) Van
++3) f(x)=x+1 ise f(2) kaçtır?
++A. 1
++B. 2
++C. 3
++D. 4
++CEVAP ANAHTARI
++1-B 2-A 3-C
++`;
++test('metin ayıklama: soru, şık, aynı satırda şık', () => {
++  const r = W.parseWorksheetText(sample.replace('CEVAP ANAHTARI\n1-B 2-A 3-C', ''));
++  assert.equal(r.questions.length, 3);
++  assert.equal(r.questions[0].stem, '2+2 işleminin sonucu kaçtır?');
++  assert.deepEqual(r.questions[0].options.map(o => o.text), ['3', '4', '5', '6', '7']);
++  assert.equal(r.questions[1].options[0].text, 'Ankara');
++  assert.equal(r.questions[2].options.length, 4);
++  assert.ok(r.questions[2].warnings.includes('Şık sayısı eksik görünüyor') === false);
++});
++test('metin ayıklama: uyarılar', () => {
++  const r = W.parseWorksheetText('1. Sadece soru metni var burada\n2. Başka soru\nA) x\nB) y');
++  assert.ok(r.questions[0].warnings.includes('Şıklar algılanamadı'));
++  assert.ok(r.questions[1].warnings.includes('Şık sayısı eksik görünüyor'));
++});
++test('metin ayıklama: cevap anahtarı bölümü ayrılır (yeterli veri varsa)', () => {
++  let text = '';
++  for (let i = 1; i <= 8; i++) text += `${i}. Soru ${i} metni burada yazıyor\nA) a B) b C) c D) d\n`;
++  text += 'CEVAP ANAHTARI\n1-A 2-B 3-C 4-D 5-A 6-B 7-C 8-D\n';
++  const r = W.parseWorksheetText(text);
++  assert.equal(r.questions.length, 8);
++  assert.equal(r.answerKey, 'ABCDABCD');
++  assert.ok(!r.questions[7].options[3].text.includes('CEVAP'));
++});
++test('metin ayıklama: anahtar bölümü az veriyle yok sayılır', () => {
++  const r = W.splitAnswerKeySection('1. soru\nA) a\n'.repeat(5) + 'cevap anahtarı yok demek gerek 1-A');
++  assert.equal(r.keyText, '');
++});
++test('metin ayıklama: sıra bozulursa yeni soru sayılmaz', () => {
++  const r = W.parseWorksheetText('1. Soru bir\nA) a\nB) b\n7. yıl önce olmuş bir şey\n2. Soru iki\nA) a\nB) b');
++  assert.equal(r.questions.length, 2);
++  assert.ok(r.questions[0].options.length >= 2);
++});
++test('metin ayıklama: boş metin', () => {
++  assert.equal(W.parseWorksheetText('').questions.length, 0);
++});

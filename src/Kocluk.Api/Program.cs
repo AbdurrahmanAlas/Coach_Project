@@ -746,6 +746,7 @@ app.MapPost("/api/tenants", async (
 var tenantApi = app.MapGroup("/api/tenants/{tenantId:guid}")
     .RequireAuthorization()
     .AddEndpointFilter<TenantMembershipFilter>();
+tenantApi.MapWorksheetEndpoints();
 
 tenantApi.MapGet("/plans", async (Guid tenantId, KoclukDbContext db, CancellationToken ct) =>
 {
@@ -951,13 +952,20 @@ tenantApi.MapGet("/resources/{resourceId:guid}/download", async (Guid tenantId, 
     // PDF ve görseller platformdaki iframe/img önizlemesinde açılabilsin.
     // Dosya adı verilen overload Content-Disposition: attachment döndürdüğü için
     // tarayıcı iframe'i boş bırakabiliyordu.
-    var contentType = resource.ContentType ?? string.Empty;
-    var extension = Path.GetExtension(resource.FileName);
-    if (contentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase)
-        || extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
-        || contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-        return Results.File(path, contentType, enableRangeProcessing: true);
-    return Results.File(path, contentType, resource.FileName, enableRangeProcessing: true);
+    // İstemcinin yüklerken bildirdiği Content-Type güvenilmez (ör. .pdf uzantılı dosya text/html olarak
+    // yüklenip aynı origin'de çalıştırılabilir). Tür yalnızca uzantıdan, sabit bir izin listesiyle belirlenir.
+    var extension = Path.GetExtension(resource.FileName).ToLowerInvariant();
+    var inlineType = extension switch
+    {
+        ".pdf" => "application/pdf",
+        ".png" => "image/png",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".webp" => "image/webp",
+        _ => null
+    };
+    if (inlineType is not null)
+        return Results.File(path, inlineType, enableRangeProcessing: true);
+    return Results.File(path, "application/octet-stream", resource.FileName, enableRangeProcessing: true);
 });
 
 tenantApi.MapGet("/resources/{resourceId:guid}/text", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IWebHostEnvironment environment, CancellationToken ct) =>
@@ -997,41 +1005,6 @@ tenantApi.MapGet("/resources/{resourceId:guid}/text", async (Guid tenantId, Guid
     return Results.Ok(new { resource.Id, resource.FileName, supported = !string.IsNullOrWhiteSpace(text), text = text.Length > 100000 ? text[..100000] : text });
 });
 
-tenantApi.MapPost("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ResourceSubmissionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
-{
-    await EnsureResourceTablesAsync(db, ct);
-    // Öğrenci-kaynak eşleşmesi aşağıda doğrulanır; rol claim farklılıkları gönderimi engellemez.
-    var current = await users.GetUserAsync(principal); if (current is null) return Results.Unauthorized();
-    var resource = await db.StudyResources.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == resourceId, ct);
-    var student = await db.Students.SingleOrDefaultAsync(x => x.TenantId == tenantId && (x.ApplicationUserId == current.Id || (x.ApplicationUserId == null && x.Email == current.Email)), ct);
-    var assigned = student is null ? null : await db.ResourceAssignments.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.ResourceId == resourceId && x.StudentId == student.Id, ct);
-    if (resource is null) return Results.NotFound(new { error = "Kaynak bulunamadı." }); if (student is null) return Results.BadRequest(new { error = "Öğrenci hesabı eşleştirilemedi." }); if (assigned is null) return Results.BadRequest(new { error = "Bu kaynak size atanmış görünmüyor." });
-    var submissionId = Guid.NewGuid();
-    await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO ResourceSubmissions (Id, TenantId, ResourceId, StudentId, AnswersJson, SubmittedAtUtc) VALUES ({submissionId}, {tenantId}, {resourceId}, {student.Id}, {request.AnswersJson}, {DateTime.UtcNow})", ct); await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ResourceAssignments SET Status = 'Completed' WHERE TenantId = {tenantId} AND ResourceId = {resourceId} AND StudentId = {student.Id}", ct);
-    if (resource.UploadedByUserId.HasValue)
-    {
-        try
-        {
-            db.UserNotifications.Add(new UserNotification(resource.UploadedByUserId.Value, "Öğrenci cevapları gönderdi", $"{student.FirstName} {student.LastName} · {resource.Subject} · {resource.Topic} cevaplarını gönderdi.", "ResourceSubmission"));
-            await db.SaveChangesAsync(ct);
-        }
-        catch
-        {
-            // Cevap kaydı başarılıysa bildirim oluşturulamaması gönderimi başarısız saymaz.
-        }
-    }
-    return Results.Ok(new { submissionId, sent = true });
-});
-
-tenantApi.MapGet("/resources/{resourceId:guid}/submissions", async (Guid tenantId, Guid resourceId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
-{
-    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
-    await EnsureResourceTablesAsync(db, ct);
-    var rows = await (from submission in db.Database.SqlQueryRaw<ResourceSubmissionRow>("SELECT Id, StudentId, AnswersJson, SubmittedAtUtc FROM ResourceSubmissions WHERE TenantId = {0} AND ResourceId = {1} ORDER BY SubmittedAtUtc DESC", tenantId, resourceId)
-                      join student in db.Students.AsNoTracking() on submission.StudentId equals student.Id
-                      select new { submission.Id, submission.StudentId, student.FirstName, student.LastName, submission.AnswersJson, submission.SubmittedAtUtc }).ToListAsync(ct);
-    return Results.Ok(rows);
-});
 tenantApi.MapGet("/question-assignments", async (Guid tenantId, string? status, Guid? studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
 {
     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
@@ -1865,8 +1838,6 @@ public sealed record QuestionAssignmentRequest(Guid QuestionBankItemId, Guid Stu
 public sealed record QuestionAssignmentCompleteRequest(string? Answer, bool? IsCorrect, string? ErrorReason, string? Note, int TimeSpentSeconds = 0);
 public sealed record QuestionAssignmentResponse(Guid Id, Guid TenantId, Guid QuestionBankItemId, Guid StudentId, string? StudentName, string Subject, string Topic, string Prompt, string Difficulty, string ExamType, string QuestionType, string? OptionsJson, DateTime? DueDateUtc, string? Note, string Status, string? ErrorReason, string? StudentNote, DateTime AssignedAtUtc, DateTime? CompletedAtUtc, bool? IsCorrect = null, string? CorrectAnswer = null, string? Explanation = null);
 public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, DateTime? DueDateUtc, string? Note);
-public sealed record ResourceSubmissionRequest(string AnswersJson);
-public sealed record ResourceSubmissionRow(Guid Id, Guid StudentId, string AnswersJson, DateTime SubmittedAtUtc);
 public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
 public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
 

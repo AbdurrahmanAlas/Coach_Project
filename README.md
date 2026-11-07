@@ -64,6 +64,10 @@ Performans özeti `GET /api/tenants/{tenantId}/students/{studentId}/question-sum
 
 Koç/admin toplu raporu `GET /api/tenants/{tenantId}/question-summary` ile tüm öğrencilerin ve derslerin soru performansını döndürür; koç dashboard'unda otomatik gösterilir.
 
+## Optik formlu çalışma kâğıdı
+
+Koç bir kaynak (PDF/görsel) yüklerken soru ve şık sayısını, isteğe bağlı cevap anahtarını `PUT /api/tenants/{tenantId}/resources/{resourceId}/worksheet` ile tanımlar. Öğrenci dosyayı solda görür, A-E optik formu sağda doldurur; `POST .../submissions` ile gönderir. Anahtar varsa net/doğru/yanlış/boş sunucuda hesaplanır (`Kocluk.Domain.Entities.WorksheetGrader`); yoksa yalnızca cevaplar koça iletilir. Koç `GET .../worksheets/overview` ile tüm gönderimleri ve soru bazlı analizi görür, `POST .../students/{studentId}/reopen` ile çalışmayı yeniden açabilir. Ayrıca metin katmanlı PDF'lerden soru/şık ayıklayıp (kontrol ettikten sonra) soru bankasına çoktan seçmeli kart olarak göndermek mümkündür (arayüzde "PDF'den soru kartı" sekmesi). Ön yüz mantığı `src/Kocluk.Api/wwwroot/worksheet.js` dosyasındadır; saf fonksiyonları `node --test tests/worksheet.test.js` ile test edilir.
+
 ## Geliştirme notu
 
 Development ortamında EF Core ilk şemayı `EnsureCreated` ile oluşturur. Üretimde PostgreSQL migration’ları uygulama başlangıcında çalışır. Docker Compose parolası yalnızca yerel geliştirme içindir; üretimde gizli bilgiler ortam üzerinden sağlanmalıdır. Tenant izolasyonu üyelikle yapılır. Öğrenci/veli daveti, görüşme onayı, bildirim ve rol bazlı yetkiler eklenmiştir.
