@@ -211,7 +211,8 @@
   // "7.D 8.B 9.E" gibi sayfa altı cevap şeritleri soru sanılmasın (en az iki numara-harf çifti).
   const KEY_LINE = /^(?:\s*\d{1,3}\s*[.)\-]?\s*[A-Ea-e](?![A-Za-zÇĞİÖŞÜçğıöşü0-9])){2,}\s*$/;
   // "9. En küçüğü", "12." veya "3) ..." — "2.5" gibi ondalıklar hariç.
-  const QUESTION_LINE = /^(\d{1,3})\s*[.)](?!\d)/;
+  // Başında boşluk olabilir (OCR'dan) ve 1-200 arası numara.
+  const QUESTION_LINE = /^\s*(\d{1,3})\s*[.)](?!\d)/;
   const TEST_TITLE = /\btest\s*[-–:]?\s*(\d{1,3})\b|\b(\d{1,3})\s*\.?\s*test\b/i;
 
   /**
@@ -1075,11 +1076,13 @@
       for (let n = 1; n <= Math.min(pdf.numPages, maxPages); n++) {
         onProgress?.(`Taranmış sayfa ${n}/${Math.min(pdf.numPages, maxPages)} okunuyor (OCR)…`);
         const page = await pdf.getPage(n);
-        const viewport = page.getViewport({ scale: 1.7 });
+        // Yüksek çözünürlükte oku: renkli vurgular ve iki sütunlu kitaplar için
+        const viewport = page.getViewport({ scale: 3 });
         const canvas = root.document.createElement('canvas');
         canvas.width = viewport.width; canvas.height = viewport.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        text += '\n' + ((await worker.recognize(canvas))?.data?.text || '');
+        const result = await worker.recognize(canvas);
+        text += '\n' + ((result?.data?.text) || '');
       }
     } finally { await worker.terminate(); }
     return text;
