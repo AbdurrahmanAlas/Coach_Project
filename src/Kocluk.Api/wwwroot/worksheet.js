@@ -1517,7 +1517,14 @@
   /* ------------------------------------------------------------------ */
 
   const STYLES = `
-  .ws-root{--ws-ink:#173452;--ws-muted:#5d7088;--ws-line:#dbe7f1;--ws-bg:#f6f9fc;--ws-blue:#2563eb;--ws-green:#15803d;--ws-red:#c62828;--ws-amber:#b45309;color:var(--ws-ink);text-align:left}
+  .ws-root{
+    --ws-primary:#2563eb;--ws-success:#15803d;--ws-danger:#c62828;--ws-warning:#a97600;--ws-info:#3b82f6;
+    --ws-primary-light:#eef4ff;--ws-success-light:#e8f8ee;--ws-danger-light:#fde8e8;--ws-warning-light:#fff8e8;
+    --ws-ink:#173452;--ws-text:#10233f;--ws-text-light:#546e8a;--ws-muted:#8a99ab;
+    --ws-line:#e0e8f2;--ws-bg:#f5f8fc;--ws-blue:#2563eb;--ws-green:#15803d;--ws-red:#c62828;--ws-amber:#a97600;
+    --ws-radius:12px;--ws-radius-lg:16px;--ws-shadow:0 2px 8px rgba(23,52,82,.06);--ws-shadow-md:0 4px 16px rgba(23,52,82,.12);
+    color:var(--ws-text);text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
+  }
   .ws-root *{box-sizing:border-box}
   .ws-loading,.ws-empty{padding:32px 20px;text-align:center}
   .ws-alerts-container{padding:0}
@@ -1590,9 +1597,9 @@
   .ws-stat-label{display:block;font-size:12px;color:#546e8a;font-weight:650;margin-bottom:8px;letter-spacing:.3px}
   .ws-stat-value{display:block;font-size:28px;font-weight:800;color:#10233f;margin-bottom:6px}
   .ws-stat-card small{display:block;font-size:12px;color:#8a99ab}
-  .ws-btn{border:1px solid #d4dfe8;background:#fff;color:#2d3f52;border-radius:11px;padding:10px 16px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block;font-size:13px;transition:all 0.15s ease}
-  .ws-btn:hover{background:#f8fafd;border-color:#c0cad6;box-shadow:0 2px 6px rgba(23,52,82,.08)}.ws-btn:disabled{opacity:.55;cursor:default;box-shadow:none}
-  .ws-primary{background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);border-color:#2563eb;color:#fff;box-shadow:0 3px 10px rgba(37,99,235,.2)}.ws-primary:hover{background:linear-gradient(135deg,#1d4ed8 0%,#1c3fb0 100%);border-color:#1d4ed8;box-shadow:0 5px 15px rgba(37,99,235,.3)}
+  .ws-btn{border:1px solid var(--ws-line);background:#fff;color:var(--ws-text);border-radius:var(--ws-radius);padding:10px 16px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block;font-size:13px;transition:all .2s ease}
+  .ws-btn:hover{background:var(--ws-bg);border-color:#b4c0ce;box-shadow:var(--ws-shadow)}.ws-btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .ws-primary{background:linear-gradient(135deg,var(--ws-primary) 0%,#1d4ed8 100%);border-color:var(--ws-primary);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.2);font-weight:700}.ws-primary:hover{background:linear-gradient(135deg,#1d4ed8 0%,#1c3fb0 100%);border-color:#1d4ed8;box-shadow:0 6px 18px rgba(37,99,235,.3)}.ws-primary:disabled{opacity:.6}
   .ws-alert{margin-top:12px;padding:12px 14px;border-radius:12px;background:#fde8e8;color:#991b1b;font-weight:650;border-left:4px solid #ef4444;font-size:13px}
   .ws-hint{color:var(--ws-muted);font-size:13px;margin:6px 0}
   /* Öğrenci çözüm ekranı */
