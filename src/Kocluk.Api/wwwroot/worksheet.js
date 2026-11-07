@@ -1089,7 +1089,7 @@
         box.querySelector('[data-keysave]').addEventListener('click', async () => {
           const p = update();
           const st = box.querySelector('[data-keystatus]');
-          const r = await ctx.authRequest(\`\${base}/worksheet\`, { method: 'PUT', body: JSON.stringify({ questionCount: count, optionCount, answerKey: p.filled ? p.answers : null, durationMinutes: sheet?.durationMinutes ?? null }) });
+          const r = await ctx.authRequest(`${base}/worksheet`, { method: 'PUT', body: JSON.stringify({ questionCount: count, optionCount, answerKey: p.filled ? p.answers : null, durationMinutes: sheet?.durationMinutes ?? null }) });
           if (r.ok) { st.textContent = '✓ Kaydedildi! Sonuçlar yeniden hesaplandı.'; st.className = 'ws-status ok'; setTimeout(() => renderResultsTab(body, ctx), 1000); }
           else { st.textContent = '❌ ' + await readError(r); st.className = 'ws-status err'; }
         });
