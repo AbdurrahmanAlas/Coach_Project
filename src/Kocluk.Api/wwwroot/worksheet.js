@@ -211,8 +211,8 @@
   // "7.D 8.B 9.E" gibi sayfa altı cevap şeritleri soru sanılmasın (en az iki numara-harf çifti).
   const KEY_LINE = /^(?:\s*\d{1,3}\s*[.)\-]?\s*[A-Ea-e](?![A-Za-zÇĞİÖŞÜçğıöşü0-9])){2,}\s*$/;
   // "9. En küçüğü", "12." veya "3) ..." — "2.5" gibi ondalıklar hariç.
-  // Başında boşluk olabilir (OCR'dan) ve 1-200 arası numara.
-  const QUESTION_LINE = /^\s*(\d{1,3})\s*[.)](?!\d)/;
+  // Satırda herhangi bir yerde olabilir (OCR'dan gelen farklı formatlar için).
+  const QUESTION_LINE = /(?:^|\s)(\d{1,3})\s*[.)](?!\d)/;
   const TEST_TITLE = /\btest\s*[-–:]?\s*(\d{1,3})\b|\b(\d{1,3})\s*\.?\s*test\b/i;
 
   /**
@@ -797,6 +797,7 @@
           </div>
           <label>Soru dosyası (PDF, görsel, Word)<input type="file" data-f="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"></label>
           <div class="ws-scan" data-scan hidden></div>
+          <div class="ws-manual" data-manual hidden><label>Algılanan soru sayısı yanlışsa buradan düzelt:<input type="number" data-f="count-override" min="1" max="200" placeholder="Doğru sayı"></label><small style="color:var(--muted)">Boş bırakırsan otomatik değer kullanılır.</small></div>
         </div>
         <div class="ws-col">
           <h3>3 · Optik form</h3>
@@ -842,28 +843,46 @@
     // hazırlanır. Öğrenci ekranı aynı PDF'yi aynı yöntemle taradığı için aynı test düzenini görür.
     let layout = null, scanRun = 0;
     const scanEl = $('[data-scan]');
+    const manualEl = $('[data-manual]');
     const scanStatus = (text, tone) => { scanEl.hidden = !text; scanEl.textContent = text || ''; scanEl.className = 'ws-scan' + (tone ? ' ' + tone : ''); };
+
+    // Elle girilen soru sayısı otomatik değeri geçersiz kılar
+    field('count-override').addEventListener('change', () => {
+      const override = field('count-override').value.trim();
+      if (override) {
+        const num = Math.max(1, Math.min(200, parseInt(override, 10) || field('count').value));
+        field('count').value = String(num);
+        resetGrid();
+        scanStatus(`Elle girilen soru sayısı: ${num}`, 'ok');
+      } else {
+        resetGrid();
+        scanStatus('');
+      }
+    });
+
     field('file').addEventListener('change', async () => {
       const file = field('file').files[0];
       const run = ++scanRun;
       layout = null;
-      if (!file) { scanStatus(''); return; }
+      field('count-override').value = '';
+      if (!file) { scanStatus(''); manualEl.hidden = true; return; }
       if (!field('topic').value.trim()) field('topic').value = file.name.replace(/\.[^.]+$/, '').slice(0, 180);
-      if (!/\.pdf$/i.test(file.name) && !/pdf/i.test(file.type)) { scanStatus('PDF olmayan dosyada soru sayısını elle gir.', 'warn'); return; }
+      if (!/\.pdf$/i.test(file.name) && !/pdf/i.test(file.type)) { scanStatus('PDF olmayan dosyada soru sayısını elle gir.', 'warn'); manualEl.hidden = false; return; }
       scanStatus('PDF taranıyor…');
       try {
         const lib = await loadPdfJs();
         const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
         const found = await scanPdfLayout(pdf, null, text => run === scanRun && scanStatus(text));
         if (run !== scanRun) return;
-        if (found.total < 2) { scanStatus('Sorular otomatik bulunamadı. Soru sayısını elle gir.', 'warn'); return; }
+        if (found.total < 2) { scanStatus('Sorular otomatik bulunamadı. Soru sayısını aşağıdan düzeltebilirsin.', 'warn'); manualEl.hidden = false; return; }
         layout = found;
         field('count').value = String(found.total);
         resetGrid();
         const parts = found.sections.map(s => `${s.title}: ${s.count}`).join(' · ');
         scanStatus(`${found.sections.length} test, ${found.total} soru bulundu (${parts}). Sorular ${found.firstPage}. sayfadan başlıyor; öğrenci PDF'yi oradan açacak.`, 'ok');
+        manualEl.hidden = false;
       } catch {
-        if (run === scanRun) scanStatus('PDF taranamadı. Soru sayısını elle gir.', 'warn');
+        if (run === scanRun) { scanStatus('PDF taranamadı. Soru sayısını elle gir.', 'warn'); manualEl.hidden = false; }
       }
     });
     field('keytext').addEventListener('input', () => {
@@ -1233,6 +1252,7 @@
   .ws-doc-title{display:flex;flex-direction:column;min-width:0;margin-right:auto}.ws-doc-title span{color:var(--ws-muted);font-size:12px}
   .ws-zoom{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
   .ws-scan{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:#eef5ff;color:#1f4f86;font-size:12.5px;line-height:1.45}.ws-scan.ok{background:#e9f9f0;color:#16683c}.ws-scan.warn{background:#fff6e5;color:#8a5a00}
+  .ws-manual{margin:0 0 10px;padding:10px;border:1px solid #dbe7f1;border-radius:10px;background:#f7fbff}.ws-manual label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}.ws-manual input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #c9ddf1;border-radius:8px;font-size:14px}
   .ws-sec{margin-bottom:8px}.ws-sec-head{position:sticky;top:0;z-index:1;display:flex;align-items:baseline;gap:8px;padding:8px 8px 6px;background:#fff;border-bottom:1px solid var(--ws-line)}.ws-sec-head small{color:var(--ws-muted)}.ws-sec-head .ws-link{margin-left:auto;font-size:12px;padding:0}
   .ws-goto{border:0;background:none;padding:0;font:inherit;font-weight:700;cursor:pointer;color:var(--ws-blue);text-decoration:underline dotted}
   .ws-adjust{display:flex;align-items:center;gap:6px;margin:4px 0 10px;font-size:13px;color:var(--ws-muted,#5b7088)}
