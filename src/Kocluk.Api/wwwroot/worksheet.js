@@ -1640,6 +1640,39 @@
   .ws-loading{animation:pulse 1.5s ease-in-out infinite}
   .ws-fade-in{animation:fadeIn .3s ease}
   .ws-slide-up{animation:slideUp .3s ease}
+  /* ============ MOBİL RESPONSIVE ============ */
+  @media(max-width:768px){
+    .ws-solve{grid-template-columns:1fr;gap:12px}
+    .ws-coach{padding:16px}
+    .ws-form{grid-template-columns:1fr;gap:16px}
+    .ws-col{width:100%}
+    .ws-tabs{gap:4px}
+    .ws-tab{padding:10px 12px;font-size:12px}
+    .ws-btn{padding:10px 14px;font-size:12px}
+    .ws-table{font-size:12px}
+    .ws-table th{padding:10px 12px;font-size:10px}
+    .ws-table td{padding:10px 12px}
+  }
+  @media(max-width:480px){
+    .ws-coach{padding:12px;border-radius:12px}
+    .ws-coach-head{padding:12px 0}
+    .ws-coach-head h2{font-size:18px}
+    .ws-grid2,.ws-grid3{grid-template-columns:1fr}
+    .ws-btn{width:100%;padding:12px}
+    .ws-form{gap:12px}
+    .ws-col h3{font-size:14px;margin-top:16px}
+    .ws-table th{font-size:9px;padding:8px 10px}
+    .ws-table td{font-size:11px;padding:8px 10px}
+  }
+  /* ============ ACCESSIBILITY & FOCUS STATES ============ */
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ws-primary);outline-offset:2px}
+  .ws-btn:focus-visible{outline:2px solid var(--ws-primary);outline-offset:0}
+  .ws-primary:focus-visible{outline:2px solid #fff}
+  /* Ayrıntılı durum göstergeleri */
+  .ws-pending{opacity:.6;pointer-events:none}
+  .ws-disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+  .ws-error{border-color:#c62828!important;box-shadow:0 0 0 3px rgba(198,40,40,.1)!important}
+  .ws-success{border-color:#15803d!important;box-shadow:0 0 0 3px rgba(21,128,61,.1)!important}
   .ws-sheet-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 6px}.ws-sheet-head small{display:block;color:var(--ws-muted)}
   .ws-timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;padding:4px 10px;border-radius:10px;background:var(--ws-bg)}
   .ws-timer.warn{background:#fff4e0;color:var(--ws-amber)}.ws-timer.over{background:#fdecec;color:var(--ws-red)}
