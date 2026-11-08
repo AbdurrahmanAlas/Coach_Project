@@ -1125,20 +1125,33 @@
 
       const rows = item.students.map(s => {
         const last = s.last;
+        let statusClass = 'not-opened';
         let stateTag = '<span class="ws-tag muted">Açmadı</span>';
+
         if (s.attempts > 0 && s.status === 'Completed') {
+          statusClass = 'completed';
           stateTag = '<span class="ws-tag ok">✓ Teslim</span>';
         } else if (s.attempts > 0) {
+          statusClass = 'reopened';
           stateTag = '<span class="ws-tag warn">⟲ Yeniden açıldı</span>';
         } else if (s.openedAtUtc) {
+          statusClass = 'opened';
           stateTag = '<span class="ws-tag">◐ Açtı</span>';
         }
-        return `<tr data-student="${esc(s.studentId)}"><td class="ws-student-name">${esc(s.firstName)} ${esc(s.lastName)}</td><td class="ws-status-cell">${stateTag}</td>
-          <td class="ws-net-cell">${last ? (item.hasKey ? `<strong>${esc(formatNet(last.net))}</strong>` : '—') : '—'}</td>
-          <td class="ws-result-cell">${last && item.hasKey ? `<span class="ws-result-item correct">${last.correct}D</span><span class="ws-result-item wrong">${last.wrong}Y</span><span class="ws-result-item blank">${last.blank}B</span>` : last ? `<span class="ws-result-item blank">${last.blank} boş</span>` : ''}</td>
-          <td class="ws-time-cell">${last ? esc(formatDuration(last.timeSpentSeconds)) : ''}</td>
-          <td class="ws-actions-cell">${last ? '<button type="button" class="ws-link-btn" data-detail title="Detayları görüntüle">Detay</button>' : ''}${s.attempts > 0 && s.status === 'Completed' ? '<button type="button" class="ws-link-btn" data-reopen title="Yeniden çözmesine izin ver">↻ Aç</button>' : ''}</td></tr>`;
+
+        return `<div class="ws-result-row ${statusClass}" data-student="${esc(s.studentId)}">
+          <div class="ws-result-name">${esc(s.firstName)} ${esc(s.lastName)}</div>
+          <div class="ws-result-status">${stateTag}</div>
+          ${last ? `<div class="ws-result-net">${item.hasKey ? `<strong>${esc(formatNet(last.net))}</strong>` : '—'}</div>` : '<div class="ws-result-net">—</div>'}
+          ${last && item.hasKey ? `<div class="ws-result-marks"><span class="correct">${last.correct}D</span><span class="wrong">${last.wrong}Y</span><span class="blank">${last.blank}B</span></div>` : '<div class="ws-result-marks">—</div>'}
+          ${last ? `<div class="ws-result-time">${esc(formatDuration(last.timeSpentSeconds))}</div>` : '<div class="ws-result-time">—</div>'}
+          <div class="ws-result-actions">
+            ${last ? '<button type="button" class="ws-link-btn" data-detail title="Detayları görüntüle">Detay</button>' : ''}
+            ${s.attempts > 0 && s.status === 'Completed' ? '<button type="button" class="ws-link-btn" data-reopen title="Yeniden çözmesine izin ver">↻</button>' : ''}
+          </div>
+        </div>`;
       }).join('');
+
       return `<article class="ws-ws" data-resource="${esc(item.resourceId)}" data-count="${item.questionCount}" data-options="${item.optionCount}">
         <header>
           <div>
@@ -1155,7 +1168,17 @@
             <button type="button" class="ws-link-btn" data-key title="Cevap anahtarı">${item.hasKey ? '✎ Düzenle' : '➕ Anahtar'}</button>
           </div>
         </header>
-        <div class="ws-table-wrap"><table class="ws-table"><thead><tr><th>Öğrenci</th><th>Durum</th><th>Net</th><th>Sonuç</th><th>Süre</th><th>İşlem</th></tr></thead><tbody>${rows || '<tr><td colspan="6" class="ws-hint">Öğrenci atanmamış.</td></tr>'}</tbody></table></div>
+        <div class="ws-results-list">
+          <div class="ws-result-header">
+            <div>Öğrenci</div>
+            <div>Durum</div>
+            <div>Net</div>
+            <div>Sonuç</div>
+            <div>Süre</div>
+            <div>İşlem</div>
+          </div>
+          ${rows || '<div class="ws-empty-msg">Öğrenci atanmamış.</div>'}
+        </div>
         <div class="ws-detail" data-detail-box></div></article>`;
     }).join('');
 
@@ -1781,6 +1804,25 @@
   .ws-badge.muted{background:#f3f6fa;color:#8a99ab}
   .ws-status-badges{display:flex;gap:8px;flex-wrap:wrap}
   .ws-tag{display:inline-block;padding:5px 12px;border-radius:20px;background:#f0f4f9;font-size:12px;font-weight:700;color:#5d7088;border:1px solid #e8eef7}.ws-tag.ok{background:#e8f8ee;color:#15803d;border-color:#c6f0d8}.ws-tag.warn{background:#fff8e8;color:#a97600;border-color:#fde5a8}.ws-tag.muted{background:#f3f6fa;color:#8a99ab;border-color:#e8eef7}
+  .ws-results-list{padding:0}
+  .ws-result-header{display:grid;grid-template-columns:2fr 0.8fr 0.8fr 1.2fr 0.8fr 1fr;gap:12px;padding:12px 16px;background:linear-gradient(90deg,#f5f8fc,#f0f4fa);font-weight:700;font-size:11px;color:#546e8a;text-transform:uppercase;letter-spacing:0.4px;border-bottom:2px solid #e8eef7;position:sticky;top:0;z-index:2}
+  .ws-result-row{display:grid;grid-template-columns:2fr 0.8fr 0.8fr 1.2fr 0.8fr 1fr;gap:12px;padding:12px 16px;border-bottom:1px solid #f8fafd;align-items:center;transition:all 0.15s ease}
+  .ws-result-row:hover{background-color:#f8fbfd}
+  .ws-result-row.completed{background-color:#f0fdf4;border-left:3px solid #22c55e}
+  .ws-result-row.reopened{background-color:#fffbeb;border-left:3px solid #eab308}
+  .ws-result-row.opened{background-color:#f0f9ff;border-left:3px solid #3b82f6}
+  .ws-result-row.not-opened{background-color:#f3f6fa;border-left:3px solid #cbd5e1}
+  .ws-result-name{font-weight:650;color:#10233f;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ws-result-status{display:flex;align-items:center;justify-content:center}
+  .ws-result-net{text-align:center;font-weight:700;color:#10233f;font-size:13px}
+  .ws-result-marks{display:flex;gap:6px;justify-content:flex-start;flex-wrap:wrap}
+  .ws-result-marks span{padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;display:inline-block}
+  .ws-result-marks .correct{background:#e8f8ee;color:#15803d}
+  .ws-result-marks .wrong{background:#fde8e8;color:#c62828}
+  .ws-result-marks .blank{background:#f1f5f9;color:#475569}
+  .ws-result-time{text-align:center;font-size:12px;color:#6b85a0;white-space:nowrap}
+  .ws-result-actions{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap}
+  .ws-empty-msg{padding:20px 16px;text-align:center;color:#6b85a0;font-size:13px}
   .ws-detail{padding:0 20px}.ws-detail:not(:empty){padding:16px 20px;border-top:1px solid #f3f6fa;background:#fafbfe}.ws-detail h4{margin:0 0 12px;font-size:14px;font-weight:700;color:#1f4f86}
   .ws-detail-header{display:flex;justify-content:space-between;gap:16px;margin-bottom:16px;align-items:flex-start}
   .ws-detail-header h4{margin:0}
