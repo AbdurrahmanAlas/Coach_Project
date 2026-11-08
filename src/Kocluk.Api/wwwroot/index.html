@@ -1072,13 +1072,26 @@
       if (window.worksheetModal) {
         window.worksheetModal.init();
 
-        // Çalışma gönder linkine tıklandığında modal açmak yerine HASH değiştir
-        // Bu sayede sayfa "Çalışma gönder" view'ına geçer ve modal gibi dizayn edilir
+        // Çalışma gönder linkine tıklandığında modal aç
         const sendLink = document.querySelector('[data-qb="send"]');
         if (sendLink) {
           sendLink.addEventListener('click', (e) => {
             e.preventDefault();
-            location.hash = '#question-bank/send';
+            window.worksheetModal.open(async (data, isFormData) => {
+              const options = { method: 'POST' };
+              if (isFormData) {
+                options.body = data;
+              } else {
+                options.body = JSON.stringify(data);
+                options.headers = { 'Content-Type': 'application/json' };
+              }
+              const response = await authRequest(`/api/tenants/${tenantId}/assignments`, options);
+              return {
+                success: response.ok,
+                error: response.ok ? '' : 'Çalışma gönderilemedi',
+                callback: async () => { }
+              };
+            }, {}, tenantId);
           });
         }
 
