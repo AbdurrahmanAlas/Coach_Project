@@ -1165,6 +1165,11 @@
       const reopened = item.students.filter(s => s.attempts > 0 && s.status !== 'Completed').length;
       const notOpened = item.students.filter(s => !s.openedAtUtc).length;
 
+      // Format dates
+      const createdDate = item.createdAtUtc ? new Date(item.createdAtUtc).toLocaleDateString('tr-TR') : '—';
+      const assignedDates = item.students.map(s => s.assignedAtUtc ? new Date(s.assignedAtUtc) : null).filter(d => d);
+      const firstAssignedDate = assignedDates.length > 0 ? new Date(Math.min(...assignedDates.map(d => d.getTime()))).toLocaleDateString('tr-TR') : '—';
+
       const rows = item.students.map(s => {
         const last = s.last;
         let statusClass = 'not-opened';
@@ -1198,7 +1203,7 @@
         <header>
           <div class="ws-header-content">
             <strong>${esc(item.subject)} · ${esc(item.topic)}</strong>
-            <span class="ws-header-meta">${esc(item.fileName)} · ${item.questionCount} soru · ${item.optionCount} şık ${item.hasKey ? '✓' : '✕'} ${item.durationMinutes ? `· ${item.durationMinutes} dk` : ''}</span>
+            <span class="ws-header-meta">${esc(item.fileName)} · ${item.questionCount} soru · ${item.optionCount} şık ${item.hasKey ? '✓' : '✕'} ${item.durationMinutes ? `· ${item.durationMinutes} dk` : ''} · 📅 ${firstAssignedDate}</span>
           </div>
           <div class="ws-head-actions">
             <div class="ws-status-badges">
