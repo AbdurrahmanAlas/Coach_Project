@@ -73,6 +73,12 @@ class QuestionModal {
     document.getElementById('q-topic').innerHTML = '<option value="">Ders seç</option>';
     document.getElementById('q-status').innerHTML = '';
     document.getElementById('q-status').classList.add('hidden');
+
+    // Dosya seçimini sıfırla
+    const fileInput = document.getElementById('q-file');
+    const fileName = document.getElementById('q-file-name');
+    if (fileInput) fileInput.value = '';
+    if (fileName) fileName.textContent = 'Dosya seçilmedi';
   }
 
   // Dersleri populate et
@@ -117,6 +123,7 @@ class QuestionModal {
     const cancelBtn = document.getElementById('q-cancel');
     const submitBtn = document.getElementById('q-submit');
     const form = document.getElementById('q-form');
+    const fileInput = document.getElementById('q-file');
 
     if (examSelect) {
       examSelect.addEventListener('change', (e) => {
@@ -144,6 +151,25 @@ class QuestionModal {
     if (backdrop) backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop) this.close();
     });
+
+    // Dosya seçim listener'ı
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const fileName = document.getElementById('q-file-name');
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+          const maxSize = 20 * 1024 * 1024; // 20MB
+          if (file.size > maxSize) {
+            if (fileName) fileName.textContent = '❌ Dosya çok büyük (Max 20MB)';
+            e.target.value = '';
+          } else {
+            if (fileName) fileName.textContent = `✓ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+          }
+        } else {
+          if (fileName) fileName.textContent = 'Dosya seçilmedi';
+        }
+      });
+    }
 
     if (submitBtn) {
       submitBtn.addEventListener('click', async (e) => {
@@ -183,6 +209,7 @@ class QuestionModal {
     const type = document.getElementById('q-type')?.value || 'ShortAnswer';
     const optionsJson = document.getElementById('q-options')?.value.trim() || null;
     const published = document.getElementById('q-published')?.checked || false;
+    const fileInput = document.getElementById('q-file');
 
     const status = document.getElementById('q-status');
 
@@ -200,7 +227,7 @@ class QuestionModal {
 
     // Custom submit handler varsa kullan
     if (this.onSubmit && typeof this.onSubmit === 'function') {
-      const result = await this.onSubmit({
+      const data = {
         examType,
         subject,
         topic,
@@ -212,7 +239,20 @@ class QuestionModal {
         optionsJson,
         isPublished: published,
         points: 1
-      });
+      };
+
+      // Eğer dosya varsa FormData kullan, yoksa JSON kullan
+      let result;
+      if (fileInput && fileInput.files.length > 0) {
+        const formData = new FormData();
+        Object.keys(data).forEach(key => {
+          formData.append(key, data[key]);
+        });
+        formData.append('file', fileInput.files[0]);
+        result = await this.onSubmit(formData, true); // true = formData flag
+      } else {
+        result = await this.onSubmit(data, false);
+      }
 
       if (result.success) {
         status.textContent = '✅ Soru kaydedildi!';

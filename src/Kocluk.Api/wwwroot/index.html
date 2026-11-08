@@ -8,9 +8,9 @@
   <title>Koçluk | Öğrenci gelişim paneli</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="/exam-data.js?v=20261108230000"></script>
-  <script src="/exam-filters.js?v=20261108230000"></script>
-  <script src="/modal-questions.js?v=20261108230000"></script>
+  <script src="/exam-data.js?v=20261108235000"></script>
+  <script src="/exam-filters.js?v=20261108235000"></script>
+  <script src="/modal-questions.js?v=20261108235000"></script>
   <script src="/worksheet.js?v=20261108200000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -209,6 +209,11 @@
     .q-checkbox-group input{width:18px;height:18px;cursor:pointer}
     .q-checkbox-group label{cursor:pointer;color:#52627a;font-size:12px;margin:0;flex:1}
 
+    .q-file-section{grid-column:1 / -1;padding:16px;background:linear-gradient(135deg,#f0fcf8,#f3f6ff);border:1px solid #cfe8e1;border-radius:12px}
+    .q-file-input-wrapper{display:flex;align-items:center}
+    .q-file-label{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:#2cc6a7;color:#fff;border-radius:9px;cursor:pointer;font-weight:600;font-size:12px;transition:all .2s ease}
+    .q-file-label:hover{background:#20b097;transform:translateY(-1px);box-shadow:0 4px 12px rgba(44,198,167,.3)}
+
     #q-status{display:block;padding:12px 14px;border-radius:11px;margin:0 32px;font-size:13px;font-weight:600;margin-top:0;margin-bottom:16px}
     #q-status.hidden{display:none}
     .q-status-success{background:#dcfce7;color:#166534;border-left:4px solid #16a34a}
@@ -369,6 +374,7 @@
         <div class="q-half"><label class="q-label">Soru Türü</label><select id="q-type" class="q-select"><option value="ShortAnswer" selected>✏️ Kısa cevap</option><option value="MultipleChoice">◉ Çoktan seçmeli</option><option value="TrueFalse">✓ Doğru / Yanlış</option></select></div>
         <div class="q-half"><label class="q-label">Seçenekler</label><input id="q-options" type="text" class="q-input" placeholder="A) ... | B) ... | C) ..."></div>
         <div><label class="q-label">Açıklama</label><textarea id="q-explanation" class="q-input" placeholder="Sorunun çözümü ve açıklaması (opsiyonel)" maxlength="4000"></textarea></div>
+        <div class="q-file-section"><label class="q-label">📎 Ek Dosya (Opsiyonel)</label><p style="margin:6px 0 12px;color:#6b85a0;font-size:12px">PDF, Resim veya Video dosyası ekle - Öğrenciler platformda açıp indirebilecek</p><div class="q-file-input-wrapper"><input id="q-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.mp4,.webm,.mov" style="display:none"><label for="q-file" class="q-file-label">📁 Dosya Seç</label><span id="q-file-name" style="margin-left:10px;color:#6b85a0;font-size:12px">Dosya seçilmedi</span></div></div>
         <div class="q-checkbox-group"><input id="q-published" type="checkbox"><label for="q-published">🌍 Öğrencilere yayımla</label></div>
         <div id="q-status" class="hidden"></div>
       </form>
@@ -830,12 +836,22 @@
         const toggleBtn = document.getElementById('question-add-toggle');
         if (toggleBtn) {
           toggleBtn.addEventListener('click', () => {
-            window.questionModal.open(async (data) => {
+            window.questionModal.open(async (data, isFormData) => {
               // Soru'yu API'ye gönder
-              const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, {
-                method: 'POST',
-                body: JSON.stringify(data)
-              });
+              const options = {
+                method: 'POST'
+              };
+
+              if (isFormData) {
+                // FormData (dosya var) - body'ye doğrudan FormData gönder
+                options.body = data;
+              } else {
+                // JSON (dosya yok)
+                options.body = JSON.stringify(data);
+                options.headers = { 'Content-Type': 'application/json' };
+              }
+
+              const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, options);
 
               return {
                 success: response.ok,
