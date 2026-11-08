@@ -794,11 +794,13 @@
       <div class="ws-form">
         <div class="ws-col">
           <h3>1 · Öğrenciler</h3>${studentPicker(students)}
-          <h3>2 · Dosya</h3>
+          <h3>2 · Sınav türü, ders ve konu</h3>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">${['TYT', 'AYT', 'KPSS', 'YÖS', 'DGS'].map(code => `<button type="button" data-exam="${code}" style="padding:12px 6px;border:2px solid #d9e2ee;border-radius:12px;background:#f5f8ff;color:#2563eb;font-weight:700;cursor:pointer;transition:all .2s">${code}</button>`).join('')}</div>
           <div class="ws-grid2">
-            <label>Ders<input data-f="subject" placeholder="Matematik" maxlength="100"></label>
-            <label>Konu<input data-f="topic" placeholder="Fonksiyonlar - Deneme 1" maxlength="180"></label>
+            <label>Ders<select data-f="subject"><option value="">Sınav türü seç</option></select></label>
+            <label>Konu<select data-f="topic"><option value="">Ders seç</option></select></label>
           </div>
+          <label>Başlık / tanım (isteğe bağlı, doluysa konu yerine kullanılır)<input data-f="manual-topic" placeholder="Örn: Çarpanlara Ayırma Çalışması" maxlength="180"></label>
           <label>Soru dosyası (PDF, görsel, Word)<input type="file" data-f="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"></label>
           <div class="ws-scan" data-scan hidden></div>
           <div class="ws-manual" data-manual hidden><label>Algılanan soru sayısı yanlışsa buradan düzelt:<input type="number" data-f="count-override" min="1" max="200" placeholder="Doğru sayı"></label><small style="color:var(--muted)">Boş bırakırsan otomatik değer kullanılır.</small></div>
@@ -826,6 +828,28 @@
     const status = (text, kind) => { const el = $('[data-status]'); el.textContent = text; el.className = 'ws-status ' + (kind || ''); };
 
     body.querySelector('[data-all]')?.addEventListener('change', e => body.querySelectorAll('[data-student]').forEach(c => { c.checked = e.target.checked; }));
+
+    let examType = '';
+    const subjectSelect = field('subject'), topicSelect = field('topic');
+    const fillSelect = (select, placeholder, items) => {
+      select.innerHTML = `<option value="">${placeholder}</option>` + items.map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
+    };
+    body.querySelectorAll('[data-exam]').forEach(button => button.addEventListener('click', () => {
+      examType = button.dataset.exam;
+      body.querySelectorAll('[data-exam]').forEach(b => {
+        const on = b === button;
+        b.style.background = on ? '#2563eb' : '#f5f8ff'; b.style.color = on ? '#fff' : '#2563eb'; b.style.borderColor = on ? '#2563eb' : '#d9e2ee';
+      });
+      const subjects = typeof getSubjectsByExam === 'function' ? getSubjectsByExam(examType) : [];
+      fillSelect(subjectSelect, 'Ders seç', subjects.map(s => ({ value: s.code, label: s.name })));
+      fillSelect(topicSelect, 'Ders seç', []);
+    }));
+    subjectSelect.addEventListener('change', () => {
+      const topics = examType && subjectSelect.value && typeof getTopicsByExamAndSubject === 'function' ? getTopicsByExamAndSubject(examType, subjectSelect.value) : [];
+      fillSelect(topicSelect, 'Konu seç', topics.map(t => ({ value: t, label: t })));
+    });
+    const subjectName = () => subjectSelect.selectedOptions[0]?.value ? subjectSelect.selectedOptions[0].textContent.trim() : '';
+    const topicName = () => field('manual-topic').value.trim() || topicSelect.value.trim();
 
     const renderGrid = () => {
       key.count = Math.max(1, Math.min(200, parseInt(field('count').value, 10) || 1));
@@ -870,7 +894,7 @@
       layout = null;
       field('count-override').value = '';
       if (!file) { scanStatus(''); manualEl.hidden = true; return; }
-      if (!field('topic').value.trim()) field('topic').value = file.name.replace(/\.[^.]+$/, '').slice(0, 180);
+      if (!topicName()) field('manual-topic').value = file.name.replace(/\.[^.]+$/, '').slice(0, 180);
       if (!/\.pdf$/i.test(file.name) && !/pdf/i.test(file.type)) { scanStatus('PDF olmayan dosyada soru sayısını elle gir.', 'warn'); manualEl.hidden = false; return; }
       scanStatus('PDF taranıyor…');
       try {
@@ -900,10 +924,11 @@
     resetGrid();
 
     $('[data-send]').addEventListener('click', async () => {
-      const subject = field('subject').value.trim(), topic = field('topic').value.trim(), file = field('file').files[0];
+      const subject = subjectName(), topic = topicName(), file = field('file').files[0];
       const studentIds = [...body.querySelectorAll('[data-student]:checked')].map(c => c.value);
       if (!studentIds.length) return status('En az bir öğrenci seç.', 'err');
-      if (!subject || !topic) return status('Ders ve konu zorunlu.', 'err');
+      if (!examType) return status('Sınav türünü seç (TYT, AYT, KPSS, YÖS, DGS).', 'err');
+      if (!subject || !topic) return status('Ders ve konu (veya başlık) zorunlu.', 'err');
       if (!file) return status('Bir dosya seç.', 'err');
       const filled = Object.keys(key.answers).length;
       if (filled > 0 && filled < key.count && !root.confirm(`Cevap anahtarında ${key.count - filled} soru boş. Boş sorular puanlanmaz. Devam edilsin mi?`)) return;
@@ -912,7 +937,7 @@
       try {
         status('Dosya yükleniyor…');
         const form = new FormData();
-        form.append('subject', subject); form.append('topic', topic); form.append('file', file);
+        form.append('examType', examType); form.append('subject', subject); form.append('topic', topic); form.append('file', file);
         const upload = await fetch(`/api/tenants/${ctx.tenantId}/resources`, { method: 'POST', body: form, credentials: 'include' });
         if (!upload.ok) return status(await readError(upload), 'err');
         const resource = await upload.json();
