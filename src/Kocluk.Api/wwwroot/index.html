@@ -8,10 +8,10 @@
   <title>Koçluk | Öğrenci gelişim paneli</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="/exam-data.js?v=20261108251500"></script>
-  <script src="/exam-filters.js?v=20261108251500"></script>
-  <script src="/modal-questions.js?v=20261108251500"></script>
-  <script src="/modal-worksheet.js?v=20261108251500"></script>
+  <script src="/exam-data.js?v=20261108252000"></script>
+  <script src="/exam-filters.js?v=20261108252000"></script>
+  <script src="/modal-questions.js?v=20261108252000"></script>
+  <script src="/modal-worksheet.js?v=20261108252000"></script>
   <script src="/worksheet.js?v=20261108200000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -1101,6 +1101,135 @@
           });
         }
       }
+
+      // Sayfadaki "2 • Dosya" bölümünü professional olarak redesign et
+      setTimeout(() => {
+        const dosyaSection = Array.from(document.querySelectorAll('h2, div')).find(el => el.textContent?.includes('2 • Dosya') || el.textContent?.includes('Dosya'));
+        if (dosyaSection) {
+          let parent = dosyaSection.parentElement;
+          while (parent && !parent.querySelector('input[placeholder*="Ders"], input[placeholder*="Matematik"]')) {
+            parent = parent.parentElement;
+            if (parent?.querySelector('select')) break;
+          }
+
+          if (parent) {
+            parent.style.cssText = `
+              padding: 20px !important;
+              background: linear-gradient(135deg, #f5fbff 0%, #fffaf2 100%) !important;
+              border-radius: 14px !important;
+              border: 1px solid #bcdcf0 !important;
+            `;
+
+            // Tüm input'ları gizle
+            parent.querySelectorAll('input[placeholder*="Ders"], input[placeholder*="Matematik"], input[placeholder*="Türev"], input[placeholder*="Fonksiyonlar"]').forEach(inp => inp.style.display = 'none');
+
+            // Başlık ekle
+            if (!parent.querySelector('h3')) {
+              const title = document.createElement('h3');
+              title.style.cssText = 'font-size: 18px; font-weight: 700; color: #10233f; margin: 0 0 16px 0;';
+              title.textContent = '📋 Ders, Konu ve Dosya';
+              parent.insertBefore(title, parent.firstChild);
+            }
+
+            // TYT/AYT/KPSS button grid ekle
+            const examGrid = document.createElement('div');
+            examGrid.className = 'page-exam-grid';
+            examGrid.style.cssText = `
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 8px;
+              margin-bottom: 14px;
+            `;
+            ['TYT', 'AYT', 'KPSS', 'YÖS', 'DGS'].forEach(exam => {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'page-exam-btn';
+              btn.dataset.exam = exam;
+              btn.textContent = exam;
+              btn.style.cssText = `
+                padding: 10px;
+                border: 2px solid #d9e2ee;
+                border-radius: 10px;
+                background: #fff;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                color: #2563eb;
+                transition: all .2s;
+              `;
+              btn.onclick = (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.page-exam-btn').forEach(b => {
+                  b.style.background = b === btn ? 'rgb(37, 99, 235)' : '#fff';
+                  b.style.color = b === btn ? '#fff' : '#2563eb';
+                  b.style.borderColor = b === btn ? '#2563eb' : '#d9e2ee';
+                });
+              };
+              examGrid.appendChild(btn);
+            });
+            parent.appendChild(examGrid);
+
+            // Ders/Konu dropdowns ekle
+            const dropdownGrid = document.createElement('div');
+            dropdownGrid.style.cssText = `
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+              margin-bottom: 14px;
+            `;
+
+            const derField = document.createElement('div');
+            derField.innerHTML = `
+              <label style="font-size: 12px; font-weight: 700; color: #52627a; display: block; margin-bottom: 6px;">📚 Ders</label>
+              <select id="page-ders" style="width: 100%; padding: 10px; border: 1px solid #c8dced; border-radius: 10px; background: #fff;">
+                <option>Sınav türü seç</option>
+              </select>
+            `;
+
+            const konuField = document.createElement('div');
+            konuField.innerHTML = `
+              <label style="font-size: 12px; font-weight: 700; color: #52627a; display: block; margin-bottom: 6px;">📖 Konu</label>
+              <select id="page-konu" style="width: 100%; padding: 10px; border: 1px solid #c8dced; border-radius: 10px; background: #fff;">
+                <option>Ders seç</option>
+              </select>
+            `;
+
+            dropdownGrid.appendChild(derField);
+            dropdownGrid.appendChild(konuField);
+            parent.appendChild(dropdownGrid);
+
+            // Cascading event listener'ları
+            document.querySelectorAll('.page-exam-btn').forEach(btn => {
+              btn.addEventListener('click', function() {
+                const derSelect = document.getElementById('page-ders');
+                if (derSelect && typeof getSubjectsByExam === 'function') {
+                  derSelect.innerHTML = '<option>Ders seç</option>';
+                  getSubjectsByExam(this.dataset.exam).forEach(subj => {
+                    const opt = document.createElement('option');
+                    opt.value = subj.code;
+                    opt.textContent = subj.name;
+                    derSelect.appendChild(opt);
+                  });
+                }
+              });
+            });
+
+            document.getElementById('page-ders')?.addEventListener('change', function() {
+              const selectedExam = document.querySelector('.page-exam-btn[style*="rgb(37, 99, 235)"]')?.dataset.exam;
+              const konuSelect = document.getElementById('page-konu');
+              if (konuSelect && selectedExam && this.value && typeof getTopicsByExamAndSubject === 'function') {
+                konuSelect.innerHTML = '<option>Konu seç</option>';
+                getTopicsByExamAndSubject(selectedExam, this.value).forEach(topic => {
+                  const opt = document.createElement('option');
+                  opt.value = topic;
+                  opt.textContent = topic;
+                  konuSelect.appendChild(opt);
+                });
+              }
+            });
+          }
+        }
+      }, 500);
 
       await Promise.all([refresh(), loadAssignments(), loadResources()]);
     }
