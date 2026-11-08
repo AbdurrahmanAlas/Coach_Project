@@ -822,19 +822,34 @@
       document.getElementById('question-filter')?.addEventListener('click', refresh);
 
       // Form toggle butonunu robust yap
-      const toggleBtn = document.getElementById('question-add-toggle');
-      const formCard = document.getElementById('question-form-card');
-      if (toggleBtn && formCard) {
-        toggleBtn.addEventListener('click', () => {
-          formCard.classList.toggle('hidden');
-          if (!formCard.classList.contains('hidden')) {
-            formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        });
+      // Modal'ı initialize et
+      if (window.questionModal) {
+        window.questionModal.init();
+
+        // "+ Yeni soru" butonunu modal açacak şekilde ayarla
+        const toggleBtn = document.getElementById('question-add-toggle');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', () => {
+            window.questionModal.open(async (data) => {
+              // Soru'yu API'ye gönder
+              const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+              });
+
+              return {
+                success: response.ok,
+                error: response.ok ? '' : 'Soru kaydedilemedi',
+                callback: async () => {
+                  await refresh();
+                }
+              };
+            });
+          });
+        }
       }
 
       await Promise.all([refresh(), loadAssignments(), loadResources()]);
-      document.getElementById('question-form')?.addEventListener('submit', async event => { event.preventDefault(); const examType = document.getElementById('question-exam-form').value.trim(); const subject = document.getElementById('question-subject-form').value.trim(); const topic = document.getElementById('question-topic-form').value.trim(); if (!examType || !subject || !topic) { alert('Lütfen sınav türü, ders ve konu seçin.'); return; } const payload = { subject: subject, topic: topic, prompt: document.getElementById('question-prompt').value.trim(), answer: document.getElementById('question-answer').value.trim() || null, explanation: document.getElementById('question-explanation').value.trim() || null, difficulty: document.getElementById('question-difficulty').value, examType: examType, questionType: document.getElementById('question-type')?.value || 'ShortAnswer', optionsJson: document.getElementById('question-options')?.value.trim() || null, isPublished: document.getElementById('question-published').checked, points: 1 }; const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, { method: 'POST', body: JSON.stringify(payload) }); const status = document.getElementById('question-form-status'); status.textContent = response.ok ? 'Soru kaydedildi.' : 'Soru kaydedilemedi.'; status.className = response.ok ? 'tag blue' : 'auth-error'; if (response.ok) { event.target.reset(); await refresh(); } });
     }
     async function loadSettingsPage() {
       const response = await authRequest('/api/auth/me'); if (!response.ok) return;
