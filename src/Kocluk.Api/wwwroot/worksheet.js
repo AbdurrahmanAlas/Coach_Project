@@ -1092,16 +1092,60 @@
     const list = await response.json();
     if (!list.length) { body.innerHTML = '<div class="ws-empty"><p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p></div>'; return; }
 
-    // Date range setup - compact
+    // Advanced filter setup
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const formatDate = (d) => d.toISOString().split('T')[0];
+
+    // Collect all unique students
+    const allStudents = [];
+    const studentMap = {};
+    list.forEach(item => {
+      item.students.forEach(s => {
+        if (!studentMap[s.studentId]) {
+          studentMap[s.studentId] = { id: s.studentId, name: s.firstName + ' ' + s.lastName };
+          allStudents.push(studentMap[s.studentId]);
+        }
+      });
+    });
+    allStudents.sort((a, b) => a.name.localeCompare(b.name));
+
+    const studentOptionsHtml = allStudents.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+
     const dateRangeHtml = `
-      <div class="ws-date-filter-compact">
-        <input type="date" id="ws-date-from" value="${formatDate(weekAgo)}" class="ws-date-input-compact" title="Başlangıç tarihi">
-        <input type="date" id="ws-date-to" value="${formatDate(today)}" class="ws-date-input-compact" title="Bitiş tarihi">
-        <button type="button" class="ws-btn-compact" id="ws-filter-btn">Filtrele</button>
-        <button type="button" class="ws-btn-compact" id="ws-clear-filter">Temizle</button>
+      <div class="ws-filter-advanced">
+        <div class="ws-filter-title">🔍 Gelişmiş Filtreler</div>
+        <div class="ws-filter-grid">
+          <div class="ws-filter-group">
+            <label>Öğrenci:</label>
+            <select id="ws-filter-student" class="ws-filter-select">
+              <option value="">Tümü</option>
+              ${studentOptionsHtml}
+            </select>
+          </div>
+          <div class="ws-filter-group">
+            <label>Durum:</label>
+            <select id="ws-filter-status" class="ws-filter-select">
+              <option value="">Tümü</option>
+              <option value="completed">✓ Teslim</option>
+              <option value="reopened">⟲ Yeniden açıldı</option>
+              <option value="opened">◐ Açıldı</option>
+              <option value="not-opened">✕ Açılmadı</option>
+            </select>
+          </div>
+          <div class="ws-filter-group">
+            <label>Başlangıç:</label>
+            <input type="date" id="ws-date-from" value="${formatDate(weekAgo)}" class="ws-filter-date">
+          </div>
+          <div class="ws-filter-group">
+            <label>Bitiş:</label>
+            <input type="date" id="ws-date-to" value="${formatDate(today)}" class="ws-filter-date">
+          </div>
+          <div class="ws-filter-group ws-filter-buttons">
+            <button type="button" class="ws-btn-filter-apply" id="ws-filter-btn">Filtrele</button>
+            <button type="button" class="ws-btn-filter-clear" id="ws-clear-filter">Sıfırla</button>
+          </div>
+        </div>
       </div>
     `;
 
@@ -1180,41 +1224,70 @@
         <div class="ws-detail" data-detail-box></div></article>`;
     }).join('');
 
-    // Date filter handlers
+    // Advanced filter handlers
     const filterBtn = body.querySelector('#ws-filter-btn');
     const clearBtn = body.querySelector('#ws-clear-filter');
     if (filterBtn) {
-      filterBtn.addEventListener('click', () => {
+      const applyFilters = () => {
+        const studentFilter = body.querySelector('#ws-filter-student')?.value || '';
+        const statusFilter = body.querySelector('#ws-filter-status')?.value || '';
         const from = body.querySelector('#ws-date-from').value;
         const to = body.querySelector('#ws-date-to').value;
+        const fromDate = from ? new Date(from) : null;
+        const toDate = to ? new Date(to) : null;
+
         const articles = body.querySelectorAll('.ws-ws');
-        let count = 0;
         articles.forEach(a => {
-          const rows = a.querySelectorAll('tbody tr');
-          let show = false;
+          const rows = a.querySelectorAll('.ws-result-row');
+          let visibleRows = 0;
+
           rows.forEach(r => {
-            const cells = r.querySelectorAll('td');
-            if (cells.length > 0) show = true;
+            let showRow = true;
+
+            // Student filter
+            if (studentFilter && r.dataset.student !== studentFilter) {
+              showRow = false;
+            }
+
+            // Status filter
+            if (statusFilter && !r.classList.contains(statusFilter)) {
+              showRow = false;
+            }
+
+            r.style.display = showRow ? '' : 'none';
+            if (showRow) visibleRows++;
           });
-          a.style.display = show ? 'block' : 'none';
-          if (show) count++;
+
+          // Show/hide article if it has visible rows
+          a.style.display = visibleRows > 0 ? 'block' : 'none';
         });
-      });
+      };
+
+      filterBtn.addEventListener('click', applyFilters);
+
       clearBtn?.addEventListener('click', () => {
+        body.querySelector('#ws-filter-student').value = '';
+        body.querySelector('#ws-filter-status').value = '';
         const today = new Date();
         const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         body.querySelector('#ws-date-from').value = weekAgo.toISOString().split('T')[0];
         body.querySelector('#ws-date-to').value = today.toISOString().split('T')[0];
         body.querySelectorAll('.ws-ws').forEach(a => a.style.display = 'block');
+        body.querySelectorAll('.ws-result-row').forEach(r => r.style.display = '');
       });
+
+      // Auto-filter on change
+      body.querySelector('#ws-filter-student')?.addEventListener('change', applyFilters);
+      body.querySelector('#ws-filter-status')?.addEventListener('change', applyFilters);
     }
 
     body.onclick = async event => {
-      // Close detail section
+      // Close detail section and scroll up
       if (event.target.matches('[data-close-detail]')) {
         const article = event.target.closest('.ws-ws');
         if (article) {
           article.querySelector('[data-detail-box]').innerHTML = '';
+          article.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         return;
       }
@@ -1833,11 +1906,19 @@
   .ws-result-time{text-align:center;font-size:12px;color:#6b85a0;white-space:nowrap}
   .ws-result-actions{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap}
   .ws-empty-msg{padding:20px 16px;text-align:center;color:#6b85a0;font-size:13px}
-  .ws-date-filter-compact{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;background:#f8fbfd;padding:10px 14px;border-radius:10px;border:1px solid #e8eef7}
-  .ws-date-input-compact{padding:6px 10px;border:1px solid #d4dfe8;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;color:#173452;width:110px}
-  .ws-date-input-compact:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.1)}
-  .ws-btn-compact{padding:6px 12px;border:1px solid #d4dfe8;border-radius:6px;background:#fff;color:#546e8a;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s ease;font-family:inherit}
-  .ws-btn-compact:hover{background:#f0f4f9;border-color:#c0cad6}
+  .ws-filter-advanced{background:linear-gradient(135deg,#f8fbfd 0%,#f0f4fa 100%);border:1px solid #e8eef7;border-radius:12px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+  .ws-filter-title{font-size:13px;font-weight:800;color:#10233f;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px}
+  .ws-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:flex-end}
+  .ws-filter-group{display:flex;flex-direction:column;gap:6px}
+  .ws-filter-group label{font-size:11px;font-weight:700;color:#546e8a;text-transform:uppercase;letter-spacing:0.3px}
+  .ws-filter-select,.ws-filter-date{padding:8px 10px;border:1px solid #d4dfe8;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:#173452;transition:all 0.15s ease;cursor:pointer}
+  .ws-filter-select:focus,.ws-filter-date:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fafbfc}
+  .ws-filter-select:hover,.ws-filter-date:hover{border-color:#c0cad6}
+  .ws-filter-buttons{grid-column:auto;display:flex;gap:8px;align-self:flex-end}
+  .ws-btn-filter-apply{padding:8px 16px;border:0;border-radius:8px;background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s ease;font-family:inherit;box-shadow:0 2px 6px rgba(37,99,235,.15)}
+  .ws-btn-filter-apply:hover{background:linear-gradient(135deg,#1d4ed8 0%,#1e40af 100%);box-shadow:0 4px 12px rgba(37,99,235,.25);transform:translateY(-1px)}
+  .ws-btn-filter-clear{padding:8px 14px;border:1px solid #d4dfe8;border-radius:8px;background:#fff;color:#546e8a;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s ease;font-family:inherit}
+  .ws-btn-filter-clear:hover{background:#f0f4f9;border-color:#c0cad6;color:#173452}
   .ws-detail-close{border:0;background:none;color:#8a99ab;font-size:18px;cursor:pointer;padding:4px 8px;font-weight:700;transition:all 0.15s ease;display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px}
   .ws-detail-close:hover{color:#546e8a;background:#f0f4f9;border-radius:6px}
   .ws-detail-actions{display:flex;gap:8px;align-items:center}
