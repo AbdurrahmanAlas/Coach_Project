@@ -1207,9 +1207,9 @@
           </div>
           <div class="ws-head-actions">
             <div class="ws-status-badges">
-              <span class="ws-badge success" title="Teslim eden">✓ ${completed}</span>
-              ${reopened > 0 ? `<span class="ws-badge warn" title="Yeniden açılan">⟲ ${reopened}</span>` : ''}
-              ${notOpened > 0 ? `<span class="ws-badge muted" title="Açmayan">✕ ${notOpened}</span>` : ''}
+              <span class="ws-badge success" title="Teslim eden: ${completed} öğrenci">✓ Teslim: ${completed}</span>
+              ${reopened > 0 ? `<span class="ws-badge warn" title="Yeniden açılan: ${reopened} öğrenci">⟲ Yeniden: ${reopened}</span>` : ''}
+              ${notOpened > 0 ? `<span class="ws-badge muted" title="Açılmadı: ${notOpened} öğrenci">◯ Açılmadı: ${notOpened}</span>` : ''}
             </div>
             <button type="button" class="ws-link-btn" data-analysis title="Soru analizi">📊 Analiz</button>
             <button type="button" class="ws-link-btn" data-key title="Cevap anahtarı">${item.hasKey ? '✎ Düzenle' : '➕ Anahtar'}</button>
@@ -1319,12 +1319,12 @@
         return { submissions: s.ok ? await s.json() : [], sheet: w.ok ? await w.json() : null };
       };
       if (event.target.matches('[data-reopen]')) {
-        const row = event.target.closest('tr');
+        const row = event.target.closest('.ws-result-row');
         if (!root.confirm('Öğrenci çalışmayı yeniden çözebilsin mi? Önceki sonuç geçmişte kalır.')) return;
         const r = await ctx.authRequest(`${base}/students/${row.dataset.student}/reopen`, { method: 'POST' });
         if (r.ok) renderResultsTab(body, ctx); else box.innerHTML = `<div class="ws-alert">${esc(await readError(r))}</div>`;
       } else if (event.target.matches('[data-detail]')) {
-        const row = event.target.closest('tr');
+        const row = event.target.closest('.ws-result-row');
         const { submissions, sheet } = await loadAll();
         const mine = submissions.filter(x => x.studentId === row.dataset.student && x.answers);
         if (!mine.length) { box.innerHTML = '<p class="ws-hint">Gönderim bulunamadı.</p>'; return; }
@@ -1911,10 +1911,10 @@
   .ws-time-cell{text-align:center;font-size:12px;color:#6b85a0}
   .ws-actions-cell{text-align:right;white-space:nowrap}.ws-link-btn{border:0;background:none;color:#2563eb;font:inherit;font-weight:700;cursor:pointer;padding:4px 8px;font-size:12px;transition:all 0.15s ease;border-radius:5px}
   .ws-link-btn:hover{color:#1d4ed8;background:#eef4ff}.ws-link-btn.danger{color:#c62828}.ws-link-btn.danger:hover{background:#fde8e8;color:#a01f1f}
-  .ws-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f0f4f9;color:#5d7088}
-  .ws-badge.success{background:#e8f8ee;color:#15803d}
-  .ws-badge.warn{background:#fff8e8;color:#a97600}
-  .ws-badge.muted{background:#f3f6fa;color:#8a99ab}
+  .ws-badge{display:inline-block;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:700;background:#f0f4f9;color:#546e8a;border:1px solid #e0e8f2;transition:all 0.15s ease}
+  .ws-badge.success{background:#e8f8ee;color:#15803d;border-color:#c6f0d8;box-shadow:0 2px 6px rgba(21,128,61,.08)}
+  .ws-badge.warn{background:#fff8e8;color:#a97600;border-color:#fde5a8;box-shadow:0 2px 6px rgba(174,102,0,.08)}
+  .ws-badge.muted{background:#f3f6fa;color:#6b85a0;border-color:#e8eef7;box-shadow:0 2px 6px rgba(107,133,160,.08)}
   .ws-status-badges{display:flex;gap:8px;flex-wrap:wrap}
   .ws-tag{display:inline-block;padding:5px 12px;border-radius:20px;background:#f0f4f9;font-size:12px;font-weight:700;color:#5d7088;border:1px solid #e8eef7}.ws-tag.ok{background:#e8f8ee;color:#15803d;border-color:#c6f0d8}.ws-tag.warn{background:#fff8e8;color:#a97600;border-color:#fde5a8}.ws-tag.muted{background:#f3f6fa;color:#8a99ab;border-color:#e8eef7}
   .ws-results-list{padding:0}
