@@ -1700,11 +1700,14 @@
   .ws-date-filter span{color:#8a99ab;font-weight:600}
   .ws-date-filter button{padding:8px 14px;font-size:12px}
   .ws-stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
-  .ws-stat-card{background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);border:1px solid #e0e8f2;border-radius:14px;padding:18px 20px;box-shadow:0 2px 8px rgba(23,52,82,.06);transition:all 0.2s ease}
-  .ws-stat-card:hover{border-color:#d4dfe8;box-shadow:0 4px 16px rgba(23,52,82,.12);transform:translateY(-2px)}
-  .ws-stat-label{display:block;font-size:12px;color:#546e8a;font-weight:650;margin-bottom:8px;letter-spacing:.3px}
-  .ws-stat-value{display:block;font-size:28px;font-weight:800;color:#10233f;margin-bottom:6px}
-  .ws-stat-card small{display:block;font-size:12px;color:#8a99ab}
+  .ws-stat-card{background:linear-gradient(135deg,#fff 0%,#fbfdff 100%);border:1px solid #e0e8f2;border-left:4px solid #3b82f6;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(23,52,82,.06);transition:all 0.2s ease;position:relative;overflow:hidden}
+  .ws-stat-card:before{content:'';position:absolute;top:0;right:-40px;width:100px;height:100px;background:radial-gradient(circle,rgba(59,130,246,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none}
+  .ws-stat-card:nth-child(2){border-left-color:#10b981}
+  .ws-stat-card:nth-child(3){border-left-color:#f59e0b}
+  .ws-stat-card:hover{border-color:#d4dfe8;box-shadow:0 6px 20px rgba(23,52,82,.12);transform:translateY(-3px)}
+  .ws-stat-label{display:block;font-size:11px;color:#546e8a;font-weight:800;margin-bottom:8px;letter-spacing:.4px;text-transform:uppercase}
+  .ws-stat-value{display:block;font-size:32px;font-weight:900;color:#0f172e;margin-bottom:6px;letter-spacing:-0.5px}
+  .ws-stat-card small{display:block;font-size:12px;color:#8a99ab;font-weight:500}
   .ws-btn{border:1px solid var(--ws-line);background:#fff;color:var(--ws-text);border-radius:var(--ws-radius);padding:11px 17px;font:inherit;font-weight:650;cursor:pointer;text-decoration:none;display:inline-block;font-size:13px;transition:all .2s ease}
   .ws-btn:hover{background:#f8fbfd;border-color:#a8b8c8;box-shadow:0 4px 12px rgba(23,52,82,.1)}
   .ws-btn:active{transform:translateY(1px);box-shadow:0 2px 6px rgba(23,52,82,.06)}
