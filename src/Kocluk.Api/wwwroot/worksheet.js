@@ -1092,18 +1092,16 @@
     const list = await response.json();
     if (!list.length) { body.innerHTML = '<div class="ws-empty"><p class="ws-hint">Henüz optik formlu çalışma göndermedin. "Çalışma gönder" sekmesinden başlayabilirsin.</p></div>'; return; }
 
-    // Date range setup
+    // Date range setup - compact
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const formatDate = (d) => d.toISOString().split('T')[0];
     const dateRangeHtml = `
-      <div class="ws-date-filter">
-        <label>Tarih Aralığı:</label>
-        <input type="date" id="ws-date-from" value="${formatDate(weekAgo)}" class="ws-date-input">
-        <span>-</span>
-        <input type="date" id="ws-date-to" value="${formatDate(today)}" class="ws-date-input">
-        <button type="button" class="ws-btn" id="ws-filter-btn">Filtrele</button>
-        <button type="button" class="ws-btn" id="ws-clear-filter">Temizle</button>
+      <div class="ws-date-filter-compact">
+        <input type="date" id="ws-date-from" value="${formatDate(weekAgo)}" class="ws-date-input-compact" title="Başlangıç tarihi">
+        <input type="date" id="ws-date-to" value="${formatDate(today)}" class="ws-date-input-compact" title="Bitiş tarihi">
+        <button type="button" class="ws-btn-compact" id="ws-filter-btn">Filtrele</button>
+        <button type="button" class="ws-btn-compact" id="ws-clear-filter">Temizle</button>
       </div>
     `;
 
@@ -1212,6 +1210,15 @@
     }
 
     body.onclick = async event => {
+      // Close detail section
+      if (event.target.matches('[data-close-detail]')) {
+        const article = event.target.closest('.ws-ws');
+        if (article) {
+          article.querySelector('[data-detail-box]').innerHTML = '';
+        }
+        return;
+      }
+
       const article = event.target.closest('.ws-ws');
       if (!article) return;
       const resourceId = article.dataset.resource, count = Number(article.dataset.count), optionCount = Number(article.dataset.options);
@@ -1238,6 +1245,9 @@
         const successRate = resultStats.total > 0 ? Math.round((resultStats.correct / resultStats.total) * 100) : 0;
         box.innerHTML = `<div class="ws-detail-header">
           <div><h4>${esc(latest.firstName)} ${esc(latest.lastName)}</h4><small>${new Date(latest.submittedAtUtc).toLocaleString('tr-TR')}${mine.length > 1 ? ` · ${mine.length}. deneme` : ''}</small></div>
+          <div class="ws-detail-actions"><button type="button" class="ws-detail-close" data-close-detail title="Kapat">✕</button></div>
+        </div>
+        <div class="ws-detail-header">
           <div class="ws-detail-stats">
             <div class="ws-detail-stat"><span>${resultStats.correct}</span>Doğru</div>
             <div class="ws-detail-stat"><span>${resultStats.wrong}</span>Yanlış</div>
@@ -1776,13 +1786,13 @@
   .ws-key-bar-fill{height:100%;background:linear-gradient(90deg,#22c55e,#15803d);transition:width 0.3s ease;display:block}
   .ws-send-foot{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}
   .ws-status{font-weight:600;font-size:13px;border-radius:6px;padding:6px 10px}.ws-status.ok{color:#15803d;background:#e8f8ee}.ws-status.err{color:#c62828;background:#fde8e8}
-  .ws-ws{border:1px solid var(--ws-line);border-radius:var(--ws-radius-lg);margin-bottom:18px;overflow:hidden;box-shadow:var(--ws-shadow);background:#fff;transition:all .2s ease}
+  .ws-ws{border:1px solid var(--ws-line);border-radius:var(--ws-radius-lg);margin-bottom:14px;overflow:hidden;box-shadow:var(--ws-shadow);background:#fff;transition:all .2s ease}
   .ws-ws:hover{box-shadow:var(--ws-shadow-md);border-color:#c0cad6}
-  .ws-ws>header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:20px 24px;background:linear-gradient(135deg,#0f172e 0%,#1a3a5c 100%);flex-wrap:wrap;position:relative;overflow:hidden}
-  .ws-ws>header:before{content:"";position:absolute;top:-40%;right:-15%;width:320px;height:320px;background:radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none}
+  .ws-ws>header{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:16px 20px;background:linear-gradient(135deg,#1f3a62 0%,#2a4a75 100%);flex-wrap:wrap;position:relative;overflow:hidden}
+  .ws-ws>header:before{content:"";position:absolute;top:-40%;right:-15%;width:320px;height:320px;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%);border-radius:50%;pointer-events:none}
   .ws-ws>header>div{position:relative;z-index:1;flex:1;min-width:0}
-  .ws-ws>header strong{display:block;font-size:17px;font-weight:800;color:#fff;margin-bottom:8px;letter-spacing:-.3px}
-  .ws-ws small{display:block;color:#a8bcd4;font-size:12px;line-height:1.6;margin-top:4px;font-weight:500}
+  .ws-ws>header strong{display:block;font-size:16px;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-.2px}
+  .ws-ws small{display:block;color:#b8cfe1;font-size:11px;line-height:1.6;margin-top:3px;font-weight:500}
   .ws-head-actions{display:flex;gap:10px;align-items:center;position:relative;z-index:1;flex-wrap:wrap;justify-content:flex-end}
   .ws-table-wrap{overflow:auto;margin-top:0;border-radius:var(--ws-radius)}.ws-table{width:100%;border-collapse:collapse;font-size:13px;color:var(--ws-text)}.ws-table thead{background:linear-gradient(90deg,#f5f8fc,#f0f4fa);position:sticky;top:0;z-index:2}.ws-table th{text-align:left;color:var(--ws-text-light);font-size:11px;font-weight:800;padding:14px 16px;border-bottom:2px solid var(--ws-line);letter-spacing:.4px;text-transform:uppercase;background-color:inherit}
   .ws-table td{padding:13px 16px;border-bottom:1px solid #f8fafd;color:var(--ws-text)}.ws-table tbody tr{transition:background-color .15s ease}
@@ -1823,7 +1833,15 @@
   .ws-result-time{text-align:center;font-size:12px;color:#6b85a0;white-space:nowrap}
   .ws-result-actions{display:flex;gap:6px;justify-content:flex-end;white-space:nowrap}
   .ws-empty-msg{padding:20px 16px;text-align:center;color:#6b85a0;font-size:13px}
-  .ws-detail{padding:0 20px}.ws-detail:not(:empty){padding:16px 20px;border-top:1px solid #f3f6fa;background:#fafbfe}.ws-detail h4{margin:0 0 12px;font-size:14px;font-weight:700;color:#1f4f86}
+  .ws-date-filter-compact{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;background:#f8fbfd;padding:10px 14px;border-radius:10px;border:1px solid #e8eef7}
+  .ws-date-input-compact{padding:6px 10px;border:1px solid #d4dfe8;border-radius:6px;font-size:12px;font-family:inherit;background:#fff;color:#173452;width:110px}
+  .ws-date-input-compact:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+  .ws-btn-compact{padding:6px 12px;border:1px solid #d4dfe8;border-radius:6px;background:#fff;color:#546e8a;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s ease;font-family:inherit}
+  .ws-btn-compact:hover{background:#f0f4f9;border-color:#c0cad6}
+  .ws-detail-close{border:0;background:none;color:#8a99ab;font-size:18px;cursor:pointer;padding:4px 8px;font-weight:700;transition:all 0.15s ease;display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px}
+  .ws-detail-close:hover{color:#546e8a;background:#f0f4f9;border-radius:6px}
+  .ws-detail-actions{display:flex;gap:8px;align-items:center}
+  .ws-detail{padding:0 20px}.ws-detail:not(:empty){padding:14px 20px;border-top:1px solid #f3f6fa;background:#fafbfe}.ws-detail h4{margin:0 0 12px;font-size:14px;font-weight:700;color:#1f4f86}
   .ws-detail-header{display:flex;justify-content:space-between;gap:16px;margin-bottom:16px;align-items:flex-start}
   .ws-detail-header h4{margin:0}
   .ws-detail-header small{display:block;color:#8a99ab;font-size:12px;margin-top:4px}
