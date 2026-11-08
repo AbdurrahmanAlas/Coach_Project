@@ -83,4 +83,41 @@ document.addEventListener('DOMContentLoaded', function() {
   [examSelect, subjectSelect, topicSelect, document.getElementById('question-difficulty-filter')].forEach(select => {
     if (select) select.addEventListener('change', filterQuestions);
   });
+
+  // Soru formu - exam_type ve subject_code ekle
+  const questionForm = document.getElementById('question-form');
+  if (questionForm && isCoach) {
+    // Form submit öncesi exam_type ve subject_code ekle
+    questionForm.addEventListener('submit', function(e) {
+      // Hidden fields ekle (varsa sil ve yeniden ekle)
+      const existingExamType = this.querySelector('input[name="exam_type"]');
+      const existingSubjectCode = this.querySelector('input[name="subject_code"]');
+
+      if (existingExamType) existingExamType.remove();
+      if (existingSubjectCode) existingSubjectCode.remove();
+
+      // Seçilen exam_type ve subject'i form'a ekle
+      const examType = examSelect.value;
+      const subject = subjectSelect.value;
+
+      if (examType && subject) {
+        const examInput = document.createElement('input');
+        examInput.type = 'hidden';
+        examInput.name = 'exam_type';
+        examInput.value = examType;
+        this.appendChild(examInput);
+
+        const subjectInput = document.createElement('input');
+        subjectInput.type = 'hidden';
+        subjectInput.name = 'subject_code';
+        subjectInput.value = subject;
+        this.appendChild(subjectInput);
+
+        console.log('Soru gönderiliyor:', { exam_type: examType, subject_code: subject });
+      } else {
+        alert('Lütfen önce sınav türü ve dersi seçin!');
+        e.preventDefault();
+      }
+    });
+  }
 });
