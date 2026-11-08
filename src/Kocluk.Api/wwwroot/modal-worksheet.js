@@ -6,11 +6,12 @@ class WorksheetModal {
     this.examType = '';
     this.subject = '';
     this.topic = '';
+    this.studentId = '';
     this.onSubmit = null;
   }
 
   // Modal'ı aç
-  open(onSubmit, prefillData = {}) {
+  open(onSubmit, prefillData = {}, tenantId = null) {
     this.onSubmit = onSubmit;
 
     const backdrop = document.getElementById('worksheet-modal-backdrop');
@@ -23,6 +24,11 @@ class WorksheetModal {
 
     // Önceki verileri temizle
     this.resetForm();
+
+    // Öğrencileri yükle
+    if (tenantId) {
+      this.loadStudents(tenantId);
+    }
 
     // Prefill data varsa ekle
     if (prefillData.examType) {
@@ -63,6 +69,31 @@ class WorksheetModal {
     this.resetForm();
   }
 
+  // Öğrencileri yükle
+  async loadStudents(tenantId) {
+    const studentSelect = document.getElementById('w-student');
+    if (!studentSelect || !tenantId) return;
+
+    try {
+      const response = await fetch(`/api/tenants/${tenantId}/students`, { credentials: 'include' });
+      if (!response.ok) return;
+
+      const students = await response.json();
+      studentSelect.innerHTML = '<option value="">Öğrenci seçin</option>';
+
+      if (Array.isArray(students)) {
+        students.forEach(student => {
+          const option = document.createElement('option');
+          option.value = student.id;
+          option.textContent = (student.firstName || '') + ' ' + (student.lastName || '');
+          studentSelect.appendChild(option);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load students:', err);
+    }
+  }
+
   // Form'u temizle
   resetForm() {
     const form = document.getElementById('w-form');
@@ -85,6 +116,7 @@ class WorksheetModal {
     this.examType = '';
     this.subject = '';
     this.topic = '';
+    this.studentId = '';
   }
 
   // Sınav türü seç
@@ -131,6 +163,8 @@ class WorksheetModal {
 
   // Initialize - Event listener'ları ekle
   init() {
+    const studentSelect = document.getElementById('w-student');
+    const selectAllCheckbox = document.getElementById('w-select-all-students');
     const examButtons = document.querySelectorAll('.w-exam-btn');
     const subjectSelect = document.getElementById('w-subject');
     const topicSelect = document.getElementById('w-topic');
@@ -140,6 +174,25 @@ class WorksheetModal {
     const submitBtn = document.getElementById('w-submit');
     const form = document.getElementById('w-form');
     const fileInput = document.getElementById('w-file');
+
+    // Öğrenci seçimi
+    if (studentSelect) {
+      studentSelect.addEventListener('change', (e) => {
+        this.studentId = e.target.value;
+        if (selectAllCheckbox) selectAllCheckbox.checked = false;
+      });
+    }
+
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          this.studentId = 'all';
+          if (studentSelect) studentSelect.value = '';
+        } else {
+          this.studentId = '';
+        }
+      });
+    }
 
     // Sınav türü düğmeleri
     examButtons.forEach(btn => {
@@ -204,6 +257,7 @@ class WorksheetModal {
 
   // Form'u submit et
   async submit() {
+    const studentId = this.studentId.trim();
     const examType = this.examType.trim();
     const subject = document.getElementById('w-subject').value.trim();
     const topic = document.getElementById('w-topic').value.trim();
@@ -213,7 +267,14 @@ class WorksheetModal {
 
     const status = document.getElementById('w-status');
 
-    // En az sınav türü gerekli
+    // Öğrenci ve sınav türü gerekli
+    if (!studentId) {
+      status.textContent = '❌ Lütfen öğrenci seçin veya "Tüm öğrencilere gönder" seçeneğini işaretleyin';
+      status.className = 'w-status-error';
+      status.classList.remove('hidden');
+      return;
+    }
+
     if (!examType) {
       status.textContent = '❌ Lütfen sınav türü seçin (TYT, AYT, KPSS, YÖS, DGS)';
       status.className = 'w-status-error';
@@ -228,6 +289,7 @@ class WorksheetModal {
     // Custom submit handler varsa kullan
     if (this.onSubmit && typeof this.onSubmit === 'function') {
       const data = {
+        studentId,
         examType,
         subject: subject || null,
         topic: topic || null,

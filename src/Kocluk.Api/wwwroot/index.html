@@ -8,10 +8,10 @@
   <title>Koçluk | Öğrenci gelişim paneli</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="/exam-data.js?v=20261108240000"></script>
-  <script src="/exam-filters.js?v=20261108240000"></script>
-  <script src="/modal-questions.js?v=20261108240000"></script>
-  <script src="/modal-worksheet.js?v=20261108240000"></script>
+  <script src="/exam-data.js?v=20261108245000"></script>
+  <script src="/exam-filters.js?v=20261108245000"></script>
+  <script src="/modal-questions.js?v=20261108245000"></script>
+  <script src="/modal-worksheet.js?v=20261108245000"></script>
   <script src="/worksheet.js?v=20261108200000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -448,6 +448,12 @@
         <button id="w-close" type="button">✕</button>
       </div>
       <form id="w-form">
+        <div class="w-section-title">0️⃣ Öğrenci Seç *</div>
+        <div class="w-students-section" style="margin-bottom:20px">
+          <select id="w-student" class="w-select" required style="margin-bottom:8px"><option value="">Öğrenci seçin</option></select>
+          <label style="display:flex;align-items:center;gap:8px;color:#52627a;font-size:12px;cursor:pointer"><input id="w-select-all-students" type="checkbox" style="width:16px;height:16px"> Tüm öğrencilere gönder</label>
+        </div>
+
         <div class="w-section-title">1️⃣ Sınav Türü Seç</div>
         <div class="w-exam-buttons">
           <button type="button" class="w-exam-btn" data-exam="TYT">📝 TYT</button>
@@ -989,7 +995,7 @@
                   // Sayfayı yenile
                 }
               };
-            });
+            }, {}, tenantId);
           });
         }
       }
