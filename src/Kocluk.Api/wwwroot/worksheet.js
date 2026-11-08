@@ -1276,9 +1276,11 @@
         body.querySelectorAll('.ws-result-row').forEach(r => r.style.display = '');
       });
 
-      // Auto-filter on change
+      // Auto-filter on change (real-time filtering)
       body.querySelector('#ws-filter-student')?.addEventListener('change', applyFilters);
       body.querySelector('#ws-filter-status')?.addEventListener('change', applyFilters);
+      body.querySelector('#ws-date-from')?.addEventListener('change', applyFilters);
+      body.querySelector('#ws-date-to')?.addEventListener('change', applyFilters);
     }
 
     body.onclick = async event => {
