@@ -1294,6 +1294,16 @@
         return;
       }
 
+      // Close analysis and scroll up
+      if (event.target.matches('[data-close-analysis]')) {
+        const article = event.target.closest('.ws-ws');
+        if (article) {
+          article.querySelector('[data-detail-box]').innerHTML = '';
+          article.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
+
       const article = event.target.closest('.ws-ws');
       if (!article) return;
       const resourceId = article.dataset.resource, count = Number(article.dataset.count), optionCount = Number(article.dataset.options);
@@ -1333,6 +1343,13 @@
         <div class="ws-chips">${rows.map(r => `<div class="ws-chip ${r.status}" title="Soru ${r.no}"><span>${r.no}</span><b>${esc(r.status === 'wrong' ? r.picked + '→' + r.correct : (r.picked || '—'))}</b></div>`).join('')}</div>
         ${mine.length > 1 ? `<div class="ws-attempts"><p class="ws-hint">📋 Önceki denemeler:</p><div class="ws-attempt-list">${mine.slice(1).map((m, i) => `<div class="ws-attempt-item"><span>${i + 2}. deneme</span><span>${new Date(m.submittedAtUtc).toLocaleDateString('tr-TR')}</span><span class="ws-attempt-net">${m.net == null ? '—' : formatNet(m.net)} net</span></div>`).join('')}</div></div>` : ''}`;
       } else if (event.target.matches('[data-analysis]')) {
+        // Toggle analysis - if already open, close it
+        if (box.innerHTML && box.innerHTML.includes('ws-analysis-header')) {
+          box.innerHTML = '';
+          article.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+
         const { submissions, sheet } = await loadAll();
         if (!sheet?.hasKey) { box.innerHTML = '<p class="ws-hint">Soru analizi için önce cevap anahtarı ekle.</p>'; return; }
         const stats = questionStats(submissions, sheet.answerKey, count);
@@ -1340,12 +1357,13 @@
         const avgPercent = Math.round(stats.reduce((sum, x) => sum + x.percent, 0) / stats.length);
         const problematicQuestions = stats.filter(x => x.percent < 40).length;
         box.innerHTML = `<div class="ws-analysis-header">
-          <h4>📊 Soru Bazlı Analiz</h4>
-          <div class="ws-analysis-stats">
-            <div class="ws-stat-mini"><span>${stats[0].total}</span>Öğrenci</div>
-            <div class="ws-stat-mini"><span>${avgPercent}%</span>Ort. Başarı</div>
-            ${problematicQuestions > 0 ? `<div class="ws-stat-mini warn"><span>${problematicQuestions}</span>Zor Soru</div>` : ''}
-          </div>
+          <div><h4>📊 Soru Bazlı Analiz</h4></div>
+          <button type="button" class="ws-detail-close" data-close-analysis title="Kapat">✕</button>
+        </div>
+        <div class="ws-analysis-stats">
+          <div class="ws-stat-mini"><span>${stats[0].total}</span>Öğrenci</div>
+          <div class="ws-stat-mini"><span>${avgPercent}%</span>Ort. Başarı</div>
+          ${problematicQuestions > 0 ? `<div class="ws-stat-mini warn"><span>${problematicQuestions}</span>Zor Soru</div>` : ''}
         </div>
         <div class="ws-bars">${stats.map(x => `<div class="ws-bar" title="Soru ${x.no}: %${x.percent} doğru (${x.total} öğrenci)"><div class="ws-bar-fill ${x.percent < 40 ? 'low' : x.percent < 70 ? 'mid' : 'high'}" style="height:${Math.max(4, x.percent)}%"></div><span>${x.no}</span></div>`).join('')}</div>
         <div class="ws-analysis-legend">
