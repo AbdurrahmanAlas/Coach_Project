@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="/exam-data.js?v=20261108230000"></script>
   <script src="/exam-filters.js?v=20261108230000"></script>
+  <script src="/modal-questions.js?v=20261108230000"></script>
   <script src="/worksheet.js?v=20261108200000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -177,6 +178,58 @@
     .student-card p{font-size:12px;line-height:1.4}
     .student-coach-status{display:block;position:relative;z-index:1;margin-top:8px;color:#168a68;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .student-coach-status.pending{color:#b7791f}
+
+    /* Professional Modal System */
+    #question-modal-backdrop{position:fixed;inset:0;background:rgba(16,35,63,.75);backdrop-filter:blur(3px);z-index:1000;display:none;place-items:center;padding:20px;animation:fadeInBackdrop .25s ease}
+    #question-modal{position:relative;width:min(720px,100%);max-height:calc(100vh - 40px);overflow-y:auto;background:#fff;border-radius:20px;box-shadow:0 25px 60px rgba(16,35,63,.3);display:none;animation:slideUpModal .3s cubic-bezier(.34,.69,.65,1);z-index:1001}
+    @keyframes fadeInBackdrop{from{opacity:0}to{opacity:1}}
+    @keyframes slideUpModal{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+    #q-header{display:flex;justify-content:space-between;align-items:flex-start;padding:28px 32px;border-bottom:1px solid #e0e8f2;background:linear-gradient(135deg,#fafbfc,#f5f8fc)}
+    #q-header h2{margin:0 0 6px;font-size:24px;font-weight:800;color:#10233f}
+    #q-header p{margin:0;color:#6b85a0;font-size:13px}
+    #q-close{background:none;border:0;cursor:pointer;font-size:24px;color:#6b85a0;width:32px;height:32px;display:grid;place-items:center;transition:all .2s ease;border-radius:8px}
+    #q-close:hover{background:#e8f0ff;color:#2563eb;transform:rotate(90deg)}
+
+    #q-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:24px 32px}
+    #q-form > div{grid-column:1 / -1}
+    #q-form .q-half{grid-column:span 1}
+
+    .q-label{display:block;color:#52627a;font-size:12px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px}
+    .q-input,.q-select{width:100%;border:1.5px solid #d9e2ee;border-radius:11px;padding:12px 14px;font:inherit;color:#10233f;background:#fff;outline:none;transition:all .2s ease}
+    .q-input:focus,.q-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);background:linear-gradient(to bottom,#fafbfc,#fff)}
+    .q-input::placeholder{color:#a6b8cd}
+
+    #q-prompt{grid-column:1 / -1;min-height:100px;resize:vertical}
+
+    .q-grid-2{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .q-grid-2 > div{grid-column:span 1}
+
+    .q-checkbox-group{display:flex;align-items:center;gap:10px;padding:12px;background:#f5faff;border-radius:11px;border:1px solid #e0ecf8}
+    .q-checkbox-group input{width:18px;height:18px;cursor:pointer}
+    .q-checkbox-group label{cursor:pointer;color:#52627a;font-size:12px;margin:0;flex:1}
+
+    #q-status{display:block;padding:12px 14px;border-radius:11px;margin:0 32px;font-size:13px;font-weight:600;margin-top:0;margin-bottom:16px}
+    #q-status.hidden{display:none}
+    .q-status-success{background:#dcfce7;color:#166534;border-left:4px solid #16a34a}
+    .q-status-error{background:#fee2e2;color:#991b1b;border-left:4px solid #dc2626}
+    .q-status-info{background:#dbeafe;color:#1e40af;border-left:4px solid #3b82f6}
+
+    #q-footer{display:flex;justify-content:flex-end;gap:12px;padding:20px 32px;border-top:1px solid #e0e8f2;background:#f8fafc}
+    #q-cancel,#q-submit{padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;border:0;cursor:pointer;transition:all .2s ease}
+    #q-cancel{background:#e8f0ff;color:#2563eb}
+    #q-cancel:hover{background:#d6e5ff}
+    #q-submit{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.28)}
+    #q-submit:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(37,99,235,.36)}
+    #q-submit:active{transform:translateY(0)}
+
+    @media(max-width:650px){
+      #question-modal{width:100%;max-height:90vh}
+      #q-form{grid-template-columns:1fr;padding:20px}
+      #q-header{padding:20px}
+      #q-footer{padding:16px 20px}
+      .q-grid-2{grid-template-columns:1fr}
+    }
     .student-card p,.student-card>small:not(.student-coach-status){font-size:13px!important;line-height:1.5}
     .student-card p:before,.student-card>small:not(.student-coach-status):before{display:inline-block;width:22px;margin-right:4px;font-size:16px;font-weight:800;vertical-align:-1px}
     .student-card p:first-of-type:before{content:'👤'}
@@ -296,6 +349,36 @@
   </style>
 </head>
 <body>
+  <!-- Professional Question Modal -->
+  <div id="question-modal-backdrop">
+    <div id="question-modal">
+      <div id="q-header">
+        <div>
+          <h2>📝 Soru Oluştur</h2>
+          <p>Hiyerarşik olarak sınav türü, ders ve konu seçerek yeni soru ekle</p>
+        </div>
+        <button id="q-close" type="button">✕</button>
+      </div>
+      <form id="q-form">
+        <div class="q-half"><label class="q-label">📚 Sınav Türü *</label><select id="q-exam" class="q-select" required><option value="">Sınav türü seç</option></select></div>
+        <div class="q-half"><label class="q-label">📚 Ders *</label><select id="q-subject" class="q-select" required><option value="">Sınav türü seç</option></select></div>
+        <div class="q-half"><label class="q-label">📖 Konu *</label><select id="q-topic" class="q-select" required><option value="">Ders seç</option></select></div>
+        <div class="q-half"><label class="q-label">⭐ Zorluk</label><select id="q-difficulty" class="q-select"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></div>
+        <div><label class="q-label">Soru Metni *</label><textarea id="q-prompt" class="q-input" placeholder="Soruyu detaylı bir şekilde yazın..." maxlength="4000" required></textarea></div>
+        <div class="q-half"><label class="q-label">Doğru Cevap *</label><input id="q-answer" type="text" class="q-input" placeholder="Örn: Ankara" maxlength="1000" required></div>
+        <div class="q-half"><label class="q-label">Soru Türü</label><select id="q-type" class="q-select"><option value="ShortAnswer" selected>✏️ Kısa cevap</option><option value="MultipleChoice">◉ Çoktan seçmeli</option><option value="TrueFalse">✓ Doğru / Yanlış</option></select></div>
+        <div class="q-half"><label class="q-label">Seçenekler</label><input id="q-options" type="text" class="q-input" placeholder="A) ... | B) ... | C) ..."></div>
+        <div><label class="q-label">Açıklama</label><textarea id="q-explanation" class="q-input" placeholder="Sorunun çözümü ve açıklaması (opsiyonel)" maxlength="4000"></textarea></div>
+        <div class="q-checkbox-group"><input id="q-published" type="checkbox"><label for="q-published">🌍 Öğrencilere yayımla</label></div>
+        <div id="q-status" class="hidden"></div>
+      </form>
+      <div id="q-footer">
+        <button id="q-cancel" type="button">İptal</button>
+        <button id="q-submit" type="button">✓ Soruyu Kaydet</button>
+      </div>
+    </div>
+  </div>
+
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
       <div class="auth-brand"><span class="brand-mark">K</span> Koçluk</div>
