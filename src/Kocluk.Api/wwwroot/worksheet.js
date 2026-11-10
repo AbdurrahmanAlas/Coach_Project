@@ -788,6 +788,7 @@
 
   async function renderSendTab(body, ctx, state) {
     body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
+    state.students = null;
     const students = await loadStudents(ctx, state);
     const key = { count: 40, options: 5, answers: {} };
     body.innerHTML = `
