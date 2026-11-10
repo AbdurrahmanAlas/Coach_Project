@@ -957,7 +957,7 @@
           if (assigned.ok) sent++;
         }
         status(sent === studentIds.length ? `${sent} öğrenciye gönderildi ✓` : `${sent}/${studentIds.length} öğrenciye gönderildi. Kalanlar için tekrar dene.`, sent ? 'ok' : 'err');
-        if (sent) { field('file').value = ''; }
+        if (sent) { field('file').value = ''; if (ctx.loadResources) await ctx.loadResources(); }
       } catch (error) {
         status('Gönderilemedi. Bağlantını kontrol edip tekrar dene.', 'err');
       } finally { button.disabled = false; }

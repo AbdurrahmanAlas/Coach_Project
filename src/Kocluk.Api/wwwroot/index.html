@@ -730,7 +730,7 @@
         const [title, text] = heads[view];
         shell.innerHTML = `<div class="qb-head"><div><h1>${title}</h1><p>${text}</p></div><button type="button" class="tag blue" data-qb-go="home">← Soru Bankası</button></div>`;
         shell.querySelector('[data-qb-go]').addEventListener('click', () => go('home'));
-        window.KoclukWorksheet?.mountCoachView(shell, { tenantId, authRequest }, view);
+        window.KoclukWorksheet?.mountCoachView(shell, { tenantId, authRequest, loadResources: () => window.loadResources?.() }, view);
         return;
       }
       const tiles = [
@@ -1069,6 +1069,7 @@
       }
 
       await Promise.all([refresh(), loadAssignments(), loadResources()]);
+      window.loadResources = loadResources;
     }
     async function loadSettingsPage() {
       const response = await authRequest('/api/auth/me'); if (!response.ok) return;
