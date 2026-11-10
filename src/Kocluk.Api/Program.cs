@@ -1624,25 +1624,58 @@ tenantApi.MapPost("/students/{studentId:guid}/restore", async (Guid tenantId, Gu
 tenantApi.MapDelete("/students/{studentId:guid}/permanent", async (Guid tenantId, Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
 {
     if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
-    var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId, ct);
-    if (student is null) return Results.NotFound();
-    var name = $"{student.FirstName} {student.LastName}";
-    var plans = await db.StudyPlans.Include(x => x.Tasks).Where(x => x.TenantId == tenantId && x.StudentId == studentId).ToListAsync(ct);
-    foreach (var plan in plans) db.RemoveRange(plan.Tasks);
-    db.StudyPlans.RemoveRange(plans);
-    db.CoachingSessions.RemoveRange(await db.CoachingSessions.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.ExamAttempts.RemoveRange(await db.ExamAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.SubjectProgresses.RemoveRange(await db.SubjectProgresses.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.StudentGuardians.RemoveRange(await db.StudentGuardians.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.QuestionAttempts.RemoveRange(await db.QuestionAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.QuestionAssignments.RemoveRange(await db.QuestionAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.ResourceSubmissions.RemoveRange(await db.ResourceSubmissions.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.ResourceAssignments.RemoveRange(await db.ResourceAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
-    db.Students.Remove(student);
-    await db.SaveChangesAsync(ct);
+    var name = await PurgeStudentAsync(db, tenantId, studentId, ct);
+    if (name is null) return Results.NotFound();
     await WriteAuditAsync(db, principal, tenantId, "PermanentlyDeleted", "Student", studentId, name, ct);
     return Results.NoContent();
 });
+
+app.MapGet("/api/admin/tenants/{tenantId:guid}/people", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Admin")) return Results.Forbid();
+    var coaches = await (from m in db.TenantMemberships.AsNoTracking()
+                         join u in db.Users.AsNoTracking() on m.UserId equals u.Id
+                         where m.TenantId == tenantId && m.Role != "Student" && m.Role != "Parent"
+                         orderby u.Email
+                         select new { userId = u.Id, email = u.Email, name = ((u.FirstName ?? "") + " " + (u.LastName ?? "")).Trim(), role = m.Role }).ToListAsync(ct);
+    var students = await db.Students.IgnoreQueryFilters().AsNoTracking().Where(x => x.TenantId == tenantId)
+        .OrderBy(x => x.IsDeleted).ThenBy(x => x.LastName).ThenBy(x => x.FirstName)
+        .Select(x => new { x.Id, x.FirstName, x.LastName, x.Email, x.PhoneNumber, isDeleted = x.IsDeleted, accountLinked = x.ApplicationUserId != null }).ToListAsync(ct);
+    return Results.Ok(new { coaches, students });
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/students/{studentId:guid}/deactivate", async (Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Admin")) return Results.Forbid();
+    var student = await db.Students.SingleOrDefaultAsync(x => x.Id == studentId, ct);
+    if (student is null) return Results.NotFound();
+    student.SoftDelete();
+    await db.SaveChangesAsync(ct);
+    await WriteAuditAsync(db, principal, student.TenantId, "Deleted", "Student", studentId, $"{student.FirstName} {student.LastName}", ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/students/{studentId:guid}/restore", async (Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Admin")) return Results.Forbid();
+    var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.Id == studentId && x.IsDeleted, ct);
+    if (student is null) return Results.NotFound();
+    student.Restore();
+    await db.SaveChangesAsync(ct);
+    await WriteAuditAsync(db, principal, student.TenantId, "Restored", "Student", studentId, $"{student.FirstName} {student.LastName}", ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
+app.MapDelete("/api/admin/students/{studentId:guid}/permanent", async (Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Admin")) return Results.Forbid();
+    var tenantId = await db.Students.IgnoreQueryFilters().Where(x => x.Id == studentId).Select(x => (Guid?)x.TenantId).SingleOrDefaultAsync(ct);
+    if (tenantId is null) return Results.NotFound();
+    var name = await PurgeStudentAsync(db, tenantId.Value, studentId, ct);
+    if (name is null) return Results.NotFound();
+    await WriteAuditAsync(db, principal, tenantId, "PermanentlyDeleted", "Student", studentId, name, ct);
+    return Results.NoContent();
+}).RequireAuthorization();
 
 tenantApi.MapPost("/students/{studentId:guid}/plans", async (
     Guid tenantId, Guid studentId, CreateStudyPlanRequest request,
@@ -1790,6 +1823,26 @@ app.MapPost("/api/billing/webhook", async (HttpRequest request, IConfiguration c
 
 app.Run();
 
+static async Task<string?> PurgeStudentAsync(KoclukDbContext db, Guid tenantId, Guid studentId, CancellationToken ct)
+{
+    var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId, ct);
+    if (student is null) return null;
+    var name = $"{student.FirstName} {student.LastName}";
+    var plans = await db.StudyPlans.Include(x => x.Tasks).Where(x => x.TenantId == tenantId && x.StudentId == studentId).ToListAsync(ct);
+    foreach (var plan in plans) db.RemoveRange(plan.Tasks);
+    db.StudyPlans.RemoveRange(plans);
+    db.CoachingSessions.RemoveRange(await db.CoachingSessions.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ExamAttempts.RemoveRange(await db.ExamAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.SubjectProgresses.RemoveRange(await db.SubjectProgresses.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.StudentGuardians.RemoveRange(await db.StudentGuardians.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.QuestionAttempts.RemoveRange(await db.QuestionAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.QuestionAssignments.RemoveRange(await db.QuestionAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ResourceSubmissions.RemoveRange(await db.ResourceSubmissions.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ResourceAssignments.RemoveRange(await db.ResourceAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.Students.Remove(student);
+    await db.SaveChangesAsync(ct);
+    return name;
+}
 static async Task WriteAuditAsync(KoclukDbContext db, ClaimsPrincipal principal, Guid? tenantId,
     string action, string entityType, Guid? entityId, string? details, CancellationToken ct)
 {
