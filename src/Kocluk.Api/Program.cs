@@ -337,6 +337,8 @@ app.MapGet("/api/tenants", async (ClaimsPrincipal principal, KoclukDbContext db,
 {
     if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal.FindFirstValue("sub"), out var userId))
         return Results.Unauthorized();
+    if (principal.IsInRole("Student"))
+        await EnsureStudentMembershipsAsync(db, userId, principal.FindFirstValue(ClaimTypes.Email), ct);
     var tenants = await (from membership in db.TenantMemberships.AsNoTracking()
                          join tenant in db.Tenants.AsNoTracking() on membership.TenantId equals tenant.Id
                          where membership.UserId == userId
@@ -360,6 +362,7 @@ app.MapGet("/api/auth/me", async (ClaimsPrincipal principal, UserManager<Applica
             linkedStudent.LinkUser(user.Id);
             await db.SaveChangesAsync(ct);
         }
+        await EnsureStudentMembershipsAsync(db, user.Id, user.Email, ct);
     }
     return Results.Ok(new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, privacyConsentAtUtc = user.PrivacyConsentAtUtc, privacyPolicyVersion = user.PrivacyPolicyVersion, roles = await users.GetRolesAsync(user) });
 });
@@ -1823,6 +1826,17 @@ app.MapPost("/api/billing/webhook", async (HttpRequest request, IConfiguration c
 
 app.Run();
 
+static async Task EnsureStudentMembershipsAsync(KoclukDbContext db, Guid userId, string? email, CancellationToken ct)
+{
+    var tenantIds = await db.Students.AsNoTracking()
+        .Where(x => x.ApplicationUserId == userId || (x.ApplicationUserId == null && email != null && x.Email == email))
+        .Select(x => x.TenantId).Distinct().ToListAsync(ct);
+    if (tenantIds.Count == 0) return;
+    var existing = await db.TenantMemberships.AsNoTracking().Where(x => x.UserId == userId).Select(x => x.TenantId).ToListAsync(ct);
+    foreach (var tenantId in tenantIds.Except(existing))
+        db.TenantMemberships.Add(new TenantMembership(tenantId, userId, "Student"));
+    if (db.ChangeTracker.HasChanges()) await db.SaveChangesAsync(ct);
+}
 static async Task<string?> PurgeStudentAsync(KoclukDbContext db, Guid tenantId, Guid studentId, CancellationToken ct)
 {
     var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId, ct);
