@@ -826,8 +826,10 @@ tenantApi.MapPost("/messages", async (Guid tenantId, SendMessageRequest request,
     var sender = await users.GetUserAsync(principal);
     if (sender is null) return Results.Unauthorized();
     if (request.RecipientUserId == sender.Id) return Results.BadRequest(new { error = "Kendinize mesaj gönderemezsiniz." });
-    var recipientInTenant = await db.TenantMemberships.AnyAsync(x => x.TenantId == tenantId && x.UserId == request.RecipientUserId, ct);
-    if (!recipientInTenant) return Results.NotFound(new { error = "Alıcı bu koçluk alanında bulunamadı." });
+    var recipientMembership = await db.TenantMemberships.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == request.RecipientUserId, ct);
+    if (recipientMembership is null) return Results.NotFound(new { error = "Alıcı bu koçluk alanında bulunamadı." });
+    // Öğrenci ve veli yalnızca koç tarafına (Owner/Coach) mesaj yazabilir.
+    if ((principal.IsInRole("Student") || principal.IsInRole("Parent")) && (recipientMembership.Role is "Student" or "Parent")) return Results.Forbid();
     try
     {
         var message = new UserMessage(tenantId, sender.Id, request.RecipientUserId, request.Content);
@@ -1117,7 +1119,7 @@ tenantApi.MapGet("/students/{studentId:guid}/question-attempts", async (Guid ten
                           join question in db.QuestionBankItems.AsNoTracking() on attempt.QuestionBankItemId equals question.Id
                           where attempt.TenantId == tenantId && attempt.StudentId == studentId
                           orderby attempt.AttemptedAtUtc descending
-                          select new { attempt.Id, attempt.QuestionBankItemId, question.Subject, question.Topic, attempt.IsCorrect, attempt.AttemptedAtUtc }).Take(500).ToListAsync(ct);
+                          select new { attempt.Id, attempt.QuestionBankItemId, question.Subject, question.Topic, attempt.IsCorrect, attempt.IsBlank, attempt.TimeSpentSeconds, attempt.AttemptedAtUtc }).Take(3000).ToListAsync(ct);
     return Results.Ok(attempts);
 });
 
@@ -1213,6 +1215,23 @@ tenantApi.MapGet("/members", async (Guid tenantId, KoclukDbContext db, UserManag
     var memberIds = await db.TenantMemberships.AsNoTracking().Where(x => x.TenantId == tenantId).ToListAsync(ct);
     var result = new List<object>();
     foreach (var membership in memberIds)
+    {
+        var user = await users.FindByIdAsync(membership.UserId.ToString());
+        if (user is not null) result.Add(new { user.Id, user.Email, user.FirstName, user.LastName, membership.Role });
+    }
+    return Results.Ok(result);
+});
+// Mesaj alıcıları: koç/yönetici tüm üyeleri görür; öğrenci/veli yalnızca koç tarafını (Owner/Coach) görür.
+tenantApi.MapGet("/message-recipients", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, UserManager<ApplicationUser> users, CancellationToken ct) =>
+{
+    var current = await users.GetUserAsync(principal);
+    if (current is null) return Results.Unauthorized();
+    var coachSide = principal.IsInRole("Coach") || principal.IsInRole("Admin");
+    var memberships = await db.TenantMemberships.AsNoTracking()
+        .Where(x => x.TenantId == tenantId && x.UserId != current.Id && (coachSide || (x.Role != "Student" && x.Role != "Parent")))
+        .ToListAsync(ct);
+    var result = new List<object>();
+    foreach (var membership in memberships)
     {
         var user = await users.FindByIdAsync(membership.UserId.ToString());
         if (user is not null) result.Add(new { user.Id, user.Email, user.FirstName, user.LastName, membership.Role });

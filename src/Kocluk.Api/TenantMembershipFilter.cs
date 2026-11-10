@@ -34,6 +34,11 @@ public sealed class TenantMembershipFilter(ITenantMembershipRepository membershi
             && HttpMethods.IsPost(context.HttpContext.Request.Method)
             && path.Contains("/resources/", StringComparison.OrdinalIgnoreCase)
             && path.EndsWith("/submissions", StringComparison.OrdinalIgnoreCase);
+        // Mesajlaşma: öğrenci/veli yalnızca kendi konuşmalarını okur/yazar; alıcı kısıtı endpoint'te uygulanır.
+        var isMessaging = path.EndsWith("/messages", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith("/message-recipients", StringComparison.OrdinalIgnoreCase)
+            || (HttpMethods.IsPost(context.HttpContext.Request.Method) && path.Contains("/messages/", StringComparison.OrdinalIgnoreCase) && path.EndsWith("/read", StringComparison.OrdinalIgnoreCase));
+        if (isMessaging) return await next(context);
         if (context.HttpContext.User.IsInRole("Student") && (isStudentProgress || isQuestionAttempt || isQuestionRead || isQuestionSummary || isAssignmentRead || isAssignmentComplete || isResourceRead || isResourceSubmission))
             return await next(context);
         if (context.HttpContext.User.IsInRole("Parent") && (isQuestionRead || isQuestionSummary))
