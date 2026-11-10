@@ -353,7 +353,8 @@ app.MapGet("/api/auth/me", async (ClaimsPrincipal principal, UserManager<Applica
     if (user is null) return Results.Unauthorized();
     if (user.Email is not null && await users.IsInRoleAsync(user, "Student"))
     {
-        var linkedStudent = await db.Students.FirstOrDefaultAsync(x => x.ApplicationUserId == null && x.Email == user.Email, ct);
+        var alreadyLinked = await db.Students.AnyAsync(x => x.ApplicationUserId == user.Id, ct);
+        var linkedStudent = alreadyLinked ? null : await db.Students.FirstOrDefaultAsync(x => x.ApplicationUserId == null && x.Email == user.Email, ct);
         if (linkedStudent is not null)
         {
             linkedStudent.LinkUser(user.Id);
@@ -1476,7 +1477,7 @@ tenantApi.MapPost("/students", async (
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             var studentUser = await users.FindByEmailAsync(request.Email);
-            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student"))
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.AnyAsync(x => x.ApplicationUserId == studentUser.Id, ct))
                 student.LinkUser(studentUser.Id);
         }
         await students.AddAsync(student, ct);
@@ -1540,7 +1541,7 @@ tenantApi.MapPut("/students/{studentId:guid}", async (
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             var studentUser = await users.FindByEmailAsync(request.Email);
-            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student"))
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.AnyAsync(x => x.ApplicationUserId == studentUser.Id && x.Id != student.Id, ct))
                 student.LinkUser(studentUser.Id);
         }
         await students.UpdateAsync(student, ct);
