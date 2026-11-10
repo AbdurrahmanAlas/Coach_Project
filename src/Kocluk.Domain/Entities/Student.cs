@@ -44,4 +44,10 @@ public sealed class Student
         IsDeleted = true;
         DeletedAtUtc = DateTime.UtcNow;
     }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAtUtc = null;
+    }
 }

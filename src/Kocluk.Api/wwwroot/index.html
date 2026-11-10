@@ -1079,6 +1079,26 @@
       document.getElementById('settings-profile-form').addEventListener('submit', async event => { event.preventDefault(); const result = await authRequest('/api/auth/profile', { method: 'PUT', body: JSON.stringify({ firstName: document.getElementById('settings-first-name').value.trim(), lastName: document.getElementById('settings-last-name').value.trim() }) }); const message = document.getElementById('settings-profile-message'); message.textContent = result.ok ? 'Profil güncellendi.' : 'Profil güncellenemedi.'; message.className = result.ok ? 'tag blue' : 'auth-error'; if (result.ok) await loadCurrentUser(); });
       document.getElementById('settings-password-form').addEventListener('submit', async event => { event.preventDefault(); const result = await authRequest('/api/auth/password', { method: 'POST', body: JSON.stringify({ currentPassword: document.getElementById('settings-current-password').value, newPassword: document.getElementById('settings-new-password').value }) }); const message = document.getElementById('settings-password-message'); const body = await result.json().catch(() => ({})); message.textContent = result.ok ? 'Şifre güncellendi.' : (body.error || 'Şifre güncellenemedi.'); message.className = result.ok ? 'tag blue' : 'auth-error'; if (result.ok) event.target.reset(); });
     }
+    async function renderPassiveStudents(section, tenantId) {
+      if (!section || !tenantId) return;
+      let box = document.getElementById('passive-students');
+      if (!box) { box = document.createElement('div'); box.id = 'passive-students'; box.style.cssText = 'margin-top:28px;padding-top:18px;border-top:1px dashed #d9e2ee'; section.appendChild(box); }
+      const response = await authRequest(`/api/tenants/${tenantId}/students-passive`);
+      const rows = response.ok ? await response.json() : [];
+      if (!rows.length) { box.innerHTML = ''; return; }
+      box.innerHTML = `<h3 style="margin:0 0 12px">Pasif öğrenciler <span class="tag">${rows.length}</span></h3><div style="display:flex;flex-direction:column;gap:8px">${rows.map(s => `<div class="task" style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div class="task-text"><strong>${escapeHtml(s.firstName)} ${escapeHtml(s.lastName)}</strong><small>${escapeHtml(s.email || s.phoneNumber || 'İletişim bilgisi yok')}</small></div><div style="display:flex;gap:6px"><button type="button" class="tag blue passive-restore" data-id="${s.id}">Aktif et</button><button type="button" class="tag passive-purge" data-id="${s.id}" style="color:#c62828">Kalıcı sil</button></div></div>`).join('')}</div>`;
+      box.querySelectorAll('.passive-restore').forEach(button => button.addEventListener('click', async () => {
+        const result = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.id}/restore`, { method: 'POST' });
+        if (!result.ok) { const data = await result.json().catch(() => ({})); alert(data.error || 'Öğrenci aktif edilemedi.'); return; }
+        await loadStudentsPage();
+      }));
+      box.querySelectorAll('.passive-purge').forEach(button => button.addEventListener('click', async () => {
+        if (!confirm('Bu öğrenci ve tüm verileri (planlar, denemeler, gönderilen çalışmalar, cevaplar) veritabanından KALICI olarak silinecek. Geri alınamaz. Devam edilsin mi?')) return;
+        const result = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.id}/permanent`, { method: 'DELETE' });
+        if (!result.ok) { alert('Öğrenci kalıcı silinemedi.'); return; }
+        await loadStudentsPage();
+      }));
+    }
     async function loadStudentsPage() {
       const tenantId = localStorage.getItem('tenantId');
       const list = document.querySelector('#student-list') || document.querySelector('.content .section .tasks');
@@ -1126,12 +1146,13 @@
       }));
       list.querySelectorAll('.student-delete').forEach(button => button.addEventListener('click', async event => {
         event.stopPropagation();
-        if (!confirm('Bu öğrenciyi silmek istediğinize emin misiniz?')) return;
+        if (!confirm('Bu öğrenci pasife alınacak (listeden kalkar, giriş yapamaz). İstediğin zaman "Pasif öğrenciler" bölümünden tekrar aktif edebilir veya kalıcı silebilirsin. Devam edilsin mi?')) return;
         await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.id}`, { method: 'DELETE' });
         await loadStudentsPage();
       }));
       };
       renderStudents(students);
+      renderPassiveStudents(section, tenantId);
       search?.addEventListener('input', () => { const term = search.value.trim().toLocaleLowerCase('tr-TR'); renderStudents(students.filter(student => `${student.firstName} ${student.lastName} ${student.email || ''} ${student.phoneNumber || ''} ${student.guardian?.firstName || ''} ${student.guardian?.lastName || ''} ${student.guardian?.phoneNumber || ''}`.toLocaleLowerCase('tr-TR').includes(term))); });
     }
     let editingStudentId = null;

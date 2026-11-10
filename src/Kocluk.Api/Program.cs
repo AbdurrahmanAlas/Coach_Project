@@ -353,7 +353,7 @@ app.MapGet("/api/auth/me", async (ClaimsPrincipal principal, UserManager<Applica
     if (user is null) return Results.Unauthorized();
     if (user.Email is not null && await users.IsInRoleAsync(user, "Student"))
     {
-        var alreadyLinked = await db.Students.AnyAsync(x => x.ApplicationUserId == user.Id, ct);
+        var alreadyLinked = await db.Students.IgnoreQueryFilters().AnyAsync(x => x.ApplicationUserId == user.Id, ct);
         var linkedStudent = alreadyLinked ? null : await db.Students.FirstOrDefaultAsync(x => x.ApplicationUserId == null && x.Email == user.Email, ct);
         if (linkedStudent is not null)
         {
@@ -1473,11 +1473,13 @@ tenantApi.MapPost("/students", async (
         if (subscription is not null && !subscription.IsActive) return Results.Conflict(new { error = "Abonelik süresi dolmuş. Öğrenci eklemek için paketinizi yenileyin." });
         var studentCount = await db.Students.CountAsync(x => x.TenantId == tenantId, ct);
         if (subscription is not null && studentCount >= subscription.MaxStudents) return Results.Conflict(new { error = "Mevcut paket öğrenci limitine ulaştı." });
+        if (!string.IsNullOrWhiteSpace(request.Email) && await db.Students.IgnoreQueryFilters().AnyAsync(x => x.TenantId == tenantId && x.IsDeleted && x.Email == request.Email.Trim(), ct))
+            return Results.Conflict(new { error = "Bu e-postaya sahip pasif bir öğrenci var. Pasif öğrenciler bölümünden tekrar aktif edebilir veya kalıcı silip yeniden ekleyebilirsiniz." });
         var student = new Student(tenantId, request.FirstName, request.LastName, request.Email, request.PhoneNumber);
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             var studentUser = await users.FindByEmailAsync(request.Email);
-            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.AnyAsync(x => x.ApplicationUserId == studentUser.Id, ct))
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.IgnoreQueryFilters().AnyAsync(x => x.ApplicationUserId == studentUser.Id, ct))
                 student.LinkUser(studentUser.Id);
         }
         await students.AddAsync(student, ct);
@@ -1541,7 +1543,7 @@ tenantApi.MapPut("/students/{studentId:guid}", async (
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             var studentUser = await users.FindByEmailAsync(request.Email);
-            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.AnyAsync(x => x.ApplicationUserId == studentUser.Id && x.Id != student.Id, ct))
+            if (studentUser is not null && await users.IsInRoleAsync(studentUser, "Student") && !await db.Students.IgnoreQueryFilters().AnyAsync(x => x.ApplicationUserId == studentUser.Id && x.Id != student.Id, ct))
                 student.LinkUser(studentUser.Id);
         }
         await students.UpdateAsync(student, ct);
@@ -1572,6 +1574,53 @@ tenantApi.MapDelete("/students/{studentId:guid}", async (
 {
     if (!await students.DeleteAsync(tenantId, studentId, ct)) return Results.NotFound();
     await WriteAuditAsync(db, principal, tenantId, "Deleted", "Student", studentId, null, ct);
+    return Results.NoContent();
+});
+
+tenantApi.MapGet("/students-passive", async (Guid tenantId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    var rows = await db.Students.IgnoreQueryFilters().AsNoTracking()
+        .Where(x => x.TenantId == tenantId && x.IsDeleted)
+        .OrderBy(x => x.LastName).ThenBy(x => x.FirstName)
+        .Select(x => new { x.Id, x.FirstName, x.LastName, x.Email, x.PhoneNumber, x.DeletedAtUtc }).ToListAsync(ct);
+    return Results.Ok(rows);
+});
+
+tenantApi.MapPost("/students/{studentId:guid}/restore", async (Guid tenantId, Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId && x.IsDeleted, ct);
+    if (student is null) return Results.NotFound(new { error = "Pasif öğrenci bulunamadı." });
+    var subscription = await db.TenantSubscriptions.AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId, ct);
+    if (subscription is not null && await db.Students.CountAsync(x => x.TenantId == tenantId, ct) >= subscription.MaxStudents)
+        return Results.Conflict(new { error = "Mevcut paket öğrenci limitine ulaştı." });
+    student.Restore();
+    await db.SaveChangesAsync(ct);
+    await WriteAuditAsync(db, principal, tenantId, "Restored", "Student", studentId, $"{student.FirstName} {student.LastName}", ct);
+    return Results.NoContent();
+});
+
+tenantApi.MapDelete("/students/{studentId:guid}/permanent", async (Guid tenantId, Guid studentId, ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
+{
+    if (!principal.IsInRole("Coach") && !principal.IsInRole("Admin")) return Results.Forbid();
+    var student = await db.Students.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == studentId, ct);
+    if (student is null) return Results.NotFound();
+    var name = $"{student.FirstName} {student.LastName}";
+    var plans = await db.StudyPlans.Include(x => x.Tasks).Where(x => x.TenantId == tenantId && x.StudentId == studentId).ToListAsync(ct);
+    foreach (var plan in plans) db.RemoveRange(plan.Tasks);
+    db.StudyPlans.RemoveRange(plans);
+    db.CoachingSessions.RemoveRange(await db.CoachingSessions.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ExamAttempts.RemoveRange(await db.ExamAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.SubjectProgresses.RemoveRange(await db.SubjectProgresses.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.StudentGuardians.RemoveRange(await db.StudentGuardians.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.QuestionAttempts.RemoveRange(await db.QuestionAttempts.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.QuestionAssignments.RemoveRange(await db.QuestionAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ResourceSubmissions.RemoveRange(await db.ResourceSubmissions.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.ResourceAssignments.RemoveRange(await db.ResourceAssignments.Where(x => x.StudentId == studentId).ToListAsync(ct));
+    db.Students.Remove(student);
+    await db.SaveChangesAsync(ct);
+    await WriteAuditAsync(db, principal, tenantId, "PermanentlyDeleted", "Student", studentId, name, ct);
     return Results.NoContent();
 });
 
