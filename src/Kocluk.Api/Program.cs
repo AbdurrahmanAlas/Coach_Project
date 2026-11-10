@@ -676,6 +676,26 @@ app.MapPost("/api/admin/users/{userId:guid}/lock", async (Guid userId, LockUserR
     return Results.Ok(new { userId, locked = request.Locked });
 }).RequireAuthorization();
 
+app.MapDelete("/api/admin/users/{userId:guid}", async (Guid userId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+{
+    var actor = await users.GetUserAsync(principal); if (actor is null || !await users.IsInRoleAsync(actor, "Admin")) return Results.Forbid();
+    var target = await users.FindByIdAsync(userId.ToString()); if (target is null) return Results.NotFound();
+    if (target.Id == actor.Id) return Results.BadRequest(new { error = "Kendi hesabınızı silemezsiniz." });
+    if (await users.IsInRoleAsync(target, "Admin") && (await users.GetUsersInRoleAsync("Admin")).Count <= 1)
+        return Results.BadRequest(new { error = "Son yönetici hesabı silinemez." });
+    var email = target.Email;
+    await db.Students.IgnoreQueryFilters().Where(x => x.ApplicationUserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.ApplicationUserId, (Guid?)null), ct);
+    await db.StudentGuardians.Where(x => x.ParentUserId == userId).ExecuteUpdateAsync(s => s.SetProperty(x => x.ParentUserId, (Guid?)null), ct);
+    await db.UserMessages.Where(x => x.SenderUserId == userId || x.RecipientUserId == userId).ExecuteDeleteAsync(ct);
+    await db.UserNotifications.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+    await db.DataDeletionRequests.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+    await db.TenantMemberships.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+    var result = await users.DeleteAsync(target);
+    if (!result.Succeeded) return Results.BadRequest(new { error = string.Join(" ", result.Errors.Select(x => x.Description)) });
+    await WriteAuditAsync(db, principal, null, "Deleted", "User", userId, email, ct);
+    return Results.NoContent();
+}).RequireAuthorization();
+
 app.MapPost("/api/auth/role", async (SetRoleRequest request, ClaimsPrincipal principal,
     UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signInManager, KoclukDbContext db, CancellationToken ct) =>
 {
