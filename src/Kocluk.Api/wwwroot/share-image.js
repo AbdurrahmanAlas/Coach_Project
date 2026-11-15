@@ -235,9 +235,15 @@
     a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
+  const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  function whatsappUrl(number, caption) {
+    const q = encodeURIComponent(caption || '');
+    return isMobile() ? 'https://wa.me/' + (number || '') + '?text=' + q : 'https://web.whatsapp.com/send?' + (number ? 'phone=' + number + '&' : '') + 'text=' + q;
+  }
   async function deliver({ blob, filename, text: caption, phone }) {
     const file = new File([blob], filename, { type: blob.type });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // Paylaşım penceresi yalnızca telefonda kullanılır; bilgisayarda masaüstü uygulaması yerine WhatsApp Web açılır.
+    if (isMobile() && navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], text: caption, title: filename }); return { mode: 'share' }; }
       catch (e) { if (e && e.name === 'AbortError') return { mode: 'cancel' }; }
     }
@@ -247,9 +253,9 @@
     }
     download(blob, filename);
     const number = normalizePhone(phone);
-    window.open('https://wa.me/' + number + '?text=' + encodeURIComponent(caption || ''), '_blank');
-    return { mode: 'fallback', copied, hasNumber: !!number };
+    window.open(whatsappUrl(number, caption), '_blank');
+    return { mode: 'fallback', copied, hasNumber: !!number, web: !isMobile() };
   }
 
-  window.KoclukShare = { reportCanvas, scheduleCanvas, toBlob, toPdf, deliver, normalizePhone };
+  window.KoclukShare = { reportCanvas, scheduleCanvas, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
 })();

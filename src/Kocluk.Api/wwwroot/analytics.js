@@ -205,7 +205,8 @@
     const deliverMsg = (res, asPdf) => {
       if (res.mode === 'cancel') return '';
       if (res.mode === 'share') return 'Paylaşım penceresi açıldı.';
-      const how = asPdf ? 'PDF indirildi, WhatsApp açıldı. Dosyayı 📎 ile sohbete ekleyin.' : (res.copied ? 'Görsel panoya kopyalandı ve indirildi. WhatsApp sohbetine yapıştırın (Ctrl+V).' : 'Görsel indirildi, WhatsApp açıldı. Dosyayı 📎 ile ekleyin.');
+      const where = res.web ? 'WhatsApp Web açıldı' : 'WhatsApp açıldı';
+      const how = asPdf ? 'PDF indirildi, ' + where + '. Sohbette 📎 → Belge ile indirilen PDF dosyasını seçin.' : (res.copied ? 'Görsel panoya kopyalandı, ' + where + '. Sohbet kutusuna tıklayıp Ctrl+V ile yapıştırın ve gönderin.' : 'Görsel indirildi, ' + where + '. Sohbette 📎 → Fotoğraflar ile indirilen görseli seçin.');
       return how + (res.hasNumber ? '' : ' Kayıtlı telefon numarası yok, sohbeti kendiniz seçin.');
     };
     async function shareReport(asPdf) {
@@ -327,7 +328,7 @@
       const sessions = m.sessions.length ? '\n\n*Koçluk görüşmeleri*\n' + m.sessions.map(s => '💬 ' + s.day + ' · ' + s.time + ' · ' + s.dur).join('\n') : '';
       const body = '📚 *' + m.name + ' - Haftalık Ders Programı*\n' + m.range + '\n\n' + blocks.join('\n\n') + sessions + '\n\n_Alas Eğitim Koçluk panelinden gönderildi_';
       const number = (window.KoclukShare && KoclukShare.normalizePhone(phoneFor(st.shareTo || 'guardian'))) || '';
-      window.open('https://wa.me/' + number + '?text=' + encodeURIComponent(body), '_blank');
+      window.open(window.KoclukShare ? KoclukShare.whatsappUrl(number, body) : 'https://web.whatsapp.com/send?text=' + encodeURIComponent(body), '_blank');
     }
     function render() {
       const views = { perf: viewPerf, topic: viewTopic, week: viewWeek, alarms: viewAlarms, report: viewReport };
