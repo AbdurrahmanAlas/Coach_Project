@@ -24,6 +24,15 @@ public sealed class LessonSlot
     public string? Note { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
+    // Müfredat FK'leri (ilerleyen dönemde zorunlu yapılabilir)
+    public string? ExamId { get; set; }
+    public string? SubjectId { get; set; }
+    public int? TopicId { get; set; }
+
+    public Exam? Exam { get; set; }
+    public Subject? SubjectNav { get; set; }
+    public Topic? TopicNav { get; set; }
+
     public void Update(DateOnly date, TimeOnly startTime, TimeOnly? endTime, string examType, string subject, string? topic, string? note)
     {
         if (string.IsNullOrWhiteSpace(examType) || examType.Trim().Length > 16) throw new ArgumentException("Sınav türü zorunludur.", nameof(examType));
