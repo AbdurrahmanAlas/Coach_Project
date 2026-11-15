@@ -168,3 +168,54 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#818cf8!import
 .composer-send{padding:12px 26px!important;font-size:15px;display:inline-flex;align-items:center;gap:8px}
 .composer-send span{font-size:13px}
 @media(max-width:640px){.chat-row{max-width:94%}.composer-to select{min-width:0;width:100%}.composer-to{width:100%;flex-direction:column;align-items:stretch}}
+
+/* ---------- Çalışma Planları sayfası ---------- */
+.pl-stats .stat-head span:first-child{font-size:13px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#475569}
+.pl-stats .stat-value{font-size:34px;margin:14px 0 8px}
+.pl-stats .stat-foot{color:#64748b!important;font-size:13px!important;font-weight:600}
+.pl-mini-bar{height:6px;border-radius:6px;background:#e8ebf7;overflow:hidden;margin:0 0 8px;position:relative;z-index:1}
+.pl-mini-bar i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#4f46e5,#14b8a6);transition:width .4s}
+.pl-sub{margin:6px 0 0;color:var(--muted);font-size:13px;font-weight:500}
+.pl-list{display:grid;gap:18px}
+.pl-plan{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 1px 2px rgba(30,27,75,.04)}
+.pl-plan-head{display:flex;align-items:center;gap:16px;padding:16px 20px;background:linear-gradient(135deg,#f6f7ff,#f1fbf9);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pl-avatar{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#14b8a6);color:#fff;font-weight:800;font-size:15px;flex:none}
+.pl-plan-info{flex:1;min-width:200px}
+.pl-plan-info h3{margin:0 0 3px;font-size:17px;color:var(--ink)}
+.pl-plan-info p{margin:0;font-size:13px;color:var(--muted)}
+.pl-plan-prog{width:170px;display:grid;gap:5px}
+.pl-plan-prog b{font-size:18px;color:var(--ink)}
+.pl-plan-prog small,.pl-task-prog small,.pl-task-main small{color:var(--muted);font-size:12px}
+.pl-bar{height:8px;border-radius:8px;background:#e8ebf7;overflow:hidden}
+.pl-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#4f46e5,#14b8a6)}
+.pl-actions{display:flex;gap:6px;flex-wrap:wrap}
+.pl-btn{border:1px solid #d7dcf3;background:#fff;color:#3730a3;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
+.pl-btn:hover{background:#eef2ff;transform:translateY(-1px)}
+.pl-btn.main{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pl-btn.main:hover{background:var(--primary-dark)}
+.pl-btn.danger{color:#be123c;border-color:#fecdd3}
+.pl-btn.danger:hover{background:#fff1f2}
+.pl-task{display:grid;grid-template-columns:118px minmax(160px,1.4fr) minmax(150px,1fr) auto;gap:14px;align-items:center;padding:13px 20px;border-top:1px solid #eef0fa}
+.pl-task:first-child{border-top:0}
+.pl-task.late{background:#fffafa}
+.pl-task-main strong{display:block;font-size:14px;color:var(--ink);margin-bottom:3px}
+.pl-task-prog{display:grid;gap:5px}
+.pl-task.done .pl-bar i{background:#16a34a}
+.pl-task.late .pl-bar i{background:#e11d48}
+.pl-pill{border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;text-align:center}
+.pl-pill.done{background:#dcfce7;color:#166534}
+.pl-pill.late{background:#ffe4e6;color:#be123c}
+.pl-pill.going{background:#e0e7ff;color:#3730a3}
+.pl-pill.wait{background:#fef3c7;color:#92400e}
+.pl-empty{margin:0;padding:14px 20px;color:var(--muted);font-size:13px}
+.pl-empty-state{padding:40px 20px;text-align:center;border:1px dashed #c7cbe6;border-radius:16px;color:var(--muted)}
+.pl-empty-state strong{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+.pl-empty-state p{margin:0;font-size:13px}
+.pl-draft{background:linear-gradient(135deg,#f5fbff,#f8f4ff)}
+.pl-draft-list{display:grid;gap:8px}
+.pl-draft-row{display:grid;grid-template-columns:1.4fr 1fr auto;gap:12px;align-items:center;padding:11px 14px;border:1px dashed #c7cbe6;border-radius:12px;background:#ffffffb0}
+.pl-draft-row strong{font-size:14px;color:var(--ink)}
+.pl-draft-row span,.pl-draft-row small{color:var(--muted);font-size:13px}
+.pl-draft-foot{display:flex;justify-content:flex-end;margin-top:14px}
+@media(max-width:900px){.pl-task{grid-template-columns:1fr;gap:8px}.pl-plan-prog{width:100%}.pl-draft-row{grid-template-columns:1fr}}
+.pl-draft-foot .pl-btn,.pl-actions .pl-btn{width:auto;flex:none}

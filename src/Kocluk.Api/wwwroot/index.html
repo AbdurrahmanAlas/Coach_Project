@@ -353,7 +353,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=2">
+  <link rel="stylesheet" href="/theme.css?v=20261116072000">
   <link rel="stylesheet" href="/analytics.css?v=20261115b">
   <script src="/analytics.js?v=20261116050000b"></script>
   <script src="/calendar.js?v=20261115b"></script>
@@ -504,7 +504,7 @@
     }
     const pages = {
       students: `<div class="welcome"><div><h1>Öğrenciler</h1><p>Öğrencilerini koçluk alanına ata, gelişimlerini tek ekrandan yönet.</p></div><button class="primary">+ Öğrenci ata</button></div><div class="card section"><div class="section-title"><h2>Öğrenci listesi</h2><span id="student-count" class="tag blue">Yükleniyor</span></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 18px"><div class="task" style="margin:0;border-left:3px solid #2cc6a7"><div class="task-text"><strong>1. Öğrenciyi ekle</strong><small>Ad, soyad ve girişte kullanacağı e-postayı yaz.</small></div></div><div class="task" style="margin:0;border-left:3px solid #4d83ff"><div class="task-text"><strong>2. WhatsApp daveti gönder</strong><small>Karttaki düğmeyle hazır mesajı WhatsApp’ta aç.</small></div></div><div class="task" style="margin:0;border-left:3px solid #f0b429"><div class="task-text"><strong>3. Öğrenci giriş yapar</strong><small>Öğrenci e-postasıyla kayıt olur veya giriş yapar, daveti kabul eder.</small></div></div></div><p style="color:var(--muted);margin:0 0 16px;line-height:1.6">Bu listeye eklenen öğrenci aktif koçluk alanına atanır. Öğrencinin hesabıyla otomatik eşleşmesi için e-posta adresini öğrencinin kullanacağı adresle aynı girin. WhatsApp mesajı öğrencinin telefonuna hazır açılır; gönder düğmesine basmanız gerekir. E-posta boşsa önce “Düzenle” ile ekleyin.</p><div id="student-list" class="student-grid"><div class="task"><div class="task-text"><strong>Öğrenciler yükleniyor...</strong></div></div></div></div>`,
-      plans: `<div class="welcome"><div><h1>Çalışma Planları</h1><p>Haftalık hedefleri planla ve ilerlemeyi takip et.</p></div><button class="primary">+ Plan oluştur</button></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div id="plans-active-count" class="stat-value">0</div><div class="stat-foot">Bu hafta devam ediyor</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div id="plans-task-progress" class="stat-value">0 / 0</div><div id="plans-task-progress-foot" class="stat-foot">Henüz görev yok</div></div><div class="card stat"><div class="stat-head"><span>Planlanan soru</span><span class="stat-icon">◷</span></div><div id="plans-question-target" class="stat-value">0</div><div class="stat-foot">Tüm planların hedefi</div></div></div><div class="card section"><div class="section-title"><h2>Aktif planlar</h2><a href="#">Tümünü gör →</a></div><div class="tasks"><div class="task"><div class="task-text"><strong>Planlar yükleniyor...</strong></div></div></div></div>`,
+      plans: `<div class="welcome"><div><h1>Çalışma Planları</h1><p>Haftalık hedefleri planla ve ilerlemeyi takip et.</p></div><button class="primary">+ Plan oluştur</button></div><div class="grid pl-stats"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div id="plans-active-count" class="stat-value">0</div><div class="stat-foot">Öğrencilere verilmiş haftalık plan</div></div><div class="card stat"><div class="stat-head"><span>Bekleyen görev</span><span class="stat-icon">⏰</span></div><div id="plans-pending-count" class="stat-value">0</div><div id="plans-pending-foot" class="stat-foot">Tamamlanmayı bekleyen görev</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div id="plans-task-progress" class="stat-value">0 / 0</div><div class="pl-mini-bar"><i id="plans-task-bar"></i></div><div id="plans-task-progress-foot" class="stat-foot">Henüz görev yok</div></div><div class="card stat"><div class="stat-head"><span>Soru hedefi</span><span class="stat-icon">◷</span></div><div id="plans-question-target" class="stat-value">0</div><div class="pl-mini-bar"><i id="plans-question-bar"></i></div><div id="plans-question-foot" class="stat-foot">Tüm planların toplam hedefi</div></div></div><div class="card section"><div class="section-title"><div><h2>Aktif planlar</h2><p class="pl-sub">Her öğrencinin haftalık planı ve görevleri. Güncel haftalar üstte.</p></div><a href="#" id="plans-export">CSV indir ↓</a></div><div id="plans-list" class="pl-list"><div class="pl-empty-state"><strong>Planlar yükleniyor...</strong></div></div></div>`,
       schedule: `<div class="card section schedule-card"><div class="section-title"><h2>Haftalık koçluk takvimi</h2><div class="schedule-nav"><button type="button" class="primary schedule-add-button">＋ Etkinlik ekle</button><button type="button" data-schedule-prev>‹ Önceki</button><button type="button" class="today" data-schedule-today>Bugüne dön</button><span data-schedule-range></span><button type="button" data-schedule-next>Sonraki ›</button></div></div><div class="schedule" data-schedule-grid></div><div class="tasks schedule-events" style="margin-top:22px"></div></div>`,
       exams: `<div class="welcome"><div><h1>Deneme &amp; Sınavlar</h1><p>Sonuçları karşılaştır, gelişim alanlarını keşfet.</p></div><button class="primary">+ Deneme ekle</button></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Toplam deneme</span><span class="stat-icon">◒</span></div><div id="exams-total-count" class="stat-value">0</div><div class="stat-foot">Bu dönem</div></div><div class="card stat"><div class="stat-head"><span>Ortalama puan</span><span class="stat-icon">★</span></div><div id="exams-average-score" class="stat-value">—</div><div class="stat-foot">Kayıtlı sonuçların ortalaması</div></div><div class="card stat"><div class="stat-head"><span>En yüksek puan</span><span class="stat-icon">↗</span></div><div id="exams-best-score" class="stat-value">—</div><div class="stat-foot">En iyi deneme sonucu</div></div></div><div class="card section"><div class="section-title"><h2>Son denemeler</h2><a href="#">Raporu indir ↓</a></div><div class="tasks"><div class="task"><div class="task-text"><strong>Denemeler yükleniyor...</strong></div></div></div></div>`,
       messages: `<div class="welcome"><div><h1>Mesajlar</h1><p>Koç, öğrenci ve veli arasındaki iletişimi tek ekrandan yönetin.</p></div></div><div class="card section chat-card"><div class="section-title"><h2>Konuşmalar</h2><button id="messages-refresh" class="tag blue" type="button">↻ Yenile</button></div><div id="messages-list" class="chat-list"><p style="color:var(--muted)">Yükleniyor...</p></div></div><div class="card section composer-card"><form id="message-form" class="composer"><div class="composer-head"><label class="composer-to"><span>Kime</span><select id="message-recipient" required></select></label><span class="tag blue">🔒 Güvenli iletişim</span></div><textarea id="message-content" maxlength="4000" rows="3" required placeholder="Mesajını yaz… (Ctrl + Enter ile gönder)"></textarea><div class="composer-foot"><span id="message-counter" class="composer-counter">0 / 4000</span><span id="message-form-status" class="hidden"></span><button class="primary composer-send" type="submit">Gönder <span aria-hidden="true">➤</span></button></div></form></div>`,
@@ -1437,7 +1437,7 @@
     });
     async function loadPlansPage() {
       const tenantId = localStorage.getItem('tenantId');
-      const list = document.querySelector('.content .section .tasks');
+      const list = document.getElementById('plans-list') || document.querySelector('.content .section .tasks');
       if (!list) return;
       if (!tenantId) { renderCoachSetupState('Çalışma planı oluşturmak için önce koçluk alanınızı oluşturun.'); return; }
       const createButton = document.querySelector('.content .welcome .primary');
@@ -1455,35 +1455,63 @@
           document.getElementById('plan-modal').classList.remove('hidden'); document.getElementById('plan-student').focus();
         });
       }
-      const response = await authRequest(`/api/tenants/${tenantId}/plans`);
+      const [response, studentsResponse] = await Promise.all([authRequest(`/api/tenants/${tenantId}/plans`), authRequest(`/api/tenants/${tenantId}/students`)]);
       if (!response.ok) return;
       const plans = await response.json();
-      document.getElementById('next-week-draft')?.remove();
-      const draft = document.createElement('div'); draft.id = 'next-week-draft'; draft.className = 'card section'; draft.style.background = 'linear-gradient(135deg,#f5fbff,#f8f4ff)';
-      const nextMonday = new Date(); nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
-      const draftTasks = plans.flatMap(plan => plan.tasks || []).slice(0, 3);
-      draft.innerHTML = `<div class="section-title"><div><h2>Gelecek hafta taslağı</h2><p style="color:var(--muted);margin:6px 0 0">${nextMonday.toLocaleDateString('tr-TR')} haftası için görevlerini önceden düzenle.</p></div><span class="tag blue">${draftTasks.length} öneri</span></div><div class="tasks">${draftTasks.length ? draftTasks.map(task => `<div class="task"><div class="task-text"><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.dueDate)} · ${task.targetQuestions} soru hedefi</small></div><span class="tag">Taslak</span></div>`).join('') : '<p style="color:var(--muted)">Mevcut planlardan taslak oluşturmak için bir çalışma planı ekleyin.</p>'}</div><div style="display:flex;justify-content:flex-end;margin-top:12px"><button id="next-week-draft-action" class="tag blue" type="button">Düzenle ve plan oluştur →</button></div>`; list.parentElement?.insertBefore(draft,list); draft.querySelector('#next-week-draft-action')?.addEventListener('click', () => createButton?.click());
-      const activeCount = document.getElementById('plans-active-count');
-      const progressValue = document.getElementById('plans-task-progress');
-      const progressFoot = document.getElementById('plans-task-progress-foot');
-      const questionTarget = document.getElementById('plans-question-target');
-      const allTasks = plans.flatMap(plan => plan.tasks || []);
+      const studentList = studentsResponse.ok ? await studentsResponse.json() : [];
+      const studentName = id => { const s = studentList.find(item => item.id === id); return s ? `${s.firstName} ${s.lastName}`.trim() : ''; };
+      const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const todayKey = dayKey(new Date());
+      const parseDay = iso => new Date(`${iso}T00:00:00`);
+      const fmtDay = iso => parseDay(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', weekday: 'short' });
+      const fmtWeek = iso => { const start = parseDay(iso), end = new Date(start); end.setDate(end.getDate() + 6); return `${start.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}`; };
+      const pct = (done, total) => total ? Math.min(100, Math.round(done / total * 100)) : 0;
+      const taskState = task => task.isCompleted ? ['done', 'Tamamlandı'] : String(task.dueDate) < todayKey ? ['late', 'Gecikti'] : task.completedQuestions > 0 ? ['going', 'Devam ediyor'] : ['wait', 'Bekliyor'];
+      const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+      const setBar = (id, percent) => { const el = document.getElementById(id); if (el) el.style.width = `${percent}%`; };
+
+      const allTasks = plans.flatMap(plan => (plan.tasks || []).map(task => ({ ...task, student: studentName(plan.studentId) })));
       const completedTasks = allTasks.filter(task => task.isCompleted).length;
+      const pendingTasks = allTasks.length - completedTasks;
+      const lateTasks = allTasks.filter(task => !task.isCompleted && String(task.dueDate) < todayKey).length;
       const targetQuestions = allTasks.reduce((sum, task) => sum + Number(task.targetQuestions || 0), 0);
       const completedQuestions = allTasks.reduce((sum, task) => sum + Number(task.completedQuestions || 0), 0);
-      if (activeCount) activeCount.textContent = plans.length;
-      if (progressValue) progressValue.textContent = `${completedTasks} / ${allTasks.length}`;
-      if (progressFoot) progressFoot.textContent = allTasks.length ? `%${Math.round(completedQuestions / Math.max(targetQuestions, 1) * 100)} tamamlandı` : 'Henüz görev yok';
-      if (questionTarget) questionTarget.textContent = targetQuestions;
-      const exportLink = document.querySelector('.content .section .section-title a');
+      setText('plans-active-count', plans.length);
+      setText('plans-pending-count', pendingTasks);
+      setText('plans-pending-foot', lateTasks ? `${lateTasks} görevin tarihi geçti` : 'Gecikmiş görev yok');
+      setText('plans-task-progress', `${completedTasks} / ${allTasks.length}`);
+      setText('plans-task-progress-foot', allTasks.length ? `%${pct(completedTasks, allTasks.length)} görev tamamlandı` : 'Henüz görev yok');
+      setBar('plans-task-bar', pct(completedTasks, allTasks.length));
+      setText('plans-question-target', targetQuestions);
+      setText('plans-question-foot', `${completedQuestions} çözüldü · ${Math.max(targetQuestions - completedQuestions, 0)} kaldı`);
+      setBar('plans-question-bar', pct(completedQuestions, targetQuestions));
+
+      const exportLink = document.getElementById('plans-export') || document.querySelector('.content .section .section-title a');
       if (exportLink && !exportLink.dataset.bound) { exportLink.dataset.bound = 'true'; exportLink.textContent = 'CSV indir ↓'; exportLink.addEventListener('click', async event => { event.preventDefault(); const studentResponse = await authRequest(`/api/tenants/${tenantId}/students`); const students = studentResponse.ok ? await studentResponse.json() : []; if (!students.length) return; const fileResponse = await authRequest(`/api/tenants/${tenantId}/students/${students[0].id}/plans/export`); if (!fileResponse.ok) return; const url = URL.createObjectURL(await fileResponse.blob()); const link = document.createElement('a'); link.href = url; link.download = 'calisma-planlari.csv'; link.click(); URL.revokeObjectURL(url); }); }
-      list.innerHTML = plans.length ? plans.map(plan => {
-        const total = plan.tasks.reduce((sum, task) => sum + task.targetQuestions, 0);
-        const completed = plan.tasks.reduce((sum, task) => sum + task.completedQuestions, 0);
-        const percent = total ? Math.min(100, Math.round(completed / total * 100)) : 0;
-        const taskRows = plan.tasks.map(task => `<div class="task" style="margin-top:8px;background:#fbfcff"><span class="check ${task.isCompleted ? 'done' : ''}"></span><div class="task-text"><strong>${task.title}</strong><small>${task.dueDate} · ${task.completedQuestions}/${task.targetQuestions} soru</small></div><button class="tag blue plan-task-progress" data-plan-id="${plan.id}" data-task-id="${task.id}" data-completed="${task.completedQuestions}" data-target="${task.targetQuestions}">${task.isCompleted ? 'Tamamlandı' : 'İlerlet'}</button><button class="tag blue plan-task-edit" data-plan-id="${plan.id}" data-task-id="${task.id}">Düzenle</button><button class="tag plan-task-delete" data-plan-id="${plan.id}" data-task-id="${task.id}">Sil</button></div>`).join('');
-        return `<div class="task" style="display:block"><div style="display:flex;align-items:center;gap:12px"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${plan.tasks.length} görev · ${completed}/${total} soru</small></div><span class="tag blue">%${percent}</span><button class="tag blue plan-edit" data-id="${plan.id}">Planı düzenle</button><button class="tag plan-delete" data-id="${plan.id}">Sil</button></div>${taskRows}</div>`;
-      }).join('') : '<div class="task"><div class="task-text"><strong>Henüz çalışma planı yok.</strong><small>Bir öğrenci seçip yeni plan oluşturabilirsiniz.</small></div></div>';
+
+      const sortedPlans = [...plans].sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)));
+      list.innerHTML = sortedPlans.length ? sortedPlans.map(plan => {
+        const tasks = [...(plan.tasks || [])].sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+        const total = tasks.reduce((sum, task) => sum + task.targetQuestions, 0);
+        const completed = tasks.reduce((sum, task) => sum + task.completedQuestions, 0);
+        const percent = pct(completed, total);
+        const name = studentName(plan.studentId);
+        const initials = (name || plan.title).split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0].toLocaleUpperCase('tr-TR')).join('');
+        const cleanTitle = name && plan.title.startsWith(name) ? (plan.title.slice(name.length).replace(/^\s*[-–:]\s*/, '') || plan.title) : plan.title;
+        const taskRows = tasks.map(task => {
+          const [state, label] = taskState(task);
+          return `<div class="pl-task ${state}"><span class="pl-pill ${state}">${label}</span><div class="pl-task-main"><strong>${escapeHtml(task.title)}</strong><small>📅 ${fmtDay(task.dueDate)}</small></div><div class="pl-task-prog"><div class="pl-bar"><i style="width:${pct(task.completedQuestions, task.targetQuestions)}%"></i></div><small>${task.completedQuestions} / ${task.targetQuestions} soru</small></div><div class="pl-actions"><button type="button" class="pl-btn main plan-task-progress" data-plan-id="${plan.id}" data-task-id="${task.id}" data-completed="${task.completedQuestions}" data-target="${task.targetQuestions}">İlerleme gir</button><button type="button" class="pl-btn plan-task-edit" data-plan-id="${plan.id}" data-task-id="${task.id}">Düzenle</button><button type="button" class="pl-btn danger plan-task-delete" data-plan-id="${plan.id}" data-task-id="${task.id}">Sil</button></div></div>`;
+        }).join('') || '<p class="pl-empty">Bu planda henüz görev yok.</p>';
+        return `<article class="pl-plan"><header class="pl-plan-head"><span class="pl-avatar">${escapeHtml(initials)}</span><div class="pl-plan-info"><h3>${escapeHtml(name || plan.title)}</h3><p>${name ? escapeHtml(cleanTitle) + ' · ' : ''}🗓️ ${fmtWeek(plan.weekStart)}</p></div><div class="pl-plan-prog"><b>%${percent}</b><div class="pl-bar"><i style="width:${percent}%"></i></div><small>${completed} / ${total} soru</small></div><div class="pl-actions"><button type="button" class="pl-btn plan-edit" data-id="${plan.id}">Planı düzenle</button><button type="button" class="pl-btn danger plan-delete" data-id="${plan.id}">Sil</button></div></header><div class="pl-tasks">${taskRows}</div></article>`;
+      }).join('') : '<div class="pl-empty-state"><strong>Henüz çalışma planı yok</strong><p>Sağ üstteki "+ Plan oluştur" ile bir öğrenci seçip haftalık plan hazırlayabilirsin.</p></div>';
+
+      document.getElementById('next-week-draft')?.remove();
+      const nextMonday = new Date(); nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
+      const carryOver = allTasks.filter(task => !task.isCompleted);
+      const draftTasks = (carryOver.length ? carryOver : allTasks).slice(0, 3);
+      const draft = document.createElement('div'); draft.id = 'next-week-draft'; draft.className = 'card section pl-draft';
+      draft.innerHTML = `<div class="section-title"><div><h2>Gelecek hafta taslağı</h2><p class="pl-sub">${nextMonday.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} haftası için ${carryOver.length ? 'tamamlanmayan görevlerden' : 'mevcut görevlerden'} öneriler.</p></div><span class="tag blue">${draftTasks.length} öneri</span></div><div class="pl-draft-list">${draftTasks.length ? draftTasks.map(task => `<div class="pl-draft-row"><strong>${escapeHtml(task.title)}</strong><span>${escapeHtml(task.student || '')}</span><small>${task.targetQuestions} soru hedefi</small></div>`).join('') : '<p class="pl-empty">Öneri oluşturmak için önce bir çalışma planı ekle.</p>'}</div><div class="pl-draft-foot"><button id="next-week-draft-action" class="pl-btn main" type="button">+ Yeni haftalık plan oluştur</button></div>`;
+      (list.closest('.section') || list.parentElement)?.after(draft); draft.querySelector('#next-week-draft-action')?.addEventListener('click', () => createButton?.click());
       list.querySelectorAll('.plan-task-progress').forEach(button => button.addEventListener('click', async () => {
         const target = Number(button.dataset.target || 0);
         const current = Number(button.dataset.completed || 0);
