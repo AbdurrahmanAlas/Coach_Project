@@ -11,7 +11,6 @@
   <script src="/exam-data.js?v=20261116000000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
   <script src="/modal-questions.js?v=20261108254000"></script>
-  <script src="/modal-worksheet.js?v=20261116020000"></script>
   <script src="/worksheet.js?v=20261116030000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -237,56 +236,6 @@
       .q-grid-2{grid-template-columns:1fr}
     }
 
-    /* WORKSHEET MODAL STYLES */
-    #worksheet-modal-backdrop{position:fixed;inset:0;background:rgba(7,23,44,.92);backdrop-filter:blur(3px);z-index:40;display:grid;place-items:center;padding:20px;animation:fadeInBackdrop .3s ease}
-    #worksheet-modal{width:min(820px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:20px;box-shadow:0 25px 80px rgba(7,23,44,.35);animation:slideUpModal .35s ease;display:flex;flex-direction:column}
-    #w-header{display:flex;justify-content:space-between;align-items:flex-start;padding:32px 40px 20px;border-bottom:1px solid #e0e8f2;background:linear-gradient(135deg,#fff 0%,#f8fbfd 100%)}
-    #w-header h2{margin:0 0 6px;font-size:24px;color:#10233f;font-weight:800}
-    #w-header p{margin:0;color:#6b85a0;font-size:13px}
-    #w-close{background:none;border:0;cursor:pointer;font-size:24px;color:#6b85a0;width:32px;height:32px;display:grid;place-items:center;transition:all .2s ease;border-radius:8px;flex-shrink:0}
-    #w-close:hover{background:#e8f0ff;color:#2563eb;transform:rotate(90deg)}
-
-    #w-form{display:flex;flex-direction:column;gap:24px;padding:28px 40px;flex:1;overflow-y:auto}
-    .w-section-title{font-size:14px;font-weight:800;color:#10233f;margin:12px 0 0;padding-top:8px;border-top:2px solid #e0e8f2}
-
-    .w-exam-buttons{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:16px 0}
-    .w-exam-btn{background:#f5f9ff;border:2px solid #d9e2ee;border-radius:12px;padding:14px;font-weight:700;color:#2563eb;cursor:pointer;transition:all .2s ease;font-size:13px}
-    .w-exam-btn:hover{border-color:#2563eb;background:#edf3ff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(37,99,235,.15)}
-    .w-exam-btn.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-color:#2563eb;box-shadow:0 6px 16px rgba(37,99,235,.28)}
-
-    .w-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .w-label{display:block;color:#52627a;font-size:12px;font-weight:700;margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px}
-    .w-input,.w-select{width:100%;border:1.5px solid #d9e2ee;border-radius:11px;padding:12px 14px;font:inherit;color:#10233f;background:#fff;outline:none;transition:all .2s ease}
-    .w-input:focus,.w-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);background:linear-gradient(to bottom,#fafbfc,#fff)}
-    .w-input::placeholder{color:#a6b8cd}
-
-    .w-file-section{padding:16px;background:linear-gradient(135deg,#f0fcf8,#f3f6ff);border:1px solid #cfe8e1;border-radius:12px}
-    .w-file-input-wrapper{display:flex;align-items:center}
-    .w-file-label{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:#2cc6a7;color:#fff;border-radius:9px;cursor:pointer;font-weight:600;font-size:12px;transition:all .2s ease}
-    .w-file-label:hover{background:#20b097;transform:translateY(-1px);box-shadow:0 4px 12px rgba(44,198,167,.3)}
-
-    #w-status{display:block;padding:12px 14px;border-radius:11px;font-size:13px;font-weight:600}
-    #w-status.hidden{display:none}
-    .w-status-success{background:#dcfce7;color:#166534;border-left:4px solid #16a34a}
-    .w-status-error{background:#fee2e2;color:#991b1b;border-left:4px solid #dc2626}
-    .w-status-info{background:#dbeafe;color:#1e40af;border-left:4px solid #3b82f6}
-
-    #w-footer{display:flex;justify-content:flex-end;gap:12px;padding:20px 40px;border-top:1px solid #e0e8f2;background:#f8fafc}
-    #w-cancel,#w-submit{padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;border:0;cursor:pointer;transition:all .2s ease}
-    #w-cancel{background:#e8f0ff;color:#2563eb}
-    #w-cancel:hover{background:#d6e5ff}
-    #w-submit{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.28)}
-    #w-submit:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(37,99,235,.36)}
-
-    @media(max-width:650px){
-      #worksheet-modal{width:100%;max-height:90vh}
-      #w-form{padding:20px}
-      #w-header{padding:20px}
-      #w-footer{padding:16px 20px}
-      .w-exam-buttons{grid-template-columns:repeat(3,1fr);gap:8px}
-      .w-exam-btn{padding:10px;font-size:12px}
-      .w-grid{grid-template-columns:1fr}
-    }
     .student-card p,.student-card>small:not(.student-coach-status){font-size:13px!important;line-height:1.5}
     .student-card p:before,.student-card>small:not(.student-coach-status):before{display:inline-block;width:22px;margin-right:4px;font-size:16px;font-weight:800;vertical-align:-1px}
     .student-card p:first-of-type:before{content:'👤'}
@@ -437,54 +386,6 @@
       <div id="q-footer">
         <button id="q-cancel" type="button">İptal</button>
         <button id="q-submit" type="button">✓ Soruyu Kaydet</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Professional Worksheet Modal -->
-  <div id="worksheet-modal-backdrop" style="display:none">
-    <div id="worksheet-modal">
-      <div id="w-header">
-        <div>
-          <h2>📚 Çalışma Gönder</h2>
-          <p>Öğrenciye soru oluştur ve gönder. Sınav, ders, konu seçerek soru detaylarını gir.</p>
-        </div>
-        <button id="w-close" type="button">✕</button>
-      </div>
-      <form id="w-form">
-        <div class="w-section-title">0️⃣ Öğrenci Seç *</div>
-        <div class="w-students-section" style="margin-bottom:20px">
-          <select id="w-student" class="w-select" required style="margin-bottom:8px"><option value="">Öğrenci seçin</option></select>
-          <label style="display:flex;align-items:center;gap:8px;color:#52627a;font-size:12px;cursor:pointer"><input id="w-select-all-students" type="checkbox" style="width:16px;height:16px"> Tüm öğrencilere gönder</label>
-        </div>
-
-        <div><label class="w-label">1️⃣ Sınav Türü *</label><select id="w-exam" class="w-select" required style="margin-bottom:16px"><option value="">Sınav türü seç</option></select></div>
-
-        <div class="w-grid">
-          <div><label class="w-label">📚 Ders *</label><select id="w-subject" class="w-select" required><option value="">Sınav türü seç</option></select></div>
-          <div><label class="w-label">📖 Konu *</label><select id="w-topic" class="w-select" required><option value="">Ders seç</option></select></div>
-        </div>
-
-        <div class="w-section-title">2️⃣ Soru Detayları</div>
-        <div><label class="w-label">Soru Metni *</label><textarea id="w-prompt" class="w-input" placeholder="Soruyu buraya yazın" maxlength="4000" required style="resize:vertical;min-height:100px"></textarea></div>
-
-        <div class="w-grid">
-          <div><label class="w-label">Cevap *</label><input id="w-answer" type="text" class="w-input" placeholder="Doğru cevap" maxlength="1000" required></div>
-          <div><label class="w-label">⭐ Zorluk</label><select id="w-difficulty" class="w-select"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></div>
-        </div>
-
-        <div><label class="w-label">Açıklama (Opsiyonel)</label><textarea id="w-explanation" class="w-input" placeholder="Sorunun çözüm açıklaması" maxlength="4000" style="resize:vertical;min-height:80px"></textarea></div>
-
-        <div class="w-grid">
-          <div><label class="w-label">Soru Türü</label><select id="w-type" class="w-select"><option value="ShortAnswer">Kısa Cevap</option><option value="MultipleChoice">Çoktan Seçmeli</option><option value="TrueFalse">Doğru/Yanlış</option><option value="Essay">Açık Uçlu</option></select></div>
-          <div><label style="display:flex;align-items:center;gap:8px;color:#52627a;font-size:12px;cursor:pointer;margin-top:22px"><input id="w-published" type="checkbox"> ✓ Öğrencilere yayımla</label></div>
-        </div>
-
-        <div id="w-status" class="hidden"></div>
-      </form>
-      <div id="w-footer">
-        <button id="w-cancel" type="button">İptal</button>
-        <button id="w-submit" type="button">✓ Gönder</button>
       </div>
     </div>
   </div>
