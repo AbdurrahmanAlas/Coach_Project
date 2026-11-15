@@ -229,6 +229,7 @@ if (app.Environment.IsDevelopment())
         if (examCount == 0)
         {
             var exams = new[] {
+                new Exam { Id = "lgs", Name = "LGS", FullName = "Liselere Geçiş Sistemi" },
                 new Exam { Id = "tyt", Name = "TYT", FullName = "Temel Yeterlilik Testi" },
                 new Exam { Id = "ayt", Name = "AYT", FullName = "Alan Yeterlilik Testleri" },
                 new Exam { Id = "kpss", Name = "KPSS", FullName = "Kamu Personel Seçme Sınavı (GY-GK)" },
