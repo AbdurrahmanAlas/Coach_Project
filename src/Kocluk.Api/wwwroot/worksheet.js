@@ -796,7 +796,7 @@
         <div class="ws-col">
           <h3>1 · Öğrenciler</h3>${studentPicker(students)}
           <h3>2 · Sınav türü, ders ve konu</h3>
-          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px">${['TYT', 'AYT', 'KPSS', 'YÖS', 'DGS'].map(code => `<button type="button" data-exam="${code}" style="padding:12px 6px;border:2px solid #d9e2ee;border-radius:12px;background:#f5f8ff;color:#2563eb;font-weight:700;cursor:pointer;transition:all .2s">${code}</button>`).join('')}</div>
+          <label>Sınav türü<select data-f="exam"><option value="">Sınav türü seç</option>${(typeof getExamTypes === 'function' ? getExamTypes() : []).map(e => `<option value="${esc(e.code)}">${esc(e.name)}</option>`).join('')}</select></label>
           <div class="ws-grid2">
             <label>Ders<select data-f="subject"><option value="">Sınav türü seç</option></select></label>
             <label>Konu<select data-f="topic"><option value="">Ders seç</option></select></label>
@@ -835,16 +835,12 @@
     const fillSelect = (select, placeholder, items) => {
       select.innerHTML = `<option value="">${placeholder}</option>` + items.map(item => `<option value="${esc(item.value)}">${esc(item.label)}</option>`).join('');
     };
-    body.querySelectorAll('[data-exam]').forEach(button => button.addEventListener('click', () => {
-      examType = button.dataset.exam;
-      body.querySelectorAll('[data-exam]').forEach(b => {
-        const on = b === button;
-        b.style.background = on ? '#2563eb' : '#f5f8ff'; b.style.color = on ? '#fff' : '#2563eb'; b.style.borderColor = on ? '#2563eb' : '#d9e2ee';
-      });
-      const subjects = typeof getSubjectsByExam === 'function' ? getSubjectsByExam(examType) : [];
-      fillSelect(subjectSelect, 'Ders seç', subjects.map(s => ({ value: s.code, label: s.name })));
+    field('exam').addEventListener('change', e => {
+      examType = e.target.value;
+      const subjects = examType && typeof getSubjectsByExam === 'function' ? getSubjectsByExam(examType) : [];
+      fillSelect(subjectSelect, examType ? 'Ders seç' : 'Sınav türü seç', subjects.map(s => ({ value: s.code, label: s.name })));
       fillSelect(topicSelect, 'Ders seç', []);
-    }));
+    });
     subjectSelect.addEventListener('change', () => {
       const topics = examType && subjectSelect.value && typeof getTopicsByExamAndSubject === 'function' ? getTopicsByExamAndSubject(examType, subjectSelect.value) : [];
       fillSelect(topicSelect, 'Konu seç', topics.map(t => ({ value: t, label: t })));
@@ -928,7 +924,7 @@
       const subject = subjectName(), topic = topicName(), file = field('file').files[0];
       const studentIds = [...body.querySelectorAll('[data-student]:checked')].map(c => c.value);
       if (!studentIds.length) return status('En az bir öğrenci seç.', 'err');
-      if (!examType) return status('Sınav türünü seç (TYT, AYT, KPSS, YÖS, DGS).', 'err');
+      if (!examType) return status('Sınav türünü seç.', 'err');
       if (!subject || !topic) return status('Ders ve konu (veya başlık) zorunlu.', 'err');
       if (!file) return status('Bir dosya seç.', 'err');
       const filled = Object.keys(key.answers).length;
