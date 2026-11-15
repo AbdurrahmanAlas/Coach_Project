@@ -1,11 +1,11 @@
 {
-  "name": "Koçluk Öğrenci Gelişim Paneli",
-  "short_name": "Koçluk",
+  "name": "Alas Eğitim Koçluk",
+  "short_name": "Alas Koçluk",
   "lang": "tr",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f8fc",
-  "theme_color": "#10233f",
+  "background_color": "#f4f5fb",
+  "theme_color": "#1e1b4b",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

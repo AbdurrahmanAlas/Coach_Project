@@ -188,7 +188,7 @@
       const rangeLabel = RANGES.find(r => r[0] === st.range)[1], coach = document.getElementById('profile-name')?.textContent?.trim() || 'Eğitim koçu';
       const li = x => `<li><b>${esc(x.subject)} · ${esc(x.topic)}</b> <span>%${r1(x.rate)} · ${x.total} soru</span></li>`;
       return `<div class="report-tools"><div class="card-lite"><label for="report-comment">💬 Öğretmen görüşü <small>(isteğe bağlı, rapora eklenir)</small></label><textarea id="report-comment" rows="3" placeholder="Örn: ${esc(student().firstName || 'Öğrenci')} son zamanlarda çok iyi gidiyor. Bu istikrarı sürdürelim.">${esc(localStorage.getItem(commentKey()) || '')}</textarea></div><button type="button" class="primary" id="report-print">📄 PDF raporu paylaş / yazdır</button></div>
-      <div id="perf-report" class="report"><div class="report-head"><div><small>Öğrenci gelişim raporu</small><h2>${esc(studentName())}</h2><p>${rangeLabel} · ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div><div class="report-brand">K<span>Koçluk</span></div></div>
+      <div id="perf-report" class="report"><div class="report-head"><div><small>Öğrenci gelişim raporu</small><h2>${esc(studentName())}</h2><p>${rangeLabel} · ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div><div class="report-brand"><img src="/logo.svg" width="42" height="42" alt=""><span>Alas Eğitim Koçluk</span></div></div>
         <div class="perf-stats">${stat('📅', 'Çalışma günü', t.days, 'indigo')}${stat('📄', 'Toplam soru', t.total, 'violet')}${stat('🎯', 'Başarı oranı', '%' + r1(t.rate), 'teal')}${stat('📈', 'Toplam net', r1(t.net), 'amber')}</div>
         <div class="report-cols"><div><h4>💪 Güçlü konular</h4><ul>${strong.length ? strong.map(li).join('') : '<li class="perf-muted">Yeterli veri yok</li>'}</ul></div><div><h4>🎯 Geliştirilecek konular</h4><ul>${weak.length ? weak.map(li).join('') : '<li class="perf-muted">Belirgin bir zayıf konu yok</li>'}</ul></div></div>
         <div class="report-cols"><div><h4>🗒️ Plan uyumu</h4><p class="report-big">${tasks.length ? done + ' / ' + tasks.length + ' görev tamamlandı' : 'Henüz plan görevi yok'}</p></div><div><h4>📝 Son deneme</h4><p class="report-big">${ex ? esc(ex.title) + ' · ' + r1(ex.correct - ex.wrong / 4) + ' net' : 'Deneme kaydı yok'}</p></div></div>
@@ -261,7 +261,7 @@
         if (!ls.length) return '';
         return '*' + d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) + '*\n' + ls.map(l => '🕐 ' + l.startTime.slice(0, 5) + (l.endTime ? ' - ' + l.endTime.slice(0, 5) : '') + '  ' + lessonLabel(l) + (l.topic ? '\n     ▫️ ' + l.topic : '') + (l.questionCount ? '\n     ✏️ ' + l.questionCount + ' soru' : '') + (l.note ? '\n     📝 ' + l.note : '')).join('\n');
       }).filter(Boolean);
-      const text = '📚 *' + studentName() + ' - Haftalık Ders Programı*\n' + range + '\n\n' + blocks.join('\n\n') + '\n\n_Koçluk panelinden gönderildi_';
+      const text = '📚 *' + studentName() + ' - Haftalık Ders Programı*\n' + range + '\n\n' + blocks.join('\n\n') + '\n\n_Alas Eğitim Koçluk panelinden gönderildi_';
       const url = 'https://wa.me/?text=' + encodeURIComponent(text);
       window.open(url, '_blank');
     }

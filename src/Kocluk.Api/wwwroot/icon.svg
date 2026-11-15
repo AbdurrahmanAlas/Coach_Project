@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <rect width="128" height="128" rx="30" fill="#10233f"/>
-  <rect x="18" y="18" width="92" height="92" rx="24" fill="#2cc6a7"/>
-  <path d="M39 39h22c16 0 28 10 28 25 0 15-12 25-28 25H51l-12 10V39Zm17 17v16h7c7 0 12-3 12-8s-5-8-12-8h-7Z" fill="#10233f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Alas Eğitim Koçluk">
+  <defs>
+    <linearGradient id="bg" x1="6" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="0.55" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <path d="M3 22C14 10 28 4 44 6C52 7 58 11 61 16V4a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4Z" fill="#fff" opacity="0.10"/>
+  <path fill-rule="evenodd" fill="#fff" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" d="M32 22.5 48.5 55h-6.6l-3.3-7H25.4l-3.3 7h-6.6Zm0 12.6-3.1 6.6h6.2Z"/>
+  <path d="M32 7 46.5 13.2 32 19.4 17.5 13.2Z" fill="url(#cap)" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M24.5 16.4v5.2c0 1.6 3.4 3 7.5 3s7.5-1.4 7.5-3v-5.2L32 19.6Z" fill="#fff" opacity="0.92"/>
+  <path d="M46.5 13.2v8.2" stroke="#fbbf24" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="46.5" cy="23" r="1.9" fill="#fbbf24"/>
 </svg>

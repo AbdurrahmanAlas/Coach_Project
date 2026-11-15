@@ -219,3 +219,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#818cf8!import
 .pl-draft-foot{display:flex;justify-content:flex-end;margin-top:14px}
 @media(max-width:900px){.pl-task{grid-template-columns:1fr;gap:8px}.pl-plan-prog{width:100%}.pl-draft-row{grid-template-columns:1fr}}
 .pl-draft-foot .pl-btn,.pl-actions .pl-btn{width:auto;flex:none}
+
+/* ---------- Marka: Alas Eğitim Koçluk ---------- */
+.brand,.auth-brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:46px;height:46px;border-radius:14px;flex:none;filter:drop-shadow(0 8px 16px rgba(79,70,229,.45))}
+.auth-brand .brand-logo{filter:drop-shadow(0 6px 12px rgba(79,70,229,.30))}
+.brand-text{display:flex;flex-direction:column;line-height:1.05;min-width:0}
+.brand-text b{font-size:23px;font-weight:850;letter-spacing:.2px;color:#fff}
+.brand-text small{margin-top:3px;font-size:10.5px;font-weight:750;letter-spacing:2.2px;text-transform:uppercase;color:#8d94d6;white-space:nowrap}
+.brand-text.brand-dark b{color:#1e1b4b}.brand-text.brand-dark small{color:#6366f1}

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10233f">
   <link rel="manifest" href="/manifest.webmanifest">
-  <title>Koçluk | Öğrenci gelişim paneli</title>
+  <title>Alas Eğitim Koçluk | Öğrenci gelişim paneli</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="/exam-data.js?v=20261116050000"></script>
@@ -353,9 +354,9 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261116072000">
-  <link rel="stylesheet" href="/analytics.css?v=20261116090000">
-  <script src="/analytics.js?v=20261116090000b"></script>
+  <link rel="stylesheet" href="/theme.css?v=20261116100000">
+  <link rel="stylesheet" href="/analytics.css?v=20261116100000">
+  <script src="/analytics.js?v=20261116100000b"></script>
   <script src="/calendar.js?v=20261116090000"></script>
 </head>
 <body>
@@ -392,7 +393,7 @@
 
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-brand"><span class="brand-mark">K</span> Koçluk</div>
+      <div class="auth-brand"><img class="brand-logo" src="/logo.svg" width="46" height="46" alt="Alas Eğitim Koçluk logosu"><span class="brand-text brand-dark"><b>Alas</b><small>Eğitim Koçluk</small></span></div>
       <div id="login-view"><h1>Hoş geldin</h1><p>Koçluk paneline giriş yaparak devam et.</p><div id="login-error" class="auth-error hidden"></div><form id="login-form"><label>E-posta</label><input id="login-email" type="email" required placeholder="ornek@mail.com"><label>Şifre</label><input id="login-password" type="password" required placeholder="En az 10 karakter"><button class="primary auth-submit" type="submit">Giriş yap</button></form><p class="auth-switch">Hesabın yok mu? <a id="show-register">Kayıt ol</a></p></div>
       <div id="register-view" class="hidden"><h1>Hesap oluştur</h1><p>Öğrenci, veli veya eğitim koçu hesabını birkaç saniyede oluştur.</p><div id="register-error" class="auth-error hidden"></div><form id="register-form"><label>E-posta</label><input id="register-email" type="email" required placeholder="ornek@mail.com"><label>Şifre</label><input id="register-password" type="password" required placeholder="En az 10 karakter, büyük harf ve rakam"><label>Hesap türü</label><select id="register-role"><option value="Student">Öğrenci</option><option value="Parent">Veli</option><option value="Coach">Eğitim koçu</option></select><p class="role-help">Eğitim koçu hesabıyla kayıt olduktan sonra kendi koçluk alanını oluşturabilirsin.</p><label style="display:flex;gap:8px;align-items:flex-start"><input id="register-privacy-consent" type="checkbox" required style="width:auto;margin-top:4px"><span><a href="/privacy.html" target="_blank" rel="noopener">Gizlilik/KVKK bilgilendirme taslağını</a> okudum.</span></label><label style="display:flex;gap:8px;align-items:flex-start"><input id="register-terms-consent" type="checkbox" required style="width:auto;margin-top:4px"><span><a href="/terms.html" target="_blank" rel="noopener">Kullanım koşulları taslağını</a> okudum.</span></label><button class="primary auth-submit" type="submit">Kayıt ol</button></form><p class="auth-switch">Zaten hesabın var mı? <a id="show-login">Giriş yap</a></p><p class="auth-switch">Bu taslaklar yayın öncesi işletmeci ve hukuk danışmanı tarafından tamamlanmalıdır.</p></div>
     </div>
@@ -446,7 +447,7 @@
   </div>
   <div id="sidebar-overlay" class="sidebar-overlay"></div><div class="shell">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">K</span> Koçluk</div>
+      <div class="brand"><img class="brand-logo" src="/logo.svg" width="46" height="46" alt="Alas Eğitim Koçluk logosu"><span class="brand-text"><b>Alas</b><small>Eğitim Koçluk</small></span></div>
       <div class="nav-label">Menü</div>
       <nav class="nav">
         <a href="#dashboard" data-page="dashboard" class="active"><span class="icon">🏠</span> Genel Bakış</a>
