@@ -1340,6 +1340,7 @@ tenantApi.MapPost("/students/{studentId:guid}/lesson-slots/publish", async (Guid
     var weekEnd = request.WeekStart.AddDays(6);
     var lessonCount = await db.LessonSlots.CountAsync(x => x.TenantId == tenantId && x.StudentId == studentId && x.Date >= request.WeekStart && x.Date <= weekEnd, ct);
     if (lessonCount == 0) return Results.Conflict(new { error = "Bu hafta için eklenmiş ders yok." });
+    var publishedLessons = await db.LessonSlots.AsNoTracking().Where(x => x.TenantId == tenantId && x.StudentId == studentId && x.Date >= request.WeekStart && x.Date <= weekEnd).OrderBy(x => x.Date).ThenBy(x => x.StartTime).ToListAsync(ct);
     var recipients = new HashSet<Guid>();
     if (student.ApplicationUserId.HasValue) recipients.Add(student.ApplicationUserId.Value);
     else if (!string.IsNullOrWhiteSpace(student.Email) && await users.FindByEmailAsync(student.Email) is { } studentUser) recipients.Add(studentUser.Id);
@@ -1351,8 +1352,11 @@ tenantApi.MapPost("/students/{studentId:guid}/lesson-slots/publish", async (Guid
     }
     var culture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     var range = $"{request.WeekStart.ToString("d MMMM", culture)} - {weekEnd.ToString("d MMMM yyyy", culture)}";
+    var totalQuestions = publishedLessons.Sum(x => x.QuestionCount ?? 0);
+    var lessonLines = publishedLessons.Take(8).Select(l => $"• {l.Date.ToString("d MMM", culture)} {l.StartTime.ToString("HH':'mm")} {l.Subject}{(string.IsNullOrWhiteSpace(l.Topic) ? "" : " – " + l.Topic.Split(" - ").Last())}{(l.QuestionCount is > 0 ? $" ({l.QuestionCount} soru)" : "")}{(string.IsNullOrWhiteSpace(l.Note) ? "" : $" — Not: {l.Note}")}");
+    var scheduleMessage = $"{student.FirstName} için {range} haftasının ders programı hazırlandı ({lessonCount} ders{(totalQuestions > 0 ? $", toplam {totalQuestions} soru" : "")}).\n" + string.Join("\n", lessonLines) + (publishedLessons.Count > 8 ? $"\n… ve {publishedLessons.Count - 8} ders daha" : "");
     foreach (var recipientId in recipients)
-        db.UserNotifications.Add(new UserNotification(recipientId, "Yeni haftalık ders programı", $"{student.FirstName} için {range} haftasının ders programı hazırlandı ({lessonCount} ders).", "LessonSchedule"));
+        db.UserNotifications.Add(new UserNotification(recipientId, "Yeni haftalık ders programı", scheduleMessage, "LessonSchedule"));
     await db.SaveChangesAsync(ct);
     await WriteAuditAsync(db, principal, tenantId, "Published", "LessonSchedule", studentId, range, ct);
     return Results.Ok(new { notified = recipients.Count, lessons = lessonCount });
