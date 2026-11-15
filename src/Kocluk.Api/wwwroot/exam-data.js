@@ -234,7 +234,86 @@ const temelMatematikYOS = {
   "Veri ve Olasılık": ["Permütasyon ve Kombinasyon", "Olasılık", "Ortalama ve Yayılım Ölçüleri"]
 };
 
+// ---------- LGS ----------
+const turkceLGS = {
+  "Sözcükte Anlam": ["Gerçek ve Mecaz Anlam", "Sözcükler Arası Anlam İlişkileri"],
+  "Deyimler ve Atasözleri": ["Deyimler", "Atasözleri"],
+  "Cümlede Anlam": ["Cümle Yorumlama"],
+  "Parçada Anlam ve Paragraf": ["Paragraf Yapısı", "Ana Düşünce"],
+  "Sözel Mantık ve Görsel Okuma": ["Sözel Mantık", "Görsel Okuma"],
+  "Fiilimsiler": ["İsim-Fiil", "Sıfat-Fiil", "Zarf-Fiil"],
+  "Cümlenin Ögeleri": ["Cümlenin Temel Ögeleri"],
+  "Fiilde Çatı": ["Fiil Çatıları"],
+  "Cümle Türleri": ["Basit, Birleşik, Karmaşık Cümleler"],
+  "Anlatım Bozuklukları": ["Anlam ve Yapı Bozuklukları"],
+  "Yazım Kuralları": ["Büyük Harf, Birleşik ve Ayrı Yazım"],
+  "Noktalama İşaretleri": ["Nokta, Virgül, İki Nokta ve Diğer İşaretler"],
+  "Metin Türleri ve Söz Sanatları": ["Anlatı Metinleri", "Bilgilendirici Metinler", "Söz Sanatları"]
+};
+const matematikLGS = {
+  "Çarpanlar ve Katlar": ["Bölünebilme", "Asal Sayılar", "EBOB ve EKOK"],
+  "Üslü İfadeler": ["Üslü Sayılar"],
+  "Kareköklü İfadeler": ["Karekök İşlemleri"],
+  "Veri Analizi": ["Ortalama, Median, Mod"],
+  "Basit Olayların Olma Olasılığı": ["Olasılık Hesabı"],
+  "Cebirsel İfadeler ve Özdeşlikler": ["Cebirsel İfadeler", "Kare Farkı ve Diğer Özdeşlikler"],
+  "Doğrusal Denklemler": ["Birinci Dereceden Denklemler"],
+  "Eşitsizlikler": ["Basit Eşitsizlikler"],
+  "Üçgenler": ["Üçgen Çeşitleri", "Üçgen Özellikleri"],
+  "Eşlik ve Benzerlik": ["Eş Üçgenler", "Benzer Üçgenler"],
+  "Dönüşüm Geometrisi": ["Öteleme, Dönme, Yansıma"],
+  "Geometrik Cisimler": ["Prizmalar", "Piramitler", "Silindir"]
+};
+const fenBilimleriLGS = {
+  "Mevsimler ve İklim": ["Dünyanın Hareketleri", "İklim"],
+  "DNA ve Genetik Kod": ["DNA Yapısı", "Kalıtım"],
+  "Basınç": ["Katı Basınç", "Sıvı Basınç"],
+  "Madde ve Endüstri": ["Madde Döngüleri"],
+  "Basit Makineler": ["Levers", "Makara"],
+  "Enerji Dönüşümleri ve Çevre Bilimi": ["Enerji Dönüşümleri", "Çevre Sorunları"],
+  "Elektrik Yükleri ve Elektrik Enerjisi": ["Elektrik Yükleri", "Elektrik Enerjisi"]
+};
+const tarihLGS = {
+  "Bir Kahraman Doğuyor": ["Atatürk'ün Doğumu ve Eğitimi"],
+  "Milli Uyanış": ["İttihat ve Terakki", "Milli Duygulanış"],
+  "Milli Bir Destan": ["Kurtuluş Savaşı Başlangıcı", "Kurtuluş Savaşı Süreci"],
+  "Atatürkçülük ve Çağdaşlaşan Türkiye": ["Atatürk İlkeleri"],
+  "Demokratikleşme Çabaları": ["İkinci Meşrutiyet", "Dönemin Siyaseti"],
+  "Atatürk Dönemi Dış Politikası": ["Lozan Antlaşması", "Cumhuriyet'in Tanınması"],
+  "Atatürk'ün Ölümü ve Sonrası": ["İnönü Dönemi"]
+};
+const dinLGS = {
+  "Kader İnancı": ["Kader Kavramı"],
+  "Zekat ve Sadaka": ["Zekat İbadet"],
+  "Din ve Hayat": ["Dinî Hayat"],
+  "Hz. Muhammed'in Örnekliği": ["Hz. Muhammed'in Yaşamı"],
+  "Kur'an-ı Kerim ve Özellikleri": ["Kur'an"]
+};
+const ingilizcelGS = {
+  "Unit 1": ["Friendship"],
+  "Unit 2": ["Teen Life"],
+  "Unit 3": ["In The Kitchen"],
+  "Unit 4": ["On The Phone"],
+  "Unit 5": ["The Internet"],
+  "Unit 6": ["Adventures"],
+  "Unit 7": ["Tourism"],
+  "Unit 8": ["Chores"],
+  "Unit 9": ["Science"],
+  "Unit 10": ["Natural Forces"]
+};
+
 const examData = {
+  LGS: {
+    name: "LGS (Liselere Geçiş Sistemi)",
+    subjects: {
+      turkce: makeSubject("Türkçe", turkceLGS),
+      matematik: makeSubject("Matematik", matematikLGS),
+      fen: makeSubject("Fen Bilimleri", fenBilimleriLGS),
+      tarih: makeSubject("T.C. İnkılap Tarihi ve Atatürkçülük", tarihLGS),
+      din: makeSubject("Din Kültürü ve Ahlak Bilgisi", dinLGS),
+      ingilizce: makeSubject("İngilizce", ingilizcelGS)
+    }
+  },
   TYT: {
     name: "TYT (Temel Yeterlilik Testi)",
     subjects: {

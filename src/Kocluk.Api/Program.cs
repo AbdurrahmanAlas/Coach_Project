@@ -214,71 +214,8 @@ if (app.Environment.IsDevelopment())
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_StudyResources_TenantId_Subject_Topic_CreatedAtUtc ON StudyResources (TenantId, Subject, Topic, CreatedAtUtc);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceAssignments (Id TEXT NOT NULL CONSTRAINT PK_ResourceAssignments PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, AssignedAtUtc TEXT NOT NULL, OpenedAtUtc TEXT NULL);");
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ResourceAssignments_TenantId_StudentId_Status_AssignedAtUtc ON ResourceAssignments (TenantId, StudentId, Status, AssignedAtUtc);");
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS Exams (Id TEXT NOT NULL CONSTRAINT PK_Exams PRIMARY KEY, Name TEXT NOT NULL, FullName TEXT NOT NULL);");
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS Subjects (Id TEXT NOT NULL CONSTRAINT PK_Subjects PRIMARY KEY, ExamId TEXT NOT NULL, Name TEXT NOT NULL, SortOrder INTEGER NOT NULL, FOREIGN KEY (ExamId) REFERENCES Exams(Id) ON DELETE CASCADE);");
-        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_Subjects_ExamId ON Subjects (ExamId);");
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS Topics (Id INTEGER PRIMARY KEY AUTOINCREMENT, SubjectId TEXT NOT NULL, Name TEXT NOT NULL, SortOrder INTEGER NOT NULL, FOREIGN KEY (SubjectId) REFERENCES Subjects(Id) ON DELETE CASCADE);");
-        await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_Topics_SubjectId ON Topics (SubjectId);");
-        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS LessonSlots (Id TEXT NOT NULL CONSTRAINT PK_LessonSlots PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, CreatedByUserId TEXT NULL, Date TEXT NOT NULL, StartTime TEXT NOT NULL, EndTime TEXT NULL, ExamType TEXT NOT NULL, Subject TEXT NOT NULL, Topic TEXT NULL, Note TEXT NULL, ExamId TEXT NULL, SubjectId TEXT NULL, TopicId INTEGER NULL, CreatedAtUtc TEXT NOT NULL);");
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS LessonSlots (Id TEXT NOT NULL CONSTRAINT PK_LessonSlots PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, CreatedByUserId TEXT NULL, Date TEXT NOT NULL, StartTime TEXT NOT NULL, EndTime TEXT NULL, ExamType TEXT NOT NULL, Subject TEXT NOT NULL, Topic TEXT NULL, Note TEXT NULL, CreatedAtUtc TEXT NOT NULL);");
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_TenantId_StudentId_Date ON LessonSlots (TenantId, StudentId, Date);");
-        try { await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_ExamId ON LessonSlots (ExamId);"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-        try { await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_SubjectId ON LessonSlots (SubjectId);"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-        try { await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_TopicId ON LessonSlots (TopicId);"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
-        // Seed curriculum data if empty
-        var examCount = await db.Exams.CountAsync();
-        if (examCount == 0)
-        {
-            var exams = new[] {
-                new Exam { Id = "lgs", Name = "LGS", FullName = "Liselere Geçiş Sistemi" },
-                new Exam { Id = "tyt", Name = "TYT", FullName = "Temel Yeterlilik Testi" },
-                new Exam { Id = "ayt", Name = "AYT", FullName = "Alan Yeterlilik Testleri" },
-                new Exam { Id = "kpss", Name = "KPSS", FullName = "Kamu Personel Seçme Sınavı (GY-GK)" },
-                new Exam { Id = "dgs", Name = "DGS", FullName = "Dikey Geçiş Sınavı" },
-                new Exam { Id = "tr-yos", Name = "TR-YÖS", FullName = "Türkiye Yurt Dışından Öğrenci Kabul Sınavı" }
-            };
-            db.Exams.AddRange(exams);
-            var subjects = new[] {
-                // LGS
-                new Subject { Id = "lgs-turkce", ExamId = "lgs", Name = "Türkçe", SortOrder = 1 },
-                new Subject { Id = "lgs-matematik", ExamId = "lgs", Name = "Matematik", SortOrder = 2 },
-                new Subject { Id = "lgs-fen", ExamId = "lgs", Name = "Fen Bilimleri", SortOrder = 3 },
-                new Subject { Id = "lgs-inkilap", ExamId = "lgs", Name = "T.C. İnkılap Tarihi ve Atatürkçülük", SortOrder = 4 },
-                new Subject { Id = "lgs-din", ExamId = "lgs", Name = "Din Kültürü ve Ahlak Bilgisi", SortOrder = 5 },
-                new Subject { Id = "lgs-ingilizce", ExamId = "lgs", Name = "İngilizce", SortOrder = 6 },
-                // TYT
-                new Subject { Id = "tyt-turkce", ExamId = "tyt", Name = "Türkçe", SortOrder = 1 },
-                new Subject { Id = "tyt-matematik", ExamId = "tyt", Name = "Matematik", SortOrder = 2 },
-                new Subject { Id = "tyt-geometri", ExamId = "tyt", Name = "Geometri", SortOrder = 3 },
-                new Subject { Id = "tyt-fizik", ExamId = "tyt", Name = "Fizik", SortOrder = 4 },
-                new Subject { Id = "tyt-kimya", ExamId = "tyt", Name = "Kimya", SortOrder = 5 },
-                new Subject { Id = "tyt-biyoloji", ExamId = "tyt", Name = "Biyoloji", SortOrder = 6 },
-                new Subject { Id = "tyt-tarih", ExamId = "tyt", Name = "Tarih", SortOrder = 7 },
-                new Subject { Id = "tyt-cografya", ExamId = "tyt", Name = "Coğrafya", SortOrder = 8 },
-                new Subject { Id = "tyt-felsefe", ExamId = "tyt", Name = "Felsefe", SortOrder = 9 },
-                new Subject { Id = "tyt-din", ExamId = "tyt", Name = "Din Kültürü ve Ahlak Bilgisi", SortOrder = 10 },
-                new Subject { Id = "ayt-matematik", ExamId = "ayt", Name = "AYT Matematik", SortOrder = 1 },
-                new Subject { Id = "ayt-fizik", ExamId = "ayt", Name = "AYT Fizik", SortOrder = 2 },
-                new Subject { Id = "ayt-kimya", ExamId = "ayt", Name = "AYT Kimya", SortOrder = 3 },
-                new Subject { Id = "ayt-biyoloji", ExamId = "ayt", Name = "AYT Biyoloji", SortOrder = 4 },
-                new Subject { Id = "ayt-edebiyat", ExamId = "ayt", Name = "Türk Dili ve Edebiyatı", SortOrder = 5 },
-                new Subject { Id = "ayt-tarih", ExamId = "ayt", Name = "AYT Tarih", SortOrder = 6 },
-                new Subject { Id = "ayt-cografya", ExamId = "ayt", Name = "AYT Coğrafya", SortOrder = 7 },
-                new Subject { Id = "ayt-felsefe-grubu", ExamId = "ayt", Name = "Felsefe Grubu", SortOrder = 8 },
-                new Subject { Id = "ayt-din", ExamId = "ayt", Name = "Din Kültürü ve Ahlak Bilgisi (AYT)", SortOrder = 9 },
-                new Subject { Id = "kpss-turkce", ExamId = "kpss", Name = "Türkçe", SortOrder = 1 },
-                new Subject { Id = "kpss-matematik", ExamId = "kpss", Name = "Matematik & Geometri", SortOrder = 2 },
-                new Subject { Id = "kpss-tarih", ExamId = "kpss", Name = "Tarih", SortOrder = 3 },
-                new Subject { Id = "kpss-cografya", ExamId = "kpss", Name = "Coğrafya", SortOrder = 4 },
-                new Subject { Id = "kpss-vatandaslik", ExamId = "kpss", Name = "Vatandaşlık", SortOrder = 5 },
-                new Subject { Id = "dgs-sayisal", ExamId = "dgs", Name = "Sayısal Yetenek", SortOrder = 1 },
-                new Subject { Id = "dgs-sozel", ExamId = "dgs", Name = "Sözel Yetenek", SortOrder = 2 },
-                new Subject { Id = "yos-sayisal-yetenek", ExamId = "tr-yos", Name = "Sayısal Yetenek (IQ)", SortOrder = 1 },
-                new Subject { Id = "yos-matematik", ExamId = "tr-yos", Name = "Temel Matematik", SortOrder = 2 },
-                new Subject { Id = "yos-geometri", ExamId = "tr-yos", Name = "Geometri", SortOrder = 3 }
-            };
-            db.Subjects.AddRange(subjects);
-            await db.SaveChangesAsync();
-        }
     }
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     foreach (var role in new[] { "Student", "Parent", "Coach", "Admin" })
@@ -355,22 +292,6 @@ app.MapGet("/api/health/ready", async (KoclukDbContext db, CancellationToken ct)
     catch { return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); }
 });
 app.MapGroup("/api/auth").RequireRateLimiting("auth").MapIdentityApi<ApplicationUser>();
-
-// Müfredat API'leri
-app.MapGet("/api/curriculum/exams", async (KoclukDbContext db, CancellationToken ct) =>
-    Results.Ok(await db.Exams.AsNoTracking().OrderBy(e => e.Id).Select(e => new { e.Id, e.Name, e.FullName }).ToListAsync(ct)));
-
-app.MapGet("/api/curriculum/exams/{examId}/subjects", async (string examId, KoclukDbContext db, CancellationToken ct) =>
-{
-    var subjects = await db.Subjects.AsNoTracking().Where(s => s.ExamId == examId).OrderBy(s => s.SortOrder).Select(s => new { s.Id, s.Name, s.SortOrder }).ToListAsync(ct);
-    return subjects.Count == 0 ? Results.NotFound() : Results.Ok(subjects);
-});
-
-app.MapGet("/api/curriculum/subjects/{subjectId}/topics", async (string subjectId, KoclukDbContext db, CancellationToken ct) =>
-{
-    var topics = await db.Topics.AsNoTracking().Where(t => t.SubjectId == subjectId).OrderBy(t => t.SortOrder).Select(t => new { t.Id, t.Name, t.SortOrder }).ToListAsync(ct);
-    return topics.Count == 0 ? Results.NotFound() : Results.Ok(topics);
-});
 
 app.MapGet("/api/notifications", async (ClaimsPrincipal principal, KoclukDbContext db, CancellationToken ct) =>
 {

@@ -33,9 +33,6 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
     public DbSet<ResourceAssignment> ResourceAssignments => Set<ResourceAssignment>();
     public DbSet<ResourceWorksheet> ResourceWorksheets => Set<ResourceWorksheet>();
     public DbSet<ResourceSubmission> ResourceSubmissions => Set<ResourceSubmission>();
-    public DbSet<Exam> Exams => Set<Exam>();
-    public DbSet<Subject> Subjects => Set<Subject>();
-    public DbSet<Topic> Topics => Set<Topic>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -96,15 +93,10 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.Property(x => x.Subject).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Topic).HasMaxLength(300);
             entity.Property(x => x.Note).HasMaxLength(500);
-            entity.Property(x => x.ExamId).HasMaxLength(20);
-            entity.Property(x => x.SubjectId).HasMaxLength(50);
             entity.HasIndex(x => new { x.TenantId, x.StudentId, x.Date });
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(x => x.Exam).WithMany().HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(x => x.SubjectNav).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.SetNull);
-            entity.HasOne(x => x.TopicNav).WithMany().HasForeignKey(x => x.TopicId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<AuditLog>(entity =>
@@ -316,31 +308,6 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<QuestionBankItem>().WithMany().HasForeignKey(x => x.QuestionBankItemId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<Exam>(entity =>
-        {
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(50).IsRequired();
-            entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
-            entity.HasMany<Subject>(nameof(Exam.Subjects)).WithOne(x => x.Exam)
-                .HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<Subject>(entity =>
-        {
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
-            entity.HasIndex(x => x.ExamId);
-            entity.HasMany<Topic>(nameof(Subject.Topics)).WithOne(x => x.Subject)
-                .HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<Topic>(entity =>
-        {
-            entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
-            entity.HasIndex(x => x.SubjectId);
         });
     }
 }

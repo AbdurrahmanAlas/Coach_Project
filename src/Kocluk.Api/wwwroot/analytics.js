@@ -25,7 +25,7 @@
   window.loadPerformancePage = async function (ctx) {
     const { authRequest, escapeHtml: esc, tenantId } = ctx;
     const content = document.querySelector('.content');
-    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'perf', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonMsg: '', lessonMsgErr: false, curriculum: null };
+    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'perf', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonMsg: '', lessonMsgErr: false };
     content.innerHTML = '<div class="welcome"><div><h1>Performans & analiz</h1><p>Öğrencinin çalışma, soru çözümü ve plan verilerini tek ekranda izle.</p></div></div><div id="perf-root" class="perf"><div class="perf-empty">Yükleniyor…</div></div>';
     const root = document.getElementById('perf-root');
 
@@ -33,34 +33,6 @@
     const sRes = await get('/students'); st.students = Array.isArray(sRes) ? sRes : [];
     if (!st.students.length) { root.innerHTML = '<div class="perf-empty"><div class="perf-emoji">🎓</div><strong>Henüz öğrenci yok</strong><p>Öğrenci ekledikten sonra analizleri burada görürsün.</p></div>'; return; }
     if (!st.students.some(s => s.id === st.studentId)) st.studentId = st.students[0].id;
-
-    // Müfredat verisi yükle (API'den) - window.curriculum'a da kaydet
-    async function loadCurriculum() {
-      try {
-        const exams = await (await fetch('/api/curriculum/exams')).json();
-        st.curriculum = { exams: {}, subjects: {}, topics: {} };
-        if (!Array.isArray(exams)) throw new Error('Sınavlar yüklenemedi');
-
-        for (const exam of exams) {
-          st.curriculum.exams[exam.id] = exam;
-          try {
-            const subjs = await (await fetch('/api/curriculum/exams/' + exam.id + '/subjects')).json();
-            if (Array.isArray(subjs)) {
-              for (const subj of subjs) {
-                st.curriculum.subjects[subj.id] = { ...subj, examId: exam.id };
-                try {
-                  const tops = await (await fetch('/api/curriculum/subjects/' + subj.id + '/topics')).json();
-                  if (Array.isArray(tops)) st.curriculum.topics[subj.id] = tops;
-                } catch (e) { console.warn('Konular yüklenemedi: ' + subj.id, e); }
-              }
-            }
-          } catch (e) { console.warn('Dersler yüklenemedi: ' + exam.id, e); }
-        }
-        window.curriculum = st.curriculum; // Modaller için global'e kaydet
-        console.log('Müfredat yüklendi:', st.curriculum);
-      } catch (e) { console.error('Müfredat yüklenemedi:', e); st.curriculum = { exams: {}, subjects: {}, topics: {} }; }
-    }
-    await loadCurriculum();
 
     async function loadData() {
       localStorage.setItem('perfStudent', st.studentId);
@@ -123,13 +95,11 @@
     /* ---------- Sekme: Haftalık program ---------- */
     const lessonLabel = l => (l.examType ? (l.examType === 'YÖS' ? 'TR-YÖS' : l.examType) + ' · ' : '') + l.subject;
     function ensureLessonSelection() {
-      if (!st.curriculum) return;
-      const exams = Object.values(st.curriculum.exams);
-      if (!exams.some(e => e.id === st.lessonExamType)) st.lessonExamType = exams[0]?.id || 'TYT';
-      const subjects = Object.values(st.curriculum.subjects).filter(s => s.examId === st.lessonExamType);
-      if (!subjects.some(s => s.id === st.lessonSubject)) { st.lessonSubject = subjects[0]?.id || ''; st.lessonTopic = ''; }
-      const topics = st.curriculum.topics[st.lessonSubject] || [];
-      if (st.lessonTopic && !topics.map(t => t.name).includes(st.lessonTopic)) st.lessonTopic = '';
+      const exams = getExamTypes();
+      if (!exams.some(e => e.code === st.lessonExamType)) st.lessonExamType = exams[0].code;
+      const subjects = getSubjectsByExam(st.lessonExamType);
+      if (!subjects.some(s => s.code === st.lessonSubject)) { st.lessonSubject = subjects[0]?.code || ''; st.lessonTopic = ''; }
+      if (st.lessonTopic && !getTopicsByExamAndSubject(st.lessonExamType, st.lessonSubject).includes(st.lessonTopic)) st.lessonTopic = '';
     }
     const lessonStore = () => st.data?.lessons || [];
     const api = async (method, path, body) => {
@@ -213,18 +183,13 @@
     /* ---------- Çerçeve ---------- */
     function renderWeekForm() {
       const cnt = document.getElementById('week-form-container');
-      if (!cnt || !st.curriculum) return;
+      if (!cnt) return;
+      if (typeof getExamTypes !== 'function') { cnt.innerHTML = '<p class="perf-note">Müfredat verisi yüklenemedi. Sayfayı yenileyin.</p>'; return; }
       const start = weekStart(Date.now() + st.weekOffset * 7 * DAY), days = [...Array(7)].map((_, i) => new Date(start.getTime() + i * DAY));
       const dayKeys = days.map(key);
       if (!dayKeys.includes(st.lessonDate)) st.lessonDate = dayKeys.includes(key(new Date())) ? key(new Date()) : dayKeys[0];
       ensureLessonSelection();
-
-      // API'den yüklenen müfredat verisi kullan
-      const exams = Object.values(st.curriculum.exams).map(e => ({ code: e.id, name: e.name }));
-      const subjects = (Object.values(st.curriculum.subjects).filter(s => s.examId === st.lessonExamType) || []).map(s => ({ code: s.id, name: s.name }));
-      const topics = st.curriculum.topics[st.lessonSubject] || [];
-      const groups = topics.length ? [{ unit: 'Konular', topics: topics.map(t => t.name) }] : [];
-
+      const exams = getExamTypes(), subjects = getSubjectsByExam(st.lessonExamType), groups = getTopicGroupsByExamAndSubject(st.lessonExamType, st.lessonSubject);
       const opt = (v, label, sel) => `<option value="${esc(v)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
       cnt.innerHTML = `<div id="lesson-form" class="lesson-form">
         <div class="lf-head"><b>Ders programına ekle</b><span>Sınav türünü seç, dersi ve konuyu belirle; ardından gün ve saati ver. Eklenen dersleri takvimde sürükleyerek günler arasında taşıyabilirsin.</span></div>
@@ -312,7 +277,7 @@
         st.lessonDate = document.getElementById('lesson-date')?.value || st.lessonDate;
         st.lessonStart = document.getElementById('lesson-start')?.value || '';
         st.lessonEnd = document.getElementById('lesson-end')?.value || '';
-        const subj = st.curriculum?.subjects?.[st.lessonSubject];
+        const subj = getSubjectsByExam(st.lessonExamType).find(s => s.code === st.lessonSubject);
         const fail = msg => { st.lessonMsg = msg; st.lessonMsgErr = true; };
         if (!subj) fail('Önce bir ders seç.');
         else if (!st.lessonStart) fail('Başlangıç saatini gir.');
