@@ -1056,7 +1056,7 @@
         addButton.dataset.bound = 'true';
         addButton.addEventListener('click', () => openStudentModal());
       }
-      if (!list || !tenantId) { if (list) list.innerHTML = '<div class="task"><div class="task-text"><strong>Önce bir kurum oluşturmalısın.</strong><small>Üst menüdeki Kurum oluştur düğmesini kullan.</small></div></div>'; return; }
+      if (!list || !tenantId) { if (list) list.innerHTML = '<div class="task" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div class="task-text"><strong>Öğrenci ekleyebilmek için önce koçluk alanını oluştur.</strong><small>Koçluk alanı, öğrencilerin, planların ve takvimin bağlı olduğu çalışma alanındır. Bir kez oluşturman yeterli.</small></div><button type="button" class="primary" onclick="document.getElementById(\'create-tenant-button\')?.click()">Koçluk alanı oluştur</button></div>'; return; }
       const response = await authRequest(`/api/tenants/${tenantId}/students`);
       if (!response.ok) { list.innerHTML = '<div class="task"><div class="task-text"><strong>Öğrenciler yüklenemedi.</strong><small>Oturum veya kurum üyeliğini kontrol edin.</small></div></div>'; return; }
       const students = await response.json();
@@ -1818,6 +1818,7 @@
       const tenants = await response.json();
       const createButton = document.getElementById('create-tenant-button');
       if (tenants.length === 0) {
+        localStorage.removeItem('tenantId');
         const isCoach = currentUserRoles.length === 0 || currentUserRoles.some(role => role.toLowerCase() === 'coach');
         document.getElementById('tenant-name').textContent = isCoach ? '· Koçluk alanı seçilmedi' : '· Eğitim koçu ataması bekleniyor';
         createButton.classList.toggle('hidden', !isCoach);
@@ -1845,18 +1846,20 @@
       }
       if (!response.ok) { const body = await response.json().catch(() => ({})); error.textContent = response.status === 403 ? 'Bu hesap eğitim koçu olarak yetkilendirilmemiş. Lütfen çıkış yapıp tekrar Eğitim koçu hesabıyla giriş yapın.' : (response.status === 409 ? 'Bu kısa ad zaten kullanılıyor. Lütfen farklı bir kısa ad seçin.' : (body.error || 'Koçluk alanı oluşturulamadı. Lütfen bilgileri kontrol edip tekrar deneyin.')); error.classList.remove('hidden'); return; }
       closeTenantModal(); await loadTenants(); await loadDashboardData();
+      document.getElementById('coach-setup-state')?.remove();
+      document.querySelector('.nav a.active')?.click();
     });
     document.getElementById('profile-button').addEventListener('click', () => document.getElementById('profile-menu').classList.toggle('hidden'));
     document.getElementById('profile-info').addEventListener('click', () => { document.getElementById('profile-menu').classList.add('hidden'); const settingsLink = document.querySelector('[data-page="settings"]'); if (settingsLink) settingsLink.click(); });
     document.getElementById('export-account').addEventListener('click', async () => { const response = await authRequest('/api/account/export'); if (!response.ok) { alert('Veriler alınamadı.'); return; } const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'kocluk-verilerim.json'; link.click(); URL.revokeObjectURL(url); document.getElementById('profile-menu').classList.add('hidden'); });
     document.getElementById('request-deletion').addEventListener('click', async () => { if (!confirm('Hesabınız ve kişisel verileriniz için silme talebi oluşturulsun mu?')) return; const reason = prompt('Talep nedeni (isteğe bağlı):', '') ?? ''; const response = await authRequest('/api/account/deletion-request', { method: 'POST', body: JSON.stringify({ reason }) }); if (response.ok) alert('Talebiniz kaydedildi. Yönetici incelemesinden sonra işleme alınacaktır.'); else if (response.status === 409) alert('Zaten bekleyen bir silme talebiniz var.'); else alert('Talep oluşturulamadı.'); document.getElementById('profile-menu').classList.add('hidden'); });
-    document.getElementById('logout-button').addEventListener('click', async () => { await authRequest('/api/auth/logout', { method: 'POST' }); document.getElementById('profile-menu').classList.add('hidden'); authScreen.classList.remove('hidden'); });
+    document.getElementById('logout-button').addEventListener('click', async () => { await authRequest('/api/auth/logout', { method: 'POST' }); localStorage.removeItem('tenantId'); document.getElementById('profile-menu').classList.add('hidden'); authScreen.classList.remove('hidden'); });
     document.getElementById('show-register').addEventListener('click', () => { document.getElementById('login-view').classList.add('hidden'); document.getElementById('register-view').classList.remove('hidden'); });
     document.getElementById('show-login').addEventListener('click', () => { document.getElementById('register-view').classList.add('hidden'); document.getElementById('login-view').classList.remove('hidden'); });
     document.getElementById('login-form').addEventListener('submit', async event => {
       event.preventDefault(); document.getElementById('login-error').classList.add('hidden');
       const response = await authRequest('/api/auth/login?useCookies=true', { method: 'POST', body: JSON.stringify({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value }) });
-      if (!response.ok) { showAuthError('login-error', 'E-posta veya şifre hatalı.'); return; } await loadCurrentUser();
+      if (!response.ok) { showAuthError('login-error', 'E-posta veya şifre hatalı.'); return; } localStorage.removeItem('tenantId'); await loadCurrentUser();
     });
     document.getElementById('register-form').addEventListener('submit', async event => {
       event.preventDefault(); document.getElementById('register-error').classList.add('hidden');
@@ -1869,6 +1872,7 @@
       if (!roleResponse.ok) { showAuthError('register-error', role === 'Coach' ? 'Koç hesabı oluşturulamadı. Lütfen tekrar deneyin.' : 'Hesap türü atanamadı. Lütfen tekrar deneyin.'); return; }
       const consent = await authRequest('/api/account/privacy-consent', { method: 'POST', body: JSON.stringify({ accepted: true, policyVersion: '2026.10' }) });
       if (!consent.ok) { showAuthError('register-error', 'Hesap oluşturuldu ancak bilgilendirme kaydı tamamlanamadı. Lütfen giriş yapıp tekrar deneyin.'); return; }
+      localStorage.removeItem('tenantId');
       await loadCurrentUser();
     });
     loadCurrentUser();
