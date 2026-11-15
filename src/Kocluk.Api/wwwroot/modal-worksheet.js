@@ -108,11 +108,19 @@ class WorksheetModal {
     document.getElementById('w-status').innerHTML = '';
     document.getElementById('w-status').classList.add('hidden');
 
-    // Dosya seçimini sıfırla
-    const fileInput = document.getElementById('w-file');
-    const fileName = document.getElementById('w-file-name');
-    if (fileInput) fileInput.value = '';
-    if (fileName) fileName.textContent = 'Dosya seçilmedi';
+    // Soru detaylarını temizle
+    const promptArea = document.getElementById('w-prompt');
+    if (promptArea) promptArea.value = '';
+    const answerInput = document.getElementById('w-answer');
+    if (answerInput) answerInput.value = '';
+    const explanationArea = document.getElementById('w-explanation');
+    if (explanationArea) explanationArea.value = '';
+    const difficultySelect = document.getElementById('w-difficulty');
+    if (difficultySelect) difficultySelect.value = 'Orta';
+    const typeSelect = document.getElementById('w-type');
+    if (typeSelect) typeSelect.value = 'ShortAnswer';
+    const publishedCheckbox = document.getElementById('w-published');
+    if (publishedCheckbox) publishedCheckbox.checked = false;
 
     this.examType = '';
     this.subject = '';
@@ -269,13 +277,16 @@ class WorksheetModal {
     const examType = this.examType.trim();
     const subject = document.getElementById('w-subject').value.trim();
     const topic = document.getElementById('w-topic').value.trim();
-    const title = document.getElementById('w-title').value.trim();
-    const description = document.getElementById('w-description').value.trim();
-    const fileInput = document.getElementById('w-file');
+    const prompt = document.getElementById('w-prompt').value.trim();
+    const answer = document.getElementById('w-answer').value.trim();
+    const explanation = document.getElementById('w-explanation').value.trim();
+    const difficulty = document.getElementById('w-difficulty').value;
+    const questionType = document.getElementById('w-type').value;
+    const published = document.getElementById('w-published').checked;
 
     const status = document.getElementById('w-status');
 
-    // Öğrenci ve sınav türü gerekli
+    // Zorunlu alanları kontrol et
     if (!studentId) {
       status.textContent = '❌ Lütfen öğrenci seçin veya "Tüm öğrencilere gönder" seçeneğini işaretleyin';
       status.className = 'w-status-error';
@@ -283,14 +294,21 @@ class WorksheetModal {
       return;
     }
 
-    if (!examType) {
-      status.textContent = '❌ Lütfen sınav türü seçin (TYT, AYT, KPSS, YÖS, DGS)';
+    if (!examType || !subject || !topic) {
+      status.textContent = '❌ Lütfen sınav türü, ders ve konu seçin';
       status.className = 'w-status-error';
       status.classList.remove('hidden');
       return;
     }
 
-    status.textContent = '⏳ Gönderiliyor...';
+    if (!prompt || !answer) {
+      status.textContent = '❌ Soru metni ve cevap gerekli';
+      status.className = 'w-status-error';
+      status.classList.remove('hidden');
+      return;
+    }
+
+    status.textContent = '⏳ Soru gönderiliyor...';
     status.className = 'w-status-info';
     status.classList.remove('hidden');
 
@@ -299,24 +317,17 @@ class WorksheetModal {
       const data = {
         studentId,
         examType,
-        subject: subject || null,
-        topic: topic || null,
-        title: title || null,
-        description: description || null
+        subject,
+        topic,
+        prompt,
+        answer,
+        explanation: explanation || null,
+        difficulty,
+        questionType,
+        isPublished: published
       };
 
-      // Eğer dosya varsa FormData kullan, yoksa JSON kullan
-      let result;
-      if (fileInput && fileInput.files.length > 0) {
-        const formData = new FormData();
-        Object.keys(data).forEach(key => {
-          formData.append(key, data[key]);
-        });
-        formData.append('file', fileInput.files[0]);
-        result = await this.onSubmit(formData, true); // true = formData flag
-      } else {
-        result = await this.onSubmit(data, false);
-      }
+      result = await this.onSubmit(data, false);
 
       if (result.success) {
         status.textContent = '✅ Çalışma gönderildi!';

@@ -11,7 +11,7 @@
   <script src="/exam-data.js?v=20261116000000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
   <script src="/modal-questions.js?v=20261108254000"></script>
-  <script src="/modal-worksheet.js?v=20261116010000"></script>
+  <script src="/modal-worksheet.js?v=20261116020000"></script>
   <script src="/worksheet.js?v=20261108260000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -447,7 +447,7 @@
       <div id="w-header">
         <div>
           <h2>📚 Çalışma Gönder</h2>
-          <p>TYT/AYT/KPSS seçerek öğrencilere ders, konu ve dosya gönderin</p>
+          <p>Öğrenciye soru oluştur ve gönder. Sınav, ders, konu seçerek soru detaylarını gir.</p>
         </div>
         <button id="w-close" type="button">✕</button>
       </div>
@@ -465,14 +465,20 @@
           <div><label class="w-label">📖 Konu *</label><select id="w-topic" class="w-select" required><option value="">Ders seç</option></select></div>
         </div>
 
-        <div class="w-section-title">2️⃣ Manuel Giriş (Opsiyonel)</div>
+        <div class="w-section-title">2️⃣ Soru Detayları</div>
+        <div><label class="w-label">Soru Metni *</label><textarea id="w-prompt" class="w-input" placeholder="Soruyu buraya yazın" maxlength="4000" required style="resize:vertical;min-height:100px"></textarea></div>
+
         <div class="w-grid">
-          <div><label class="w-label">Başlık/Tanım</label><input id="w-title" type="text" class="w-input" placeholder="Örn: Çarpanlara Ayırma Çalışması" maxlength="200"></div>
-          <div><label class="w-label">Açıklama</label><textarea id="w-description" class="w-input" placeholder="Öğrenciler için özel not veya talimatlar" maxlength="1000" style="resize:vertical;min-height:60px"></textarea></div>
+          <div><label class="w-label">Cevap *</label><input id="w-answer" type="text" class="w-input" placeholder="Doğru cevap" maxlength="1000" required></div>
+          <div><label class="w-label">⭐ Zorluk</label><select id="w-difficulty" class="w-select"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></div>
         </div>
 
-        <div class="w-section-title">3️⃣ Dosya Ekle (Opsiyonel)</div>
-        <div class="w-file-section"><label class="w-label">📎 Ek Dosya</label><p style="margin:6px 0 12px;color:#6b85a0;font-size:12px">PDF, Resim, Video, Word veya Excel dosyası - Öğrenciler platformda açıp indirebilecek</p><div class="w-file-input-wrapper"><input id="w-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.mp4,.webm,.mov,.doc,.docx,.xls,.xlsx" style="display:none"><label for="w-file" class="w-file-label">📁 Dosya Seç</label><span id="w-file-name" style="margin-left:10px;color:#6b85a0;font-size:12px">Dosya seçilmedi</span></div></div>
+        <div><label class="w-label">Açıklama (Opsiyonel)</label><textarea id="w-explanation" class="w-input" placeholder="Sorunun çözüm açıklaması" maxlength="4000" style="resize:vertical;min-height:80px"></textarea></div>
+
+        <div class="w-grid">
+          <div><label class="w-label">Soru Türü</label><select id="w-type" class="w-select"><option value="ShortAnswer">Kısa Cevap</option><option value="MultipleChoice">Çoktan Seçmeli</option><option value="TrueFalse">Doğru/Yanlış</option><option value="Essay">Açık Uçlu</option></select></div>
+          <div><label style="display:flex;align-items:center;gap:8px;color:#52627a;font-size:12px;cursor:pointer;margin-top:22px"><input id="w-published" type="checkbox"> ✓ Öğrencilere yayımla</label></div>
+        </div>
 
         <div id="w-status" class="hidden"></div>
       </form>
