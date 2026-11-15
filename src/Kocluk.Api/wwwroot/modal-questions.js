@@ -8,6 +8,23 @@ class QuestionModal {
     this.subject = '';
     this.topic = '';
     this.onSubmit = null;
+    this.students = [];
+  }
+
+  setStudents(students) {
+    this.students = Array.isArray(students) ? students : [];
+  }
+
+  populateStudents() {
+    const select = document.getElementById('q-student');
+    if (!select) return;
+    select.innerHTML = '<option value="">Sadece soru havuzuna kaydet</option>';
+    this.students.forEach(student => {
+      const option = document.createElement('option');
+      option.value = student.id;
+      option.textContent = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      select.appendChild(option);
+    });
   }
 
   // Modal'ı aç
@@ -24,6 +41,7 @@ class QuestionModal {
 
     // Önceki verileri temizle
     this.resetForm();
+    this.populateStudents();
 
     // Prefill data varsa ekle
     if (prefillData.examType) {
@@ -210,6 +228,7 @@ class QuestionModal {
     const optionsJson = document.getElementById('q-options')?.value.trim() || null;
     const published = document.getElementById('q-published')?.checked || false;
     const fileInput = document.getElementById('q-file');
+    const studentId = document.getElementById('q-student')?.value || '';
 
     const status = document.getElementById('q-status');
 
@@ -240,6 +259,7 @@ class QuestionModal {
         isPublished: published,
         points: 1
       };
+      if (studentId) data.studentId = studentId;
 
       // Eğer dosya varsa FormData kullan, yoksa JSON kullan
       let result;
@@ -255,7 +275,7 @@ class QuestionModal {
       }
 
       if (result.success) {
-        status.textContent = '✅ Soru kaydedildi!';
+        status.textContent = studentId ? '✅ Soru kaydedildi ve öğrenciye gönderildi!' : '✅ Soru kaydedildi!';
         status.className = 'q-status-success';
         setTimeout(() => {
           this.close();

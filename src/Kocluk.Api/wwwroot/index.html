@@ -10,7 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="/exam-data.js?v=20261116000000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
-  <script src="/modal-questions.js?v=20261108254000"></script>
+  <script src="/modal-questions.js?v=20261116040000"></script>
   <script src="/worksheet.js?v=20261116030000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -370,6 +370,7 @@
         <button id="q-close" type="button">✕</button>
       </div>
       <form id="q-form">
+        <div><label class="q-label">👤 Öğrenci</label><select id="q-student" class="q-select"><option value="">Sadece soru havuzuna kaydet</option></select></div>
         <div class="q-half"><label class="q-label">📚 Sınav Türü *</label><select id="q-exam" class="q-select" required><option value="">Sınav türü seç</option></select></div>
         <div class="q-half"><label class="q-label">📚 Ders *</label><select id="q-subject" class="q-select" required><option value="">Sınav türü seç</option></select></div>
         <div class="q-half"><label class="q-label">📖 Konu *</label><select id="q-topic" class="q-select" required><option value="">Ders seç</option></select></div>
@@ -960,12 +961,18 @@
         // "+ Yeni soru" butonunu modal açacak şekilde ayarla
         const toggleBtn = document.getElementById('question-add-toggle');
         if (toggleBtn) {
-          toggleBtn.addEventListener('click', () => {
+          toggleBtn.addEventListener('click', async () => {
+            const studentsResponse = await authRequest(`/api/tenants/${tenantId}/students`);
+            window.questionModal.setStudents(studentsResponse.ok ? await studentsResponse.json() : []);
             window.questionModal.open(async (data, isFormData) => {
               // Soru'yu API'ye gönder
               const options = {
                 method: 'POST'
               };
+
+              let studentId = '';
+              if (isFormData) { studentId = data.get('studentId') || ''; data.delete('studentId'); }
+              else { studentId = data.studentId || ''; delete data.studentId; }
 
               if (isFormData) {
                 // FormData (dosya var) - body'ye doğrudan FormData gönder
@@ -977,10 +984,16 @@
               }
 
               const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, options);
+              let assignError = '';
+              if (response.ok && studentId) {
+                const created = await response.json().catch(() => ({}));
+                const assigned = await authRequest(`/api/tenants/${tenantId}/question-assignments`, { method: 'POST', body: JSON.stringify({ questionBankItemId: created.id, studentId, dueDateUtc: null, note: null }) });
+                if (!assigned.ok) assignError = ((await assigned.json().catch(() => ({}))).error) || 'Soru kaydedildi ama öğrenciye atanamadı';
+              }
 
               return {
-                success: response.ok,
-                error: response.ok ? '' : 'Soru kaydedilemedi',
+                success: response.ok && !assignError,
+                error: response.ok ? assignError : 'Soru kaydedilemedi',
                 callback: async () => {
                   await refresh();
                 }
