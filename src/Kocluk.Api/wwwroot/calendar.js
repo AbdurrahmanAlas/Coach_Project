@@ -1,172 +1,97 @@
-/* Öğrenci ve veli takvim sayfaları */
+/* Öğrenci ve veli takvim sayfaları: koçun hazırladığı ders programı, görevler, koçluk görüşmeleri ve konu başarısı. */
 (() => {
   const DAY = 86400000;
   const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
   const key = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
-  const r1 = v => (Math.round(v * 10) / 10).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
   const weekStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
-  const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const lessonLabel = l => (l.examType ? (l.examType === 'YÖS' ? 'TR-YÖS' : l.examType) + ' · ' : '') + l.subject;
+  const hhmm = t => String(t || '').slice(0, 5);
+  const empty = (title, text) => `<div class="perf-empty"><div class="perf-emoji">📅</div><strong>${esc(title)}</strong><p>${esc(text)}</p></div>`;
+  const stat = (icon, label, value, color) => `<div class="pstat ${color}"><span class="pstat-ico">${icon}</span><div><b>${value}</b><small>${label}</small></div></div>`;
+  const getJson = async (authRequest, url) => { try { const r = await authRequest(url); return r.ok ? await r.json() : null; } catch { return null; } };
 
-  window.loadStudentCalendar = async function (ctx) {
-    const { authRequest, escapeHtml, tenantId } = ctx;
-    const root = document.getElementById('student-calendar-root');
+  async function mount(kind, ctx, rootId) {
+    const root = document.getElementById(rootId);
     if (!root) return;
+    const { authRequest } = ctx;
+    const st = { weekOffset: 0, overview: null, summary: null, kids: [], kidId: null };
 
-    // Öğrencinin kendi verilerini getir
-    const me = await authRequest('/api/auth/me').then(r => r.ok ? r.json() : null);
-    if (!me) return root.innerHTML = '<div class="perf-empty"><strong>Yükleme hatası</strong></div>';
+    async function loadOverview() {
+      if (kind === 'student') st.overview = await getJson(authRequest, '/api/student/me/overview');
+      else st.overview = await getJson(authRequest, '/api/parent/students/' + st.kidId + '/overview');
+      if (!st.overview) { st.summary = null; return; }
+      const student = st.overview.student;
+      st.summary = await getJson(authRequest, '/api/tenants/' + student.tenantId + '/students/' + student.id + '/question-summary');
+    }
 
-    const studentId = me.id;
-    const get = async path => { try { const r = await authRequest('/api/tenants/' + tenantId + path); return r.ok ? await r.json() : []; } catch { return []; } };
+    function view() {
+      const o = st.overview;
+      const start = weekStart(Date.now() + st.weekOffset * 7 * DAY);
+      const days = [...Array(7)].map((_, i) => new Date(start.getTime() + i * DAY));
+      const keys = days.map(key), todayKey = key(new Date());
+      const lessons = (o.lessonSlots || []).filter(l => keys.includes(l.date));
+      const tasks = (o.plans || []).flatMap(p => p.tasks || []).filter(t => keys.includes(String(t.dueDate).slice(0, 10)));
+      const sessions = (o.sessions || []).filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(s.startsAtUtc)));
+      const doneTasks = tasks.filter(t => t.isCompleted).length;
+      const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+      const topics = ((st.summary && st.summary.byTopic) || []).slice().sort((a, b) => b.total - a.total).slice(0, 6);
+      const rate = st.summary ? st.summary.rate : 0;
+      const tone = r => r >= 75 ? 'good' : r >= 50 ? 'mid' : 'low';
 
-    const [attempts, plans, tasks, sessions, lessons] = await Promise.all([
-      get('/students/' + studentId + '/question-attempts'),
-      get('/students/' + studentId + '/plans'),
-      (async () => { const p = await get('/students/' + studentId + '/plans'); return p.flatMap(x => x.tasks || []); })(),
-      get('/students/' + studentId + '/sessions'),
-      (async () => {
-        try { return JSON.parse(localStorage.getItem('kocluk-lessons-' + studentId) || '[]'); } catch { return []; }
-      })()
-    ]);
+      const picker = st.kids.length > 1
+        ? `<div class="perf-bar"><label>Öğrenci<select id="cal-kid">${st.kids.map(k => `<option value="${esc(k.id)}" ${k.id === st.kidId ? 'selected' : ''}>${esc(k.firstName + ' ' + (k.lastName || ''))}</option>`).join('')}</select></label></div>`
+        : '';
+      const who = o.student ? esc((o.student.firstName + ' ' + (o.student.lastName || '')).trim()) : '';
 
-    root.innerHTML = renderCalendar(studentId, attempts, plans, tasks, sessions, lessons, 'student');
-  };
+      return `${picker}
+      <div class="week-nav"><button type="button" data-cal-week="-1">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-cal-week="1">›</button>${st.weekOffset ? '<button type="button" data-cal-week="0" class="today">Bu hafta</button>' : ''}</div>
+      <div class="perf-stats compact">${stat('📚', 'Bu haftaki ders', lessons.length, 'indigo')}${stat('🗒️', 'Görev (biten / toplam)', doneTasks + ' / ' + tasks.length, 'teal')}${stat('💬', 'Koçluk görüşmesi', sessions.length, 'violet')}${stat('🎯', 'Genel soru başarısı', '%' + Math.round(rate), 'amber')}</div>
+      <div class="week-grid">${days.map((d, i) => {
+        const k = keys[i];
+        const ls = lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime));
+        const ss = sessions.filter(s => key(s.startsAtUtc) === k);
+        const ts = tasks.filter(t => String(t.dueDate).slice(0, 10) === k);
+        const body = ls.map(l => `<div class="chip lesson" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : ''))}"><b>${hhmm(l.startTime)}${l.endTime ? ' – ' + hhmm(l.endTime) : ''}</b><span>${esc(lessonLabel(l))}</span>${l.topic ? '<small class="chip-topic">' + esc(l.topic.replace(/^.* - /, '')) + '</small>' : ''}</div>`).join('')
+          + ss.map(s => `<div class="chip session"><b>${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</b><span>Koçluk görüşmesi · ${s.durationMinutes} dk</span></div>`).join('')
+          + ts.map(t => `<div class="chip ${t.isCompleted ? 'done' : (k < todayKey ? 'late' : 'todo')}"><b>${esc(t.title)}</b><span>${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</span></div>`).join('');
+        return `<div class="week-col ${k === todayKey ? 'today' : ''}"><div class="week-head"><b>${DAYS[i]}</b><span>${d.getDate()}</span></div>${body || '<div class="week-none">—</div>'}</div>`;
+      }).join('')}</div>
+      <div class="week-legend"><span class="d lesson"></span>Ders<span class="d done"></span>Tamamlandı<span class="d todo"></span>Bekliyor<span class="d late"></span>Geciken<span class="d session"></span>Görüşme</div>
+      <h3 class="perf-h">Konu bazlı başarı ${who ? '<span class="tag">' + who + '</span>' : ''}</h3>
+      ${topics.length ? `<div class="perf-topics">${topics.map(t => `<div class="topic-card ${tone(t.rate)}"><div class="topic-top"><div><strong>${esc(t.subject)}</strong><small>${esc(t.topic)}</small></div><span class="topic-rate">%${Math.round(t.rate)}</span></div><div class="topic-bar"><span style="width:${Math.min(100, t.rate)}%"></span></div><small>${t.correct} doğru / ${t.total} soru</small></div>`).join('')}</div>` : empty('Henüz çözülmüş soru yok', 'Koçun atadığı soruları çözdükçe konu bazlı başarı burada görünür.')}`;
+    }
 
-  window.loadParentCalendar = async function (ctx) {
-    const { authRequest, escapeHtml, tenantId } = ctx;
-    const root = document.getElementById('parent-calendar-root');
-    if (!root) return;
+    function render() {
+      if (!st.overview) { root.innerHTML = empty('Takvim yüklenemedi', 'Sayfayı yenileyip tekrar deneyin.'); return; }
+      root.innerHTML = view();
+    }
 
-    // Veli kullanıcısının çocuklarını getir
-    const get = async path => { try { const r = await authRequest('/api/tenants/' + tenantId + path); return r.ok ? await r.json() : []; } catch { return []; } };
-    const students = await get('/students');
-    if (!students.length) return root.innerHTML = '<div class="perf-empty"><strong>Takip ettiğiniz öğrenci yok</strong></div>';
-
-    const studentId = students[0].id;
-    const [attempts, plans, tasks, sessions, lessons] = await Promise.all([
-      get('/students/' + studentId + '/question-attempts'),
-      get('/students/' + studentId + '/plans'),
-      (async () => { const p = await get('/students/' + studentId + '/plans'); return p.flatMap(x => x.tasks || []); })(),
-      get('/students/' + studentId + '/sessions'),
-      (async () => {
-        try { return JSON.parse(localStorage.getItem('kocluk-lessons-' + studentId) || '[]'); } catch { return []; }
-      })()
-    ]);
-
-    root.innerHTML = renderCalendar(studentId, attempts, plans, tasks, sessions, lessons, 'parent');
-  };
-
-  function renderCalendar(studentId, attempts, plans, tasks, sessions, lessons, role) {
-    const start = weekStart(new Date());
-    const days = [...Array(7)].map((_, i) => new Date(start.getTime() + i * DAY));
-    const keys = days.map(key);
-    const todayKey = key(new Date());
-
-    const taskList = tasks.filter(t => keys.includes(t.dueDate));
-    const sessionList = sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(s.startsAtUtc)));
-    const lessonList = lessons.filter(l => keys.includes(l.date));
-
-    const attemptsByTopic = new Map();
-    attempts.forEach(a => {
-      const k = a.subject + '||' + a.topic;
-      if (!attemptsByTopic.has(k)) attemptsByTopic.set(k, []);
-      attemptsByTopic.get(k).push(a);
+    root.addEventListener('click', event => {
+      const b = event.target.closest('[data-cal-week]');
+      if (!b) return;
+      st.weekOffset = b.dataset.calWeek === '0' ? 0 : st.weekOffset + Number(b.dataset.calWeek);
+      render();
+    });
+    root.addEventListener('change', async event => {
+      if (event.target.id !== 'cal-kid') return;
+      st.kidId = event.target.value;
+      localStorage.setItem('parentStudentId', st.kidId);
+      root.innerHTML = '<div class="perf-empty">Yükleniyor…</div>';
+      await loadOverview();
+      render();
     });
 
-    const topicStats = [...attemptsByTopic.entries()].map(([k, items]) => {
-      const correct = items.filter(a => a.isCorrect).length;
-      return {
-        key: k,
-        subject: k.split('||')[0],
-        topic: k.split('||')[1],
-        total: items.length,
-        correct,
-        rate: items.length ? Math.round(correct * 100 / items.length) : 0
-      };
-    }).sort((a, b) => b.total - a.total).slice(0, 5);
-
-    const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-
-    return `
-      <div style="margin-bottom:24px">
-        <div style="background:#f6f7fd;border-radius:18px;padding:16px;margin-bottom:14px">
-          <h3 style="margin:0 0 12px;color:#1e1b4b">📅 ${fmt(days[0])} – ${fmt(days[6])}</h3>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px">
-            ${[
-              ['🗒️', 'Görev', taskList.length],
-              ['🕐', 'Ders', lessonList.length],
-              ['💬', 'Koçluk', sessionList.length]
-            ].map(([emoji, label, count]) => `
-              <div style="background:#fff;border-radius:12px;padding:12px;text-align:center">
-                <div style="font-size:20px;margin-bottom:4px">${emoji}</div>
-                <div style="font-size:11px;color:#64748b;margin-bottom:4px">${label}</div>
-                <div style="font-size:18px;font-weight:700;color:#1e1b4b">${count}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-
-      <div class="week-grid" style="margin-bottom:24px">
-        ${days.map((d, i) => {
-          const k = keys[i];
-          const ts = taskList.filter(t => t.dueDate === k);
-          const ss = sessionList.filter(s => key(s.startsAtUtc) === k);
-          const ls = lessonList.filter(l => l.date === k);
-          return `
-            <div class="week-col ${k === todayKey ? 'today' : ''}">
-              <div class="week-head">
-                <b>${DAYS[i]}</b>
-                <span>${d.getDate()}</span>
-              </div>
-              ${ls.map(l => `
-                <div class="chip lesson" style="background:#dbeafe;border-color:#93c5fd;color:#1e40af;position:relative" title="${esc((l.examType || l.subject) + ' · ' + l.topic)}">
-                  <b>${new Date('2000-01-01T'+l.startTime).toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'})}</b>
-                  <span>${esc(l.examType || l.subject)}</span>
-                </div>
-              `).join('')}
-              ${ss.map(s => `
-                <div class="chip session">
-                  <b>${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</b>
-                  <span>Koçluk · ${s.durationMinutes} dk</span>
-                </div>
-              `).join('')}
-              ${ts.map(t => `
-                <div class="chip ${t.isCompleted ? 'done' : 'todo'}">
-                  <b>${esc(t.title.slice(0, 15))}</b>
-                  <span>${t.completedQuestions || 0} / ${t.targetQuestions || 0}</span>
-                </div>
-              `).join('')}
-              ${!ts.length && !ss.length && !ls.length ? '<div class="week-none">—</div>' : ''}
-            </div>
-          `;
-        }).join('')}
-      </div>
-
-      <div style="background:#fff;border-radius:20px;padding:24px;margin-bottom:24px">
-        <h3 style="margin:0 0 16px;color:#1e1b4b;display:flex;align-items:center;gap:10px">
-          <span>📊 Konu Bazlı Başarı</span>
-          <span style="font-size:12px;background:#eef2ff;color:#4338ca;padding:4px 8px;border-radius:8px;font-weight:600">${topicStats.length} konu</span>
-        </h3>
-        ${topicStats.length ? `
-          <div style="display:grid;gap:12px">
-            ${topicStats.map(t => `
-              <div style="display:grid;grid-template-columns:1fr 60px;gap:12px;align-items:center;padding:12px;background:#f6f7fd;border-radius:12px">
-                <div>
-                  <div style="font-weight:600;color:#1e1b4b;margin-bottom:4px">${esc(t.subject)} · ${esc(t.topic)}</div>
-                  <div style="font-size:12px;color:#64748b">${t.total} soru</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font-size:20px;font-weight:700;color:${t.rate >= 75 ? '#16a34a' : t.rate >= 50 ? '#d97706' : '#e11d48'};margin-bottom:2px">%${t.rate}</div>
-                  <div style="height:4px;background:#e6e8f5;border-radius:2px;overflow:hidden">
-                    <div style="height:100%;background:${t.rate >= 75 ? '#16a34a' : t.rate >= 50 ? '#d97706' : '#e11d48'};width:${t.rate}%"></div>
-                  </div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        ` : '<div class="perf-empty">Henüz veri yok</div>'}
-      </div>
-    `;
+    root.innerHTML = '<div class="perf-empty">Yükleniyor…</div>';
+    if (kind === 'parent') {
+      st.kids = (await getJson(authRequest, '/api/parent/students')) || [];
+      if (!st.kids.length) { root.innerHTML = empty('Takip ettiğiniz öğrenci yok', 'Koçunuz öğrenciyi hesabınıza bağladığında takvim burada görünür.'); return; }
+      st.kidId = (st.kids.find(k => k.id === localStorage.getItem('parentStudentId')) || st.kids[0]).id;
+    }
+    await loadOverview();
+    render();
   }
+
+  window.loadStudentCalendar = ctx => mount('student', ctx, 'student-calendar-root');
+  window.loadParentCalendar = ctx => mount('parent', ctx, 'parent-calendar-root');
 })();

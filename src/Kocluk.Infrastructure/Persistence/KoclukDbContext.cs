@@ -13,6 +13,7 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
     public DbSet<Student> Students => Set<Student>();
     public DbSet<StudentGuardian> StudentGuardians => Set<StudentGuardian>();
     public DbSet<CoachingSession> CoachingSessions => Set<CoachingSession>();
+    public DbSet<LessonSlot> LessonSlots => Set<LessonSlot>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ExamAttempt> ExamAttempts => Set<ExamAttempt>();
     public DbSet<TenantInvitation> TenantInvitations => Set<TenantInvitation>();
@@ -83,6 +84,19 @@ public sealed class KoclukDbContext(DbContextOptions<KoclukDbContext> options)
             entity.HasIndex(x => new { x.TenantId, x.StudentId, x.StartsAtUtc });
             entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<LessonSlot>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ExamType).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Topic).HasMaxLength(300);
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.HasIndex(x => new { x.TenantId, x.StudentId, x.Date });
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<AuditLog>(entity =>

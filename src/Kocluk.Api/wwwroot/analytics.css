@@ -97,3 +97,31 @@
   #perf-report{position:absolute;left:0;top:0;width:100%;border:0;box-shadow:none;border-radius:0}
   .sidebar,.topbar{display:none!important}
 }
+
+/* haftalık program: ders ekleme formu */
+.lesson-form{background:#fff;border:1px solid #e6e8f5;border-radius:22px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(30,27,75,.04),0 10px 26px rgba(30,27,75,.06)}
+.lf-head{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}.lf-head b{font-size:16px;color:#1e1b4b}.lf-head span{font-size:12.5px;color:#64748b}
+.lf-label{font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#64748b;margin-bottom:8px}
+.exam-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.exam-type-btn{padding:10px 22px;border-radius:12px;border:1.5px solid #d4d8f5;background:#f5f7ff;color:#4338ca;font-weight:750;font-size:13px;cursor:pointer}
+.exam-type-btn:hover{background:#eef2ff}
+.exam-type-btn.on{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(79,70,229,.28)}
+.lf-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+.lf-field{display:flex;flex-direction:column;gap:6px;grid-column:span 2;min-width:0}.lf-field.lf-wide{grid-column:span 3}
+.lf-field span{font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
+.lf-field select,.lf-field input{width:100%;padding:11px 12px;border:1px solid #d4d8f5;border-radius:12px;background:#fafaff;font:600 13.5px inherit;color:#1e1b4b}
+.lf-field select:focus,.lf-field input:focus{outline:2px solid rgba(79,70,229,.35);border-color:#4f46e5;background:#fff}
+.lf-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lf-wa{padding:12px 20px;border-radius:10px;background:#0f766e;color:#fff;font-weight:700;font-size:13px}
+.lf-msg{font-size:13px;font-weight:650;color:#0f766e}.lf-msg.err{color:#e11d48}
+@media(max-width:760px){.lf-field,.lf-field.lf-wide{grid-column:span 6}}
+
+/* haftalık program: ders kartları ve sürükle-bırak */
+.chip.lesson{position:relative;background:#dbeafe;border-color:#93c5fd;color:#1e40af;cursor:grab;padding-right:26px}
+.chip.lesson.dragging{opacity:.45}
+.chip-topic{display:block;margin-top:2px;font-size:10.5px;opacity:.85}
+.chip-del{position:absolute;right:5px;top:5px;width:18px;height:18px;padding:0;border-radius:50%;background:rgba(30,64,175,.12);color:#1e40af;font-size:10px;line-height:1;display:grid;place-items:center}
+.week-col.drag-over{background:#eef2ff;border-color:#818cf8;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
+.lf-pub{padding:12px 20px;border-radius:10px;background:#fff;color:#4338ca;border:1.5px solid #c7d2fe;font-weight:700;font-size:13px}
+.lf-pub:hover{background:#eef2ff}
+.d.lesson{background:#93c5fd}

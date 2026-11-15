@@ -1,704 +1,310 @@
-// Sınav Türleri, Dersler ve Konuları - Maarif Modeline Uygun (EKSİKSİZ)
+// Sınav türleri, dersler ve konular (TYT, AYT, KPSS, TR-YÖS, DGS).
+// Soru Bankası ekranları ve Haftalık program aynı kaynağı kullanır.
+// Yapı: sınav -> ders -> ünite -> konu. Konu metni "Ünite - Konu" biçiminde düz listeye de çevrilir.
+// Not: TYT/AYT ÖSYM kılavuz ünite adlarına göre hazırlanmıştır; Maarif Modeli müfredatı kademeli
+// uygulandığı için 2026 kapsamı mevcut ünitelerle aynıdır. KPSS ve TR-YÖS dağılımlarını her yıl
+// ÖSYM'nin güncel kılavuzuyla karşılaştırın.
+
+(() => {
+const flattenTopics = groups => Object.entries(groups).flatMap(([unit, items]) => items.map(item => `${unit} - ${item}`));
+const flat = groups => Object.values(groups).flat();
+const makeSubject = (name, groups) => ({ name, groups, topics: flattenTopics(groups) });
+
+// ---------- Ortak ders içerikleri ----------
+const turkceDilBilgisi = {
+  "Sözcükte Anlam": ["Gerçek, Mecaz ve Terim Anlam", "Sözcükler Arası Anlam İlişkileri (Eş, Zıt, Yakın Anlam, Eş Sesli)", "Deyimler ve Atasözleri", "Söz Gruplarında Anlam"],
+  "Cümlede Anlam": ["Cümle Yorumlama ve Çıkarım", "Neden-Sonuç, Koşul, Amaç Cümleleri", "Kesinlik ve Olasılık Bildiren Cümleler", "Cümle Tamamlama", "Anlamca Yakın / Karşıt Cümleler"],
+  "Paragraf": ["Ana Düşünce ve Konu", "Yardımcı Düşünce", "Başlık ve Paragraf Yapısı", "Anlatım Teknikleri (Tanımlama, Karşılaştırma, Örnekleme, Tanık Gösterme)", "Düşünceyi Geliştirme Yolları", "Paragraf Tamamlama, Bölme ve Akışı Bozan Cümle", "Cümle Sıralama"],
+  "Ses Bilgisi": ["Ünlü ve Ünsüzler", "Ses Olayları (Uyum, Benzeşme, Türeme, Düşme, Daralma)"],
+  "Yapı Bilgisi": ["Kök ve Ekler", "Sözcük Türetme ve Birleşik Sözcükler"],
+  "Sözcük Türleri": ["İsimler", "Sıfatlar", "Zamirler", "Zarflar", "Edat, Bağlaç, Ünlem", "Fiiller (Kip, Ek Fiil, Fiilimsi, Çatı)"],
+  "Cümle Bilgisi": ["Cümlenin Ögeleri", "Cümle Türleri (Yapı, Anlam, Yüklemin Türü)"],
+  "Yazım Kuralları": ["Büyük Harf, Birleşik ve Ayrı Yazım, Ek Yazımı"],
+  "Noktalama İşaretleri": ["Nokta, Virgül, İki Nokta, Noktalı Virgül ve Diğer İşaretler"],
+  "Anlatım Bozuklukları": ["Sözcük ve Anlam Düzeyinde Bozukluk", "Yapı ve Mantık Düzeyinde Bozukluk"]
+};
+
+const temelMatematik = {
+  "Temel Kavramlar": ["Sayı Kümeleri, Tek-Çift, Ardışık Sayılar", "Basamak Kavramı ve Çözümleme"],
+  "Sayılar": ["Bölme ve Bölünebilme", "EBOB - EKOK", "Asal Çarpanlara Ayırma", "Rasyonel Sayılar", "Ondalık Sayılar"],
+  "Eşitsizlik ve Mutlak Değer": ["Basit Eşitsizlikler", "Mutlak Değer"],
+  "Üslü ve Köklü İfadeler": ["Üslü Sayılar", "Köklü Sayılar"],
+  "Cebir": ["Çarpanlara Ayırma ve Özdeşlikler", "Oran - Orantı", "Birinci Dereceden Denklemler", "İkinci Dereceden Denklemler", "Denklem Sistemleri"],
+  "Problemler": ["Sayı ve Kesir Problemleri", "Yaş Problemleri", "Yüzde, Kâr-Zarar ve Faiz Problemleri", "Karışım Problemleri", "İşçi - Havuz Problemleri", "Hareket Problemleri", "Grafik ve Tablo Problemleri"],
+  "Kümeler ve Mantık": ["Kümeler", "Önermeler ve Mantık"],
+  "Fonksiyonlar": ["Fonksiyon Kavramı ve Gösterimi", "Fonksiyon Türleri ve İşlemleri"],
+  "Polinomlar": ["Polinom Kavramı ve İşlemleri", "Kalan Bulma"],
+  "Sayma ve Olasılık": ["Permütasyon ve Kombinasyon", "Olasılık"],
+  "Veri": ["Tablo ve Grafik Yorumlama", "Ortalama ve Yayılım Ölçüleri"],
+  "Geometri": ["Temel Geometri Kavramları", "Doğruda ve Üçgende Açılar", "Özel Üçgenler", "Açı - Kenar Bağıntıları", "Üçgende Alan ve Benzerlik", "Çokgenler ve Dörtgenler", "Çember ve Daire", "Katı Cisimler", "Analitik Geometri (Doğrunun Analitiği)"]
+};
+
+const tarihTYT = {
+  "Tarih ve Zaman": ["Tarih Bilimi ve Kaynakları", "Zaman ve Takvim"],
+  "İlk ve Orta Çağlar": ["İnsanlığın İlk Dönemleri", "Orta Çağ'da Dünya", "İlk ve Orta Çağlarda Türk Dünyası"],
+  "İslam ve Türk-İslam": ["İslam Medeniyetinin Doğuşu", "Türklerin İslamiyet'i Kabulü ve İlk Türk-İslam Devletleri"],
+  "Selçuklu Türkiyesi": ["Yerleşme ve Devletleşme Sürecinde Selçuklu Türkiyesi"],
+  "Osmanlı Kuruluş ve Yükselme": ["Beylikten Devlete Osmanlı Siyaseti", "Devletleşme Sürecinde Savaşçılar ve Askerler", "Beylikten Devlete Osmanlı Medeniyeti", "Dünya Gücü Osmanlı", "Sultan ve Osmanlı Merkez Teşkilatı", "Klasik Çağda Osmanlı Toplum Düzeni"],
+  "Değişen Dünya ve Osmanlı": ["Değişen Dünya Dengeleri Karşısında Osmanlı Siyaseti", "Değişim Çağında Avrupa ve Osmanlı", "Uluslararası İlişkilerde Denge Stratejisi (1774-1914)", "Devrimler Çağında Değişen Devlet-Toplum İlişkileri", "Sermaye ve Emek", "XIX. ve XX. Yüzyılda Değişen Gündelik Hayat"],
+  "Milli Mücadele ve Cumhuriyet": ["XX. Yüzyıl Başlarında Osmanlı Devleti ve Dünya", "Milli Mücadele", "Atatürkçülük ve Türk İnkılabı"]
+};
+const cografyaTYT = {
+  "Doğa ve İnsan": ["Doğa ve İnsan Etkileşimi", "Coğrafi Konum"],
+  "Dünya ve Harita": ["Dünya'nın Şekli ve Hareketleri", "Harita Bilgisi", "Koordinat Sistemi ve Zaman"],
+  "Atmosfer ve İklim": ["Atmosfer ve Sıcaklık", "Basınç ve Rüzgârlar", "Nem, Yağış ve Buharlaşma", "İklim Tipleri"],
+  "Yerin Şekillenmesi": ["İç Kuvvetler", "Dış Kuvvetler", "Türkiye'nin Yerşekilleri"],
+  "Su, Toprak ve Bitki": ["Su Kaynakları", "Toprak Çeşitleri", "Bitki Örtüsü ve Biyomlar"],
+  "Beşeri Coğrafya": ["Nüfus", "Göç", "Yerleşme"],
+  "Ekonomik Faaliyetler": ["Tarım ve Hayvancılık", "Madenler ve Enerji Kaynakları", "Sanayi, Ticaret ve Ulaşım", "Turizm"],
+  "Bölgeler ve Afetler": ["Türkiye'nin Coğrafi Bölgeleri", "Doğal Afetler"]
+};
+const felsefeTYT = {
+  "Felsefeye Giriş": ["Felsefenin Konusu ve Alanları"],
+  "Felsefe Disiplinleri": ["Bilgi Felsefesi", "Varlık Felsefesi", "Ahlak Felsefesi", "Sanat Felsefesi", "Din Felsefesi", "Siyaset Felsefesi", "Bilim Felsefesi"]
+};
+const dinTYT = {
+  "İnanç ve Din": ["Bilgi ve İnanç", "Din ve İslam", "İslam ve İbadet"],
+  "Vahiy ve Peygamberlik": ["Vahiy ve Akıl", "Hz. Muhammed (s.a.v.)", "Allah - İnsan İlişkisi"],
+  "Din ve Toplum": ["Gençlik ve Değerler", "Din, Kültür ve Medeniyet", "Yaşayan Dinler"]
+};
+
+const fizikTYT = {
+  "Fizik Bilimi": ["Fizik Bilimine Giriş ve Ölçme"],
+  "Madde": ["Madde ve Özellikleri (Öz Kütle, Yoğunluk)"],
+  "Hareket ve Kuvvet": ["Hareket ve Kuvvet", "İş, Güç ve Enerji"],
+  "Isı ve Basınç": ["Isı, Sıcaklık ve Genleşme", "Basınç ve Kaldırma Kuvveti"],
+  "Elektrik ve Manyetizma": ["Elektrostatik", "Elektrik Akımı ve Devreler", "Manyetizma"],
+  "Dalgalar ve Optik": ["Dalgalar", "Optik (Aynalar, Mercekler, Kırılma)"]
+};
+const kimyaTYT = {
+  "Kimya Bilimi": ["Kimya Bilimi ve Laboratuvar Güvenliği"],
+  "Atom ve Periyodik Sistem": ["Atom ve Periyodik Sistem"],
+  "Kimyasal Türler": ["Kimyasal Türler Arası Etkileşimler"],
+  "Maddenin Halleri": ["Maddenin Halleri ve Özellikleri"],
+  "Kimyasal Hesaplamalar": ["Kimyanın Temel Kanunları", "Mol Kavramı", "Kimyasal Tepkimeler ve Hesaplamalar"],
+  "Karışımlar ve Çevre": ["Karışımlar", "Asitler, Bazlar ve Tuzlar", "Kimya Her Yerde"]
+};
+const biyolojiTYT = {
+  "Canlıların Yapısı": ["Canlıların Ortak Özellikleri", "Canlıların Temel Bileşenleri", "Hücre ve Organelleri", "Madde Geçişleri"],
+  "Canlıların Çeşitliliği": ["Canlıların Sınıflandırılması"],
+  "Hücre Bölünmeleri ve Kalıtım": ["Mitoz ve Mayoz", "Kalıtımın Genel İlkeleri"],
+  "Ekoloji": ["Ekosistem Ekolojisi ve Güncel Çevre Sorunları"]
+};
+
+// ---------- AYT içerikleri ----------
+const edebiyatAYT = {
+  "Edebiyat Bilgisi": ["Güzel Sanatlar ve Edebiyat", "Şiir Bilgisi (Ölçü, Uyak, Nazım Biçimleri)", "Söz Sanatları", "Anlatma ve Öğretici Metin Türleri", "Tiyatro"],
+  "İslamiyet Öncesi ve Halk Edebiyatı": ["İslamiyet Öncesi Türk Edebiyatı", "Geçiş Dönemi Eserleri", "Halk Edebiyatı"],
+  "Divan Edebiyatı": ["Divan Şiiri (Nazım Biçimleri ve Şairler)", "Divan Edebiyatında Nesir"],
+  "Batı Etkisinde Türk Edebiyatı": ["Tanzimat Edebiyatı", "Servet-i Fünun ve Fecr-i Âti", "Millî Edebiyat"],
+  "Cumhuriyet Dönemi": ["Cumhuriyet Dönemi Şiiri", "Cumhuriyet Dönemi Roman ve Hikâyesi", "Cumhuriyet Dönemi Tiyatrosu ve Diğer Türler"],
+  "Dünya Edebiyatı": ["Batı Edebiyatı Akımları", "Dünya Edebiyatından Seçmeler"]
+};
+const matematikAYT = {
+  "Fonksiyonlar": ["Fonksiyonlarda Dönüşümler", "Bileşke ve Ters Fonksiyon", "Fonksiyon Grafikleri"],
+  "Polinomlar": ["Polinomlarda Bölme ve Kalan", "Çarpanlara Ayırma"],
+  "Denklem ve Eşitsizlikler": ["İkinci Dereceden Denklemler", "Eşitsizlikler ve Mutlak Değer", "Parabol"],
+  "Karmaşık Sayılar": ["Karmaşık Sayılarda İşlemler ve Gösterimler"],
+  "Sayma ve Olasılık": ["Permütasyon, Kombinasyon ve Binom", "Koşullu Olasılık"],
+  "Üstel ve Logaritma": ["Üstel Fonksiyon", "Logaritma Fonksiyonu ve Denklemleri"],
+  "Diziler": ["Aritmetik ve Geometrik Diziler", "Dizilerde Limit"],
+  "Trigonometri": ["Trigonometrik Oranlar ve Fonksiyonlar", "Toplam-Fark ve Dönüşüm Formülleri", "Trigonometrik Denklemler ve Grafikler"],
+  "Limit ve Süreklilik": ["Limit", "Süreklilik"],
+  "Türev": ["Türev Alma Kuralları", "Türevin Uygulamaları (Artan-Azalan, Ekstremum, Grafik)", "Maksimum - Minimum Problemleri"],
+  "İntegral": ["Belirsiz İntegral", "Belirli İntegral", "İntegral ile Alan Hesabı"],
+  "Geometri": ["Üçgenler ve Çokgenler", "Çember ve Daire", "Dörtgenler", "Analitik Geometri (Doğru ve Çember)", "Dönüşümler", "Katı Cisimler"]
+};
+const fizikAYT = {
+  "Vektörler ve Hareket": ["Vektörler", "Bağıl Hareket", "Newton'un Hareket Yasaları", "Bir Boyutta Sabit İvmeli Hareket", "İki Boyutta Hareket (Atışlar)"],
+  "Enerji ve Momentum": ["İş, Güç ve Enerji", "İtme ve Momentum", "Tork ve Denge", "Kütle Merkezi", "Basit Makineler"],
+  "Çembersel ve Dönme Hareketi": ["Düzgün Çembersel Hareket", "Dönerek Öteleme ve Açısal Momentum", "Kütle Çekim ve Kepler Yasaları", "Basit Harmonik Hareket"],
+  "Elektrik ve Manyetizma": ["Elektriksel Kuvvet ve Alan", "Elektriksel Potansiyel, Sığa", "Manyetik Alan ve Kuvvet", "İndüksiyon", "Alternatif Akım ve Transformatörler"],
+  "Dalga Mekaniği": ["Dalgalar, Kırınım ve Girişim", "Doppler Etkisi", "Elektromanyetik Dalgalar"],
+  "Modern Fizik": ["Atom Fiziğine Giriş ve Radyoaktivite", "Özel Görelilik", "Kuantum Fiziğine Giriş", "Fotoelektrik ve Compton Olayı", "Modern Fiziğin Teknolojideki Uygulamaları"]
+};
+const kimyaAYT = {
+  "Modern Atom Teorisi": ["Atomun Kuantum Modeli", "Periyodik Özellikler"],
+  "Gazlar": ["Gaz Yasaları ve İdeal Gaz Denklemi", "Gaz Karışımları"],
+  "Sıvı Çözeltiler": ["Çözelti Derişimleri", "Koligatif Özellikler", "Çözünürlük"],
+  "Tepkimelerde Enerji, Hız ve Denge": ["Tepkimelerde Isı Değişimi (Entalpi)", "Tepkimelerde Hız", "Kimyasal Denge"],
+  "Asit-Baz ve Çözünürlük Dengesi": ["Asit-Baz Dengesi ve pH", "Çözünürlük Dengesi (KÇD)"],
+  "Kimya ve Elektrik": ["Redoks Tepkimeleri", "Pil ve Elektroliz"],
+  "Organik Kimya": ["Karbon Kimyasına Giriş", "Hidrokarbonlar", "Fonksiyonel Gruplar (Alkol, Eter, Aldehit, Keton, Asit, Ester)"],
+  "Enerji Kaynakları": ["Enerji Kaynakları ve Bilimsel Gelişmeler"]
+};
+const biyolojiAYT = {
+  "İnsan Fizyolojisi": ["Sinir Sistemi", "Endokrin Sistem ve Hormonlar", "Duyu Organları", "Destek ve Hareket Sistemi", "Sindirim Sistemi", "Dolaşım ve Bağışıklık Sistemi", "Solunum Sistemi", "Boşaltım Sistemi", "Üreme Sistemi ve Embriyonik Gelişim"],
+  "Genden Proteine": ["Nükleik Asitler", "Genetik Şifre ve Protein Sentezi"],
+  "Genetik Mühendisliği ve Biyoteknoloji": ["Genetik Mühendisliği ve Biyoteknoloji"],
+  "Canlılarda Enerji": ["Fotosentez ve Kemosentez", "Hücresel Solunum ve Fermantasyon"],
+  "Bitki Biyolojisi": ["Bitkisel Dokular", "Bitkilerde Taşıma, Büyüme ve Gelişme", "Bitkilerde Üreme"],
+  "Ekoloji": ["Komünite ve Popülasyon Ekolojisi", "Canlılar ve Çevre"]
+};
+const tarihAYT = {
+  "İlk Uygarlıklar ve Türk Tarihi": ["Uygarlığın Doğuşu ve İlk Uygarlıklar", "İlk Türk Devletleri", "İslam Tarihi ve Uygarlığı", "Türk-İslam Devletleri", "Selçuklu Türkiyesi"],
+  "Osmanlı Devleti": ["Beylikten Devlete (Kuruluş)", "Dünya Gücü Osmanlı (Yükselme)", "Osmanlı Kültür ve Medeniyeti", "XVII. Yüzyılda Arayış", "XVIII. Yüzyılda Değişim ve Diplomasi", "XIX. Yüzyılda Değişim ve Reformlar", "XX. Yüzyıl Başlarında Osmanlı"],
+  "Yeni ve Yakın Çağ": ["Yeni Çağ Avrupası ve Keşifler", "Yakın Çağ Avrupası (Devrimler)", "XX. Yüzyıl Başlarında Dünya", "II. Dünya Savaşı", "Soğuk Savaş Dönemi", "Yumuşama Dönemi ve Küreselleşen Dünya"],
+  "Milli Mücadele ve Atatürk Dönemi": ["Milli Mücadele (Hazırlık ve Cepheler)", "Atatürk İlke ve İnkılapları", "Atatürk Dönemi İç ve Dış Politika"],
+  "Cumhuriyet Dönemi": ["II. Dünya Savaşı'nda Türkiye", "Çok Partili Hayat", "Cumhuriyet Dönemi Dış Politikası"]
+};
+const cografyaAYT = {
+  "Doğal Sistemler": ["Ekosistem ve Madde Döngüleri", "Biyoçeşitlilik ve Biyomlar", "Kayaçlar ve Mineraller", "Su, Toprak ve Bitki Örtüsü (Ayrıntılı)"],
+  "Beşeri Sistemler": ["Nüfus Politikaları ve Göç", "Yerleşmeler ve Şehirleşme", "Ekonomik Faaliyetler (Tarım, Sanayi, Hizmet)", "Türkiye'de Tarım, Sanayi ve Enerji"],
+  "Mekânsal Sentez": ["Türkiye'de Ulaşım, Ticaret ve Turizm", "Küresel Ortam: Bölgeler ve Ülkeler", "Doğal Afetler ve Çevre Sorunları", "Kültür Bölgeleri ve Jeopolitik", "Türkiye'nin İşlevsel Bölgeleri ve Kalkınma Projeleri"]
+};
+const felsefeGrubuAYT = {
+  "Felsefe": ["MÖ 6. - MS 2. Yüzyıl Felsefesi", "MS 2. - MS 15. Yüzyıl Felsefesi", "15. - 17. Yüzyıl Felsefesi", "18. - 19. Yüzyıl Felsefesi", "20. Yüzyıl Felsefesi"],
+  "Psikoloji": ["Psikolojinin Temel Süreçleri", "Öğrenme, Bellek ve Düşünme", "Ruh Sağlığı ve Kişilik"],
+  "Sosyoloji": ["Sosyolojiye Giriş", "Birey ve Toplum", "Toplumsal Yapı ve Değişme", "Toplum ve Kültür", "Toplumsal Kurumlar"],
+  "Mantık": ["Mantığa Giriş", "Klasik Mantık", "Mantık ve Dil", "Sembolik Mantık"]
+};
+const dinAYT = {
+  "Dünya ve Ahiret": ["Dünya ve Ahiret"],
+  "Kur'an Merkezli Konular": ["Kur'an'a Göre Hz. Muhammed", "Kur'an'da Bazı Kavramlar"],
+  "İnanç ve Yorumlar": ["İnançla İlgili Meseleler", "İslam Düşüncesinde Yorumlar ve Mezhepler", "İslam Düşüncesinde Tasavvufi Yorumlar"],
+  "Din ve Toplum": ["İslam ve Bilim", "Anadolu'da İslam", "Güncel Dini Meseleler", "Yahudilik ve Hristiyanlık", "Hint ve Çin Dinleri"]
+};
+const yabanciDilAYT = {
+  "Kelime Bilgisi": ["Vocabulary", "Phrasal Verbs ve Collocations"],
+  "Dilbilgisi": ["Tenses", "Modals", "Passive Voice", "Conditionals", "Relative Clauses", "Noun Clauses", "Gerund ve Infinitive", "Reported Speech"],
+  "Cloze Test": ["Cloze Test (Boşluk Doldurma)"],
+  "Cümle ve Paragraf": ["Cümle Tamamlama", "Diyalog Tamamlama", "Paragraf Tamamlama", "Anlam Bütünlüğünü Bozan Cümle"],
+  "Okuma ve Çeviri": ["Reading Comprehension", "İngilizce - Türkçe Çeviri", "Türkçe - İngilizce Çeviri", "Anlamca Yakın Cümle"]
+};
+
+// ---------- KPSS ----------
+const matematikKPSS = {
+  "Sayılar": ["Temel Kavramlar ve Sayı Kümeleri", "Bölme ve Bölünebilme", "EBOB - EKOK", "Rasyonel Sayılar", "Üslü ve Köklü Sayılar", "Mutlak Değer ve Eşitsizlikler"],
+  "Cebir": ["Çarpanlara Ayırma ve Özdeşlikler", "Oran - Orantı", "Denklem Çözme", "Denklem Sistemleri"],
+  "Problemler": ["Sayı ve Kesir Problemleri", "Yaş Problemleri", "Yüzde, Kâr-Zarar ve Faiz Problemleri", "Karışım Problemleri", "İşçi - Havuz Problemleri", "Hareket Problemleri"],
+  "Kümeler ve İşlem": ["Kümeler", "İşlem ve Modüler Aritmetik"],
+  "Sayma ve Olasılık": ["Permütasyon ve Kombinasyon", "Olasılık"],
+  "Veri": ["Tablo ve Grafik Yorumlama"],
+  "Sayısal Mantık": ["Sayısal Mantık ve Akıl Yürütme"],
+  "Geometri": ["Açılar ve Üçgenler", "Çokgenler ve Dörtgenler", "Çember ve Daire", "Katı Cisimler", "Analitik Geometri"]
+};
+const turkceKPSS = { ...turkceDilBilgisi, "Sözel Mantık": ["Sözel Mantık ve Akıl Yürütme"] };
+const tarihKPSS = {
+  "İslamiyet Öncesi ve Türk-İslam": ["İslamiyet Öncesi Türk Tarihi", "İlk Türk-İslam Devletleri", "Anadolu Selçuklu Devleti ve Beylikler"],
+  "Osmanlı Devleti": ["Osmanlı Kuruluş Dönemi", "Osmanlı Yükselme Dönemi", "Osmanlı Duraklama Dönemi", "Osmanlı Gerileme ve Dağılma Dönemleri", "Osmanlı Kültür ve Medeniyeti", "XIX. Yüzyılda Osmanlı (Islahat ve Tanzimat)", "XX. Yüzyıl Başlarında Osmanlı"],
+  "Kurtuluş Savaşı": ["Kurtuluş Savaşı Hazırlık Dönemi", "Kurtuluş Savaşı Muharebeler Dönemi", "Mudanya, Lozan ve Cumhuriyet'in İlanı"],
+  "Atatürk Dönemi": ["Atatürk İlkeleri", "Atatürk İnkılapları", "Atatürk Dönemi İç Politika", "Atatürk Dönemi Dış Politika"],
+  "Çağdaş Türk ve Dünya Tarihi": ["II. Dünya Savaşı ve Soğuk Savaş", "Çağdaş Türk ve Dünya Tarihi"]
+};
+const cografyaKPSS = {
+  "Türkiye'nin Coğrafi Konumu": ["Matematik ve Özel Konum", "Türkiye'nin Jeopolitiği"],
+  "Fiziki Coğrafya": ["Yerşekilleri", "İklim", "Su Varlığı", "Toprak ve Bitki Örtüsü"],
+  "Beşeri Coğrafya": ["Nüfus", "Göç", "Yerleşme"],
+  "Ekonomik Coğrafya": ["Tarım ve Hayvancılık", "Madenler ve Enerji", "Sanayi", "Ticaret ve Ulaşım", "Turizm"],
+  "Bölgeler ve Afetler": ["Türkiye'nin Coğrafi Bölgeleri", "Doğal Afetler"]
+};
+const vatandaslikKPSS = {
+  "Hukukun Temel Kavramları": ["Hukukun Temel Kavramları ve Kaynakları"],
+  "Devlet ve Anayasa": ["Devlet Biçimleri ve Demokrasi", "Anayasa Hukukuna Giriş", "1982 Anayasası'nın Temel İlkeleri"],
+  "Temel Organlar": ["Yasama", "Yürütme", "Yargı (Anayasa Mahkemesi ve Yüksek Mahkemeler)"],
+  "Hak ve İdare": ["Temel Hak ve Özgürlükler", "İdare Hukuku", "Uluslararası Kuruluşlar"]
+};
+const guncelKPSS = {
+  "Güncel Bilgiler": ["Türkiye ve Dünya Güncel Olayları", "Uluslararası Kuruluşlar ve Anlaşmalar", "Kültür, Sanat ve Bilim", "Türkiye'nin Ekonomik ve Sosyal Yapısı"]
+};
+
+// ---------- DGS ----------
+const turkceDGS = { ...turkceDilBilgisi, "Sözel Mantık": ["Sözel Mantık ve Akıl Yürütme"] };
+const matematikDGS = {
+  "Sayılar": ["Temel Kavramlar", "Bölme ve Bölünebilme", "EBOB - EKOK", "Rasyonel Sayılar", "Üslü ve Köklü Sayılar", "Mutlak Değer ve Eşitsizlikler"],
+  "Cebir": ["Çarpanlara Ayırma ve Özdeşlikler", "Oran - Orantı", "Denklem Çözme", "Denklem Sistemleri"],
+  "Problemler": ["Sayı ve Kesir Problemleri", "Yaş Problemleri", "Yüzde, Kâr-Zarar ve Faiz Problemleri", "Karışım Problemleri", "İşçi - Havuz Problemleri", "Hareket Problemleri"],
+  "Kümeler ve Sayma": ["Kümeler", "Permütasyon, Kombinasyon ve Olasılık"],
+  "Veri ve Mantık": ["Tablo ve Grafik Yorumlama", "Sayısal Mantık"],
+  "Geometri": ["Doğruda ve Üçgende Açılar", "Üçgenler (Alan ve Benzerlik)", "Dörtgenler ve Çokgenler", "Çember ve Daire", "Katı Cisimler", "Analitik Geometri"]
+};
+
+// ---------- TR-YÖS ----------
+const sayisalYetenekYOS = {
+  "Sayısal Akıl Yürütme": ["Sayı Dizileri ve Örüntüler", "Sayısal İşlem ve Sayı İlişkileri", "Sayısal Mantık Problemleri"],
+  "Şekil ve Uzamsal Zeka": ["Şekil Dizileri ve Örüntüler", "Katlama - Açma", "Döndürme ve Yansıma", "Küp ve Katı Cisimler (Görsel)", "Şekil Tamamlama"],
+  "Mantık ve Çıkarım": ["Sıralama ve Eleme Problemleri", "Doğru - Yanlış (Önerme) Problemleri", "Mantıksal Çıkarım"],
+  "Veri Yorumlama": ["Tablo ve Grafik Yorumlama"]
+};
+const temelMatematikYOS = {
+  "Sayılar": ["Sayı Kümeleri ve Basamak Kavramı", "Bölme ve Bölünebilme", "EBOB - EKOK", "Rasyonel Sayılar", "Üslü ve Köklü Sayılar", "Mutlak Değer"],
+  "Cebir": ["Cebirsel İfadeler ve Özdeşlikler", "Denklemler", "Eşitsizlikler", "Oran - Orantı", "Fonksiyonlar", "Polinomlar"],
+  "Problemler": ["Sayı ve Kesir Problemleri", "Yaş Problemleri", "Yüzde, Kâr-Zarar Problemleri", "Karışım Problemleri", "İşçi - Havuz Problemleri", "Hareket Problemleri"],
+  "Geometri": ["Açılar ve Üçgenler", "Dörtgenler ve Çokgenler", "Çember ve Daire", "Alan ve Çevre", "Katı Cisimler", "Analitik Geometri"],
+  "Veri ve Olasılık": ["Permütasyon ve Kombinasyon", "Olasılık", "Ortalama ve Yayılım Ölçüleri"]
+};
+
 const examData = {
   TYT: {
     name: "TYT (Temel Yeterlilik Testi)",
     subjects: {
-      turkce: {
-        name: "Türkçe",
-        topics: [
-          "Sözcük Anlamı - Eş Anlamlı ve Zıt Anlamlı",
-          "Sözcüğün Anlam Alanı ve Bağlama Göre Anlamı",
-          "Cümle Anlamı - Doğrudan ve Dolaylı",
-          "Mecazi Anlam ve Söz Sanatları",
-          "Paragrafta Anlam - Tema ve Ana Düşünce",
-          "Paragrafta Yardımcı Düşünceler",
-          "Öğe Ilişkileri ve Bağlantı Kuralları",
-          "Yazım Kuralları - Büyük Harfler",
-          "Yazım Kuralları - Bağlantı, Ayırma, Birleştirme",
-          "Noktalama İşaretleri - Nokta, Virgül, Noktalı Virgül",
-          "Noktalama İşaretleri - Diğer İşaretler",
-          "Sözcük Türleri - İsim, Fiil, Sıfat",
-          "Sözcük Türleri - Zamir, Edat, Bağlaç, Ünlem",
-          "Cümle Öğeleri - Özne, Yüklem, Tümleç",
-          "Cümle Öğeleri - Belirtili Nesne, Belirtisiz Nesne",
-          "Cümle Türleri - Basit, Birleşik, Karmaşık",
-          "Fiil Çekimi - Zaman, Kip, Şahıs Ekleri",
-          "Türkçe'nin Gelişimi ve Dil Bilgisi Terimleri"
-        ]
-      },
-      sosyal: {
-        name: "Sosyal Bilgiler",
-        topics: [
-          "Tarih - İlk Çağ Medeniyetleri",
-          "Tarih - Antik Çağ Medeniyetleri",
-          "Tarih - Ortaçağ Avrupası",
-          "Tarih - İslam Medeniyeti",
-          "Tarih - Osmanlı Devleti'nin Kuruluş ve Genişleme",
-          "Tarih - Osmanlı Devleti'nin Zirve Dönemi",
-          "Tarih - Osmanlı Devleti'nin Gerileme Dönemi",
-          "Tarih - Tanzimat ve Reform Hareketleri",
-          "Tarih - Meşrutiyet Dönemi",
-          "Tarih - Birinci Dünya Savaşı",
-          "Tarih - Kurtuluş Savaşı ve Cumhuriyet",
-          "Tarih - Atatürk Dönemi Reformları",
-          "Coğrafya - Dünya'nın Şekli ve Hareketleri",
-          "Coğrafya - Harita Bilgisi ve Ölçek",
-          "Coğrafya - İklim Türleri ve Özellikleri",
-          "Coğrafya - Yerşekilleri ve Jeomorfoloji",
-          "Coğrafya - Su Döngüsü ve Su Kaynakları",
-          "Coğrafya - Bitki Coğrafyası",
-          "Coğrafya - Hayvan Coğrafyası",
-          "Coğrafya - Nüfus ve Yerleşim",
-          "Coğrafya - Türkiye'nin Coğrafi Bölgeleri",
-          "Din Kültürü - İslam'ın Temelleri",
-          "Din Kültürü - Peygamberler ve Peygamber Muammesi",
-          "Din Kültürü - Kur'an ve Hadis",
-          "Din Kültürü - İbadet ve Dini Hayat",
-          "Din Kültürü - Ahlak ve Ahlaki Değerler",
-          "Felsefe - Felsefe Nedir ve Doğası",
-          "Felsefe - İnsan Felsefesi",
-          "Felsefe - Bilgi Felsefesi",
-          "Felsefe - Varlık Felsefesi",
-          "Felsefe - Ahlak Felsefesi",
-          "Felsefe - Estetik"
-        ]
-      },
-      matematik: {
-        name: "Matematik",
-        topics: [
-          "Sayılar - Doğal Sayılar ve Özellikleri",
-          "Sayılar - Tam Sayılar ve İşlemleri",
-          "Sayılar - Rasyonal Sayılar ve Ondalık Gösterim",
-          "Sayılar - Irrasyonal ve Gerçek Sayılar",
-          "Sayılar - Bölünebilme Kuralları",
-          "Sayılar - EBOB ve EKOK",
-          "Kümeler - Küme Kavramı ve Gösterimi",
-          "Kümeler - Küme İşlemleri",
-          "Kümeler - De Morgan Kuralları",
-          "Kümeler - Alt Küme ve Kuvvet Kümesi",
-          "Fonksiyonlar - Bağıntı ve Fonksiyon Kavramı",
-          "Fonksiyonlar - Fonksiyon Türleri",
-          "Fonksiyonlar - Birim, Sabit, Doğrusal Fonksiyonlar",
-          "Fonksiyonlar - Parçalı Tanımlı Fonksiyonlar",
-          "Polinomlar - Polinom Kavramı",
-          "Polinomlar - Polinom İşlemleri",
-          "Polinomlar - Polinom Bölme",
-          "Polinomlar - Çarpanlara Ayırma",
-          "Rasyonal Fonksiyonlar - Tanım ve Sadeleştirme",
-          "Rasyonal Fonksiyonlar - Grafikleri",
-          "Üstel Fonksiyon - Tanım ve Özellikleri",
-          "Logaritmik Fonksiyon - Tanım ve Özellikleri",
-          "Üstel ve Logaritmik Denklemler",
-          "Trigonometri - Trigonometrik Oranlar",
-          "Trigonometri - Özel Açılar",
-          "Trigonometri - Trigonometrik Fonksiyonlar",
-          "Trigonometri - Trigonometrik Özdeşlikler",
-          "Trigonometri - Trigonometrik Denklemler",
-          "Denklemler - Birinci Dereceden Denklemler",
-          "Denklemler - İkinci Dereceden Denklemler",
-          "Denklemler - Denklem Sistemleri",
-          "Eşitsizlikler - Birinci Dereceden Eşitsizlikler",
-          "Eşitsizlikler - İkinci Dereceden Eşitsizlikler",
-          "Eşitsizlikler - Mutlak Değer İçeren Eşitsizlikler",
-          "Analitik Geometri - Koordinat Sistemi",
-          "Analitik Geometri - Doğru Denklemi",
-          "Analitik Geometri - İki Doğru Arasındaki Açı",
-          "Analitik Geometri - Çember Denklemi",
-          "Analitik Geometri - Elips, Hiperbol, Parabol",
-          "İstatistik - Veri Çeşitleri ve Düzenlenmesi",
-          "İstatistik - Merkezi Eğilim Ölçüleri",
-          "İstatistik - Dağılım Ölçüleri",
-          "Olasılık - Olasılık Kavramı",
-          "Olasılık - Koşullu Olasılık",
-          "Olasılık - Bağımsız Olaylar",
-          "Olasılık - Kombinatorik"
-        ]
-      },
-      fen: {
-        name: "Fen Bilgisi",
-        topics: [
-          "Fizik - Harekat ve Kuvvet",
-          "Fizik - Newton Kanunları",
-          "Fizik - İş, Güç ve Enerji",
-          "Fizik - Basınç",
-          "Fizik - Cisimlerin Hareketi",
-          "Fizik - Elektrik ve Manyetizma",
-          "Fizik - Elektrik Devresi",
-          "Fizik - Manyetik Alan",
-          "Fizik - Elektromanyetik İndüksiyon",
-          "Fizik - Enerji Formları",
-          "Fizik - Isı ve Sıcaklık",
-          "Fizik - Ses Dalgası",
-          "Fizik - Işık Dalgası",
-          "Kimya - Atom Yapısı ve Kuantum Mekaniksel Model",
-          "Kimya - Periyodik Sistem",
-          "Kimya - Kimyasal Bağlar - İyonik",
-          "Kimya - Kimyasal Bağlar - Kovalan",
-          "Kimya - Kimyasal Bağlar - Metalik",
-          "Kimya - Kimyasal Reaksiyonlar ve Türleri",
-          "Kimya - Termodinamik",
-          "Kimya - Kimyasal Denge",
-          "Kimya - Asit-Baz Titrasyonu",
-          "Kimya - Oksidosilme ve İndirgenme",
-          "Kimya - Elektrokimya",
-          "Kimya - Organik Kimya Temelleri",
-          "Biyoloji - Hücre Yapısı ve Organelleri",
-          "Biyoloji - Hücre Zarı ve Taşıma Mekanizmaları",
-          "Biyoloji - Hücre Bölünmesi - Mitoz",
-          "Biyoloji - Hücre Bölünmesi - Mayoz",
-          "Biyoloji - Genetik ve Mendel Yasaları",
-          "Biyoloji - DNA ve RNA",
-          "Biyoloji - Protein Sentezi",
-          "Biyoloji - Gen Mühendisliği",
-          "Biyoloji - Evrim Teorileri",
-          "Biyoloji - Çevre ve Ekosistemin Organizasyonu",
-          "Biyoloji - Besin Zinciri ve Enerji Akışı",
-          "Biyoloji - Canlılar Dünyası - Sınıflandırma",
-          "Biyoloji - İnsan Sistemi - Sindirim",
-          "Biyoloji - İnsan Sistemi - Dolaşım",
-          "Biyoloji - İnsan Sistemi - Solunum",
-          "Biyoloji - İnsan Sistemi - Boşaltım",
-          "Biyoloji - İnsan Sistemi - Nöroloji",
-          "Biyoloji - İnsan Sistemi - Endokrin",
-          "Biyoloji - İnsan Sistemi - Bağışıklık",
-          "Biyoloji - Üreme ve Gelişme"
-        ]
-      }
+      turkce: makeSubject("Türkçe", turkceDilBilgisi),
+      sosyal: makeSubject("Sosyal Bilimler", { Tarih: flat(tarihTYT), "Coğrafya": flat(cografyaTYT), Felsefe: flat(felsefeTYT), "Din Kültürü": flat(dinTYT) }),
+      matematik: makeSubject("Matematik", temelMatematik),
+      fen: makeSubject("Fen Bilimleri", { Fizik: flat(fizikTYT), Kimya: flat(kimyaTYT), Biyoloji: flat(biyolojiTYT) })
     }
   },
   AYT: {
     name: "AYT (Alan Yeterlilik Testi)",
     subjects: {
-      turkce: {
-        name: "Türkçe",
-        topics: [
-          "Edebiyat Tarihi - Eski Türk Edebiyatı",
-          "Edebiyat Tarihi - Divan Edebiyatı",
-          "Edebiyat Tarihi - Tanzimat Dönemi",
-          "Edebiyat Tarihi - Servet-i Fünun",
-          "Edebiyat Tarihi - Milli Edebiyat",
-          "Edebiyat Tarihi - Cumhuriyet Dönemi",
-          "Edebiyat Tarihi - Modern Edebiyat",
-          "Şiir Bilgisi - Vezin ve Kafiye",
-          "Şiir Bilgisi - Redif ve Radde",
-          "Şiir Bilgisi - Söz Sanatları",
-          "Şiir Bilgisi - Şiir Türleri",
-          "Yazılı Anlatım - Mektep",
-          "Yazılı Anlatım - Deneme",
-          "Yazılı Anlatım - Makale",
-          "Okuduğunu Anlama - Kültür ve Medeniyetler",
-          "Okuduğunu Anlama - Sosyal Konular",
-          "Okuduğunu Anlama - Bilim ve Teknoloji",
-          "Hikaye - Kısa Hikaye Anlama",
-          "Hikaye - Hikaye Analizi ve Yorum",
-          "Roman - Roman Türleri",
-          "Roman - Roman Analizi",
-          "Drama - Tiyatro Eserleri",
-          "Drama - Dramatik Türler",
-          "Edebiyat Kuramları - Realizm, Natüralizm",
-          "Edebiyat Kuramları - Romantizm, Sembolizm",
-          "Edebiyat Kuramları - Futurizm, Dadaizm, Sürrealizm"
-        ]
-      },
-      ingilizce: {
-        name: "İngilizce",
-        topics: [
-          "Kelime Bilgisi - Temel Sözcükler",
-          "Kelime Bilgisi - Eş Anlamlı Sözcükler",
-          "Kelime Bilgisi - Zıt Anlamlı Sözcükler",
-          "Kelime Bilgisi - Kelime Türetme",
-          "Dilbilgisi - Simple Tenses (Basit Zamanlar)",
-          "Dilbilgisi - Continuous Tenses (Süregelen Zamanlar)",
-          "Dilbilgisi - Perfect Tenses (Tamam Zamanlar)",
-          "Dilbilgisi - Perfect Continuous Tenses",
-          "Dilbilgisi - Modal Verbs (Yardımcı Fiiller)",
-          "Dilbilgisi - Passive Voice",
-          "Dilbilgisi - Conditionals (Koşul Cümleleri)",
-          "Dilbilgisi - Reported Speech",
-          "Dilbilgisi - Question Tags",
-          "Okuduğunu Anlama - Sosyal ve Kültürel Konular",
-          "Okuduğunu Anlama - Bilim ve Teknoloji Yazıları",
-          "Okuduğunu Anlama - Akademik Metinler",
-          "Okuduğunu Anlama - Edebiyat Metinleri",
-          "Konuşma - Diyaloglar",
-          "Konuşma - Konuşma Stratejileri",
-          "Yazı Türleri - Email ve Mektup",
-          "Yazı Türleri - Resmi Yazışmalar",
-          "Yazı Türleri - Makale ve Deneme",
-          "Yazı Türleri - Hikaye Yazma"
-        ]
-      },
-      matematik: {
-        name: "Matematik",
-        topics: [
-          "Limit - Limit Kavramı",
-          "Limit - Limit Kuralları",
-          "Limit - Özel Limitler",
-          "Limit - Sonsuzda Limit",
-          "Süreklilik - Süreklilik Tanımı",
-          "Süreklilik - Ara Değer Teoremi",
-          "Türev - Türev Tanımı ve Geometrik Anlamı",
-          "Türev - Türev Alma Kuralları",
-          "Türev - Zincir Kuralı",
-          "Türev - Ters Fonksiyonun Türevi",
-          "Türev - Kapalı Fonksiyon Türevi",
-          "Türev - Yüksek Mertebeden Türevler",
-          "Türevin Uygulamaları - Artan Azalan Fonksiyonlar",
-          "Türevin Uygulamaları - Ekstremum Değerler",
-          "Türevin Uygulamaları - Konkavlık ve İnfleksiyon",
-          "Türevin Uygulamaları - L'Hôpital Kuralı",
-          "İntegral - Belirsiz İntegral Tanımı",
-          "İntegral - İntegral Alma Kuralları",
-          "İntegral - Değişken Değiştirme",
-          "İntegral - Kısmi İntegrasyon",
-          "İntegral - Rasyonal Fonksiyonların İntegrali",
-          "İntegral - Belirli İntegral",
-          "İntegral - Riemann Toplamı",
-          "İntegralin Uygulamaları - Alan Hesabı",
-          "İntegralin Uygulamaları - Hacim Hesabı",
-          "İntegralin Uygulamaları - Yay Uzunluğu",
-          "Diziler - Dizi Kavramı",
-          "Diziler - Aritmetik Dizi",
-          "Diziler - Geometrik Dizi",
-          "Diziler - Dizi Limitleri",
-          "Seriler - Seri Kavramı",
-          "Seriler - Pozitif Seriler",
-          "Seriler - Kuvvet Serileri",
-          "Seriler - Taylor ve Maclaurin Serileri"
-        ]
-      },
-      fizik: {
-        name: "Fizik",
-        topics: [
-          "Dalgalar - Dalga Hareketi",
-          "Dalgalar - Basit Harmonik Hareket",
-          "Dalgalar - Dalga Özellikleri",
-          "Dalgalar - Dalga Denklemi",
-          "Dalgalar - Dalga Kırınımı ve Girişim",
-          "Dalgalar - Ses Dalgası ve Akustik",
-          "Optik - Elektromanyetik Spektrumu",
-          "Optik - Işığın Yayılması",
-          "Optik - Yansıma Yasaları",
-          "Optik - Kırılma ve Snell Yasası",
-          "Optik - Lens ve Ayna",
-          "Optik - Optik Araçlar",
-          "Optik - Işığın Girişimi ve Kırınımı",
-          "Optik - Polarizasyon",
-          "Termodinamik - Sıcaklık ve Isı",
-          "Termodinamik - Isıl Kapasite",
-          "Termodinamik - Termodinamiğin Birinci Yasası",
-          "Termodinamik - Termodinamiğin İkinci Yasası",
-          "Termodinamik - Entropi",
-          "Termodinamik - Çevrim Analizi",
-          "Kuantum Fiziği - Fotoelektrik Etki",
-          "Kuantum Fiziği - Compton Etkisi",
-          "Kuantum Fiziği - Bohr Modeli",
-          "Kuantum Fiziği - Dalga Fonksiyonu",
-          "Kuantum Fiziği - Schrödinger Denklemi",
-          "Nükleer Fizik - Atom Çekirdeği",
-          "Nükleer Fizik - Radioaktivite",
-          "Nükleer Fizik - Nükleer Reaksiyonlar",
-          "Nükleer Fizik - Nükleer Enerji",
-          "Astrofizik - Güneş ve Yıldızlar",
-          "Astrofizik - Galaksiler",
-          "Astrofizik - Evrenin Yapısı"
-        ]
-      },
-      kimya: {
-        name: "Kimya",
-        topics: [
-          "Gazlar - Gaz Kanunları",
-          "Gazlar - İdeal Gaz Denklemi",
-          "Gazlar - Kısmi Basınç ve Dalton Yasası",
-          "Gazlar - Kinetik Teori",
-          "Gazlar - Difüzyon ve Effüzyon",
-          "Çözeltiler - Çözelti Konsantrasyonları",
-          "Çözeltiler - Molalite ve Molar Kesir",
-          "Çözeltiler - Osmotik Basınç",
-          "Çözeltiler - Kolligatif Özellikler",
-          "Asit-Baz - Asit ve Baz Kavramları",
-          "Asit-Baz - pH ve pOH",
-          "Asit-Baz - Bufer Çözeltileri",
-          "Asit-Baz - Asit-Baz Titrasyonu",
-          "Asit-Baz - Hidroliz Reaksiyonları",
-          "Elektrokimya - Redoks Reaksiyonları",
-          "Elektrokimya - Galvanik Pillar",
-          "Elektrokimya - Elektroliz",
-          "Elektrokimya - Nernst Denklemi",
-          "Organik Kimya - Karbon Kimyası",
-          "Organik Kimya - Hidrokarbon'lar",
-          "Organik Kimya - Alkol ve Eter",
-          "Organik Kimya - Aldehit ve Keton",
-          "Organik Kimya - Karboksilik Asitler",
-          "Organik Kimya - Ester",
-          "Organik Kimya - Amin ve Amitler",
-          "Polimer Kimyası - Polimer Oluşumu",
-          "Polimer Kimyası - Polimer Türleri",
-          "Polimer Kimyası - Polimer Özellikleri"
-        ]
-      },
-      biyoloji: {
-        name: "Biyoloji",
-        topics: [
-          "Hücre Bölünmesi - Mitoz Aşamaları",
-          "Hücre Bölünmesi - Sitokenez",
-          "Hücre Bölünmesi - Mayoz ve Genetik Çeşitlilik",
-          "Hücre Bölünmesi - Mayoz Aşamaları",
-          "Hücre Bölünmesi - Haploit ve Diploit Hücreler",
-          "Genetik - Gregor Mendel ve Kalıtım Yasaları",
-          "Genetik - Monohibrit Çapraz",
-          "Genetik - Dihbrit Çapraz",
-          "Genetik - Bağlantı Grupları ve Genetik Harita",
-          "Genetik - Mul'tifaktöryel Kalıtım",
-          "Genetik - Kalıtımdaki Sapkınlıklar",
-          "DNA ve RNA - DNA Yapısı",
-          "DNA ve RNA - Replikasyon Mekanizması",
-          "DNA ve RNA - RNA Türleri",
-          "DNA ve RNA - Transkripsiyon",
-          "Protein Sentezi - Çeviri (Translation)",
-          "Protein Sentezi - Kodon ve Antikodon",
-          "Protein Sentezi - Ribozom Fonksiyonu",
-          "Gen Mühendisliği - Restriksiyon Enzimleri",
-          "Gen Mühendisliği - Plazmid Vektörleri",
-          "Gen Mühendisliği - Klonlama",
-          "Gen Mühendisliği - PCR Tekniği",
-          "Gen Mühendisliği - DNA Sekanslama",
-          "Evrim - Darwin ve Evrim Teorisi",
-          "Evrim - Doğal Seleksiyon",
-          "Evrim - İçtibasal Türler Arasındaki Değişimliler",
-          "Evrim - Moleküler Evrim",
-          "Ekoloji - Ekosistem Kavramı",
-          "Ekoloji - Besin Zinciri ve Ağları",
-          "Ekoloji - Enerji Akışı ve Piramit",
-          "Ekoloji - Dönüm Döngüleri",
-          "Ekoloji - Populasyon Dinamiği",
-          "Fizyoloji - Sindirim Sistemi",
-          "Fizyoloji - Emilim ve Taşınım",
-          "Fizyoloji - Solunum Sistemi",
-          "Fizyoloji - Dolaşım Sistemi",
-          "Fizyoloji - Boşaltım Sistemi",
-          "Fizyoloji - Nöroloji ve Refleks",
-          "Fizyoloji - Endokrin Sistem ve Hormonlar",
-          "Fizyoloji - Bağışıklık Sistemi",
-          "Fizyoloji - Kas ve Hareketi",
-          "Fizyoloji - Duyu Organları"
-        ]
-      },
-      tarih: {
-        name: "Tarih",
-        topics: [
-          "Osmanlı Devleti - Kuruluş ve İnkişaf",
-          "Osmanlı Devleti - Klasik Dönem",
-          "Osmanlı Devleti - Padişahlar ve İlk Vezirler",
-          "Osmanlı Devleti - Yeniçeri Ocağı",
-          "Osmanlı Devleti - Timar Sistemi",
-          "Osmanlı Devleti - Dış Politika",
-          "Tanzimat - Eğitim Reformları",
-          "Tanzimat - İdari Reformlar",
-          "Tanzimat - Milli Ruh ve Batılılaşma",
-          "Meşrutiyetler - Birinci Meşrutiyet",
-          "Meşrutiyetler - İkinci Meşrutiyet",
-          "Son Osmanlı Dönemi - Balkan Savaşları",
-          "Son Osmanlı Dönemi - Birinci Dünya Savaşı",
-          "Son Osmanlı Dönemi - İtilaf Devletleri Boşu",
-          "Kurtuluş Savaşı - Kaçak İndirme Amaçları",
-          "Kurtuluş Savaşı - Milli Mücadele Cephesleri",
-          "Kurtuluş Savaşı - Sakarya Savaşı",
-          "Kurtuluş Savaşı - Mudanya Ateşkesi",
-          "Cumhuriyet Kuruluşu - 1923 Yılı",
-          "Cumhuriyet Kuruluşu - Lozan Antlaşması",
-          "Atatürk İlkeleri - Cumhuriyet İlkesi",
-          "Atatürk İlkeleri - Milliyetçilik",
-          "Atatürk İlkeleri - Laiklik",
-          "Atatürk İlkeleri - Devletçilik",
-          "Atatürk İlkeleri - Halkçılık",
-          "Cumhuriyet Dönemi - Reformlar",
-          "Cumhuriyet Dönemi - Kültürel Dönüşüm",
-          "Cumhuriyet Dönemi - Ekonomik Değişim",
-          "Cumhuriyet Dönemi - Dış Politika"
-        ]
-      },
-      cografya: {
-        name: "Coğrafya",
-        topics: [
-          "Jeomorfoloji - Endojenik Kuvvetler",
-          "Jeomorfoloji - Exojenik Kuvvetler",
-          "Jeomorfoloji - Erözyon Şekilleri",
-          "Jeomorfoloji - Envanteri Şekilleri",
-          "Jeomorfoloji - Kıyı Şekillenmeleri",
-          "İklim Coğrafyası - İklim Elementleri",
-          "İklim Coğrafyası - İklim Faktörleri",
-          "İklim Coğrafyası - İklim Türleri",
-          "İklim Coğrafyası - Kuraklaştırma",
-          "Bitki Coğrafyası - Bitki Örtüsü",
-          "Bitki Coğrafyası - Ormanlar",
-          "Bitki Coğrafyası - Çayırlar ve Çalılıklar",
-          "Bitki Coğrafyası - Çöl Bitkileri",
-          "Hayvan Coğrafyası - Hayvan Örtüsü",
-          "Hayvan Coğrafyası - Zoocoğrafik Bölgeler",
-          "Nüfus Coğrafyası - Nüfus Dağılımı",
-          "Nüfus Coğrafyası - Nüfus Yoğunluğu",
-          "Nüfus Coğrafyası - Doğum ve Ölüm Oranları",
-          "Nüfus Coğrafyası - Göç Olayları",
-          "Yerleşim Coğrafyası - Şehir Yerleşimleri",
-          "Yerleşim Coğrafyası - Kırsal Yerleşimler",
-          "Yerleşim Coğrafyası - Şehirleşme Süreci",
-          "Yerleşim Coğrafyası - Megaşehirler",
-          "Ekonomik Coğrafya - Tarım Coğrafyası",
-          "Ekonomik Coğrafya - Sanayi Coğrafyası",
-          "Ekonomik Coğrafya - Hizmetler Sektörü",
-          "Ekonomik Coğrafya - Turizm Coğrafyası",
-          "Ekonomik Coğrafya - Enerji Kaynakları",
-          "Ekonomik Coğrafya - Ulaştırma Coğrafyası",
-          "Türkiye'nin Bölgeleri - Karadeniz",
-          "Türkiye'nin Bölgeleri - Marmara",
-          "Türkiye'nin Bölgeleri - Ege",
-          "Türkiye'nin Bölgeleri - Akdeniz",
-          "Türkiye'nin Bölgeleri - İç Anadolu",
-          "Türkiye'nin Bölgeleri - Doğu Anadolu",
-          "Türkiye'nin Bölgeleri - Güneydoğu Anadolu"
-        ]
-      }
+      turkce: makeSubject("Türk Dili ve Edebiyatı", edebiyatAYT),
+      matematik: makeSubject("Matematik", matematikAYT),
+      fizik: makeSubject("Fizik", fizikAYT),
+      kimya: makeSubject("Kimya", kimyaAYT),
+      biyoloji: makeSubject("Biyoloji", biyolojiAYT),
+      tarih: makeSubject("Tarih", tarihAYT),
+      cografya: makeSubject("Coğrafya", cografyaAYT),
+      felsefe: makeSubject("Felsefe Grubu (Felsefe, Psikoloji, Sosyoloji, Mantık)", felsefeGrubuAYT),
+      din: makeSubject("Din Kültürü ve Ahlak Bilgisi", dinAYT),
+      ingilizce: makeSubject("Yabancı Dil (İngilizce - YDT)", yabanciDilAYT)
     }
   },
   KPSS: {
     name: "KPSS (Kamu Personeli Seçme Sınavı)",
     subjects: {
-      turkce: {
-        name: "Türkçe",
-        topics: [
-          "Sözcük Anlamı - Temel Anlamı",
-          "Sözcük Anlamı - Mecazi Anlamı",
-          "Sözcük Anlamı - Eş Anlamlı ve Zıt Anlamlı",
-          "Cümle Anlamı - Açık Anlam",
-          "Cümle Anlamı - Zımni Anlam",
-          "Cümle Anlamı - Vurgulu Anlam",
-          "Paragrafta Anlam - Tema ve Ana Düşünce",
-          "Paragrafta Anlam - Yardımcı Düşünceler",
-          "Paragrafta Anlam - Bağlantı ve Tutarlılık",
-          "Yazım Kuralları - Harf ve Yazım",
-          "Yazım Kuralları - Ek Yazımı",
-          "Noktalama İşaretleri - Nokta ve Virgül",
-          "Noktalama İşaretleri - Diğer İşaretler",
-          "Sözcük Türleri - İsim ve Sıfat",
-          "Sözcük Türleri - Fiil ve Zarf",
-          "Sözcük Türleri - Zamir, Edat, Bağlaç"
-        ]
-      },
-      matematik: {
-        name: "Matematik",
-        topics: [
-          "Sayılar - Doğal ve Tam Sayılar",
-          "Sayılar - Rasyonal Sayılar",
-          "Sayılar - Mutlak Değer",
-          "Sayılar - Üslü Sayılar",
-          "Sayılar - Köklü Sayılar",
-          "Oran ve Orantı - Oran Kavramı",
-          "Oran ve Orantı - Orantı Özellikleri",
-          "Oran ve Orantı - Doğru ve Ters Orantı",
-          "Yüzde - Yüzde Hesaplaması",
-          "Yüzde - Artış ve Azalış Yüzdesi",
-          "Kar-Zarar - Maliyet Hesabı",
-          "Kar-Zarar - Kâr ve Zarar Yüzdesi",
-          "Denklemler - Birinci Dereceden Denklemler",
-          "Denklemler - İkinci Dereceden Denklemler",
-          "Denklemler - Denklem Sistemleri",
-          "Eşitsizlikler - Birinci Dereceden Eşitsizlikler",
-          "Eşitsizlikler - İkinci Dereceden Eşitsizlikler",
-          "İstatistik - Ortalamalar",
-          "İstatistik - Dağılım Ölçüleri",
-          "Olasılık - Olasılık Hesaplaması",
-          "Olasılık - Koşullu Olasılık"
-        ]
-      },
-      mantik: {
-        name: "Mantık",
-        topics: [
-          "Önerme - Önerme Kavramı",
-          "Önerme - Doğruluk Değerleri",
-          "Bağlaçlar - Veya (Disjunksiyon)",
-          "Bağlaçlar - Ve (Konjunksiyon)",
-          "Bağlaçlar - İse (Şartlı)",
-          "Bağlaçlar - Ancak ve Ancak (Bikoşullu)",
-          "Bağlaçlar - Değil (Negasyon)",
-          "Mantık Kuralları - De Morgan Kuralları",
-          "Mantık Kuralları - Çelişki ve Üçüncü Hariciyeti",
-          "Mantık Kuralları - Dağılma Kanunları",
-          "Söz Dizimi - Tümel Önermeler",
-          "Söz Dizimi - Tikel Önermeler",
-          "Söz Dizimi - Kategori Önermeleri",
-          "Söz Dizimi - Hipotez Önermeleri"
-        ]
-      },
-      agirlik: {
-        name: "Ağırlık Alanı (GKMY)",
-        topics: [
-          "İnsan Kaynakları - İK Planlama",
-          "İnsan Kaynakları - İşe Alım",
-          "İnsan Kaynakları - Eğitim ve Geliştirme",
-          "İnsan Kaynakları - Performans Yönetimi",
-          "İnsan Kaynakları - Özlük İşleri",
-          "Muhasebe - Temel Muhasebe Kavramları",
-          "Muhasebe - Hesap Planı",
-          "Muhasebe - Dönemsellik İlkesi",
-          "Muhasebe - Finansal Tablolar",
-          "Muhasebe - Veri Girişi",
-          "Yönetim - Yönetim Fonksiyonları",
-          "Yönetim - Organizasyon Yapısı",
-          "Yönetim - Liderlik",
-          "Yönetim - Motivasyon",
-          "Yönetim - İletişim",
-          "Mali Müşavirlik - Vergisel İşler",
-          "Mali Müşavirlik - Muhasebeci Özellikleri",
-          "Mali Müşavirlik - Mesleki Etik",
-          "Mali Müşavirlik - Özel Muhasebe Hizmetleri"
-        ]
-      }
+      turkce: makeSubject("Türkçe", turkceKPSS),
+      matematik: makeSubject("Matematik", matematikKPSS),
+      tarih: makeSubject("Tarih", tarihKPSS),
+      cografya: makeSubject("Coğrafya", cografyaKPSS),
+      vatandaslik: makeSubject("Vatandaşlık", vatandaslikKPSS),
+      guncel: makeSubject("Güncel Bilgiler", guncelKPSS)
     }
   },
   YÖS: {
-    name: "YÖS (Yabancı Uyruklu Öğrenci Sınavı)",
+    name: "TR-YÖS (Yabancı Uyruklu Öğrenci Sınavı)",
     subjects: {
-      turkce: {
-        name: "Türkçe",
-        topics: [
-          "Kelime Bilgisi - A1 Seviyesi",
-          "Kelime Bilgisi - A2 Seviyesi",
-          "Kelime Bilgisi - B1 Seviyesi",
-          "Dilbilgisi - Zamanlar",
-          "Dilbilgisi - Modaller",
-          "Dilbilgisi - Hal Eki ve Durum",
-          "Dilbilgisi - Fiil Çekimi",
-          "Dilbilgisi - Söz Dizimi",
-          "Okuduğunu Anlama - Basit Metinler",
-          "Okuduğunu Anlama - Orta Seviye Metinler",
-          "Okuduğunu Anlama - Çıkarımlı Okuma",
-          "Okuduğunu Anlama - Ayrıntıları Bulma",
-          "Okuduğunu Anlama - Ana Fikri Bulma",
-          "Yazılı İfade - Cümle Yazma",
-          "Yazılı İfade - Paragraf Yazma",
-          "Yazılı İfade - Formal Yazışma",
-          "Yazılı İfade - Informal Yazışma",
-          "Yazılı İfade - Yaratıcı Yazı"
-        ]
-      },
-      matematik: {
-        name: "Matematik",
-        topics: [
-          "Sayılar - Doğal Sayılar",
-          "Sayılar - Tam Sayılar",
-          "Sayılar - Rasyonal Sayılar",
-          "Sayılar - Gerçek Sayılar",
-          "Sayılar - Mutlak Değer",
-          "Cebir - Cebirsel İfadeler",
-          "Cebir - Denklemler",
-          "Cebir - Eşitsizlikler",
-          "Cebir - Fonksiyonlar",
-          "Cebir - Polinom'lar",
-          "Geometri - Düzlem Geometrisi",
-          "Geometri - Üçgen",
-          "Geometri - Dörtgen",
-          "Geometri - Çember",
-          "Geometri - Alan ve Çevre",
-          "Geometri - 3D Geometri",
-          "Veri Analizi - Veri Düzenleme",
-          "Veri Analizi - Ortalamalar",
-          "Veri Analizi - Grafik Okuma",
-          "Veri Analizi - İstatistik",
-          "Veri Analizi - Olasılık"
-        ]
-      },
-      akıl: {
-        name: "Akıl Yürütme",
-        topics: [
-          "Mantıksal Akıl Yürütme - Dizi Tamamlama",
-          "Mantıksal Akıl Yürütme - Analoji",
-          "Mantıksal Akıl Yürütme - Klasifikasyon",
-          "Mantıksal Akıl Yürütme - Sıralama",
-          "Mantıksal Akıl Yürütme - Şartlı Yargı",
-          "Mantıksal Akıl Yürütme - Küme Problemleri",
-          "Sayısal Akıl Yürütme - Desen Tanıma",
-          "Sayısal Akıl Yürütme - Sayı İlişkileri",
-          "Sayısal Akıl Yürütme - Problemler",
-          "Sayısal Akıl Yürütme - Orantı",
-          "Grafik Yorumlama - Çubuk Grafik",
-          "Grafik Yorumlama - Pasta Grafik",
-          "Grafik Yorumlama - Çizgi Grafik",
-          "Grafik Yorumlama - Tablo Okuma",
-          "Grafik Yorumlama - Karşılaştırma"
-        ]
-      }
+      sayisal: makeSubject("Sayısal Yetenek", sayisalYetenekYOS),
+      matematik: makeSubject("Temel Matematik", temelMatematikYOS)
     }
   },
   DGS: {
     name: "DGS (Dikey Geçiş Sınavı)",
     subjects: {
-      turkce: {
-        name: "Türkçe",
-        topics: [
-          "Sözcük Anlamı - Temel Anlamı",
-          "Sözcük Anlamı - Mecazi Anlamı",
-          "Sözcük Anlamı - Eş ve Zıt Anlamlılar",
-          "Sözcük Anlamı - Bağlama Göre Anlam",
-          "Cümle Anlamı - Doğrudan Anlam",
-          "Cümle Anlamı - Dolaylı Anlam",
-          "Cümle Anlamı - Çıkarım",
-          "Paragrafta Anlam - Ana Fikir",
-          "Paragrafta Anlam - Yardımcı Fikirler",
-          "Paragrafta Anlam - Bağlantı Öğeleri",
-          "Paragrafta Anlam - Yazarın Tutumu",
-          "Okuduğunu Anlama - Sorular",
-          "Yazım ve İmlâ - Yazım Kuralları",
-          "Yazım ve İmlâ - Noktalama",
-          "Sözcük Türleri - Çalışma"
-        ]
-      },
-      matematik: {
-        name: "Matematik",
-        topics: [
-          "Sayılar - İşlemler",
-          "Sayılar - EBOB-EKOK",
-          "Sayılar - Bölünebilme",
-          "Cebir - Denklemler",
-          "Cebir - Eşitsizlikler",
-          "Cebir - Üslü-Köklü İfadeler",
-          "Cebir - Çarpanlara Ayırma",
-          "Cebir - Kesirli İfadeler",
-          "Geometri - Açılar",
-          "Geometri - Üçgenler",
-          "Geometri - Dörtgenler",
-          "Geometri - Çember",
-          "Geometri - Alan",
-          "Geometri - Hacim",
-          "Geometri - Koordinat Geometrisi",
-          "İstatistik - Ortalamalar",
-          "İstatistik - Dağılım",
-          "İstatistik - Grafik",
-          "Olasılık - Temel Olasılık",
-          "Olasılık - Kombinasyon-Permütasyon"
-        ]
-      }
+      turkce: makeSubject("Türkçe (Sözel)", turkceDGS),
+      matematik: makeSubject("Matematik ve Geometri (Sayısal)", matematikDGS)
     }
   }
 };
 
-// Dropdown'lar için utility fonksiyonları
-function getExamTypes() {
-  return Object.keys(examData).map(key => ({
-    code: key,
-    name: examData[key].name
-  }));
-}
+// Dropdown'lar için yardımcı fonksiyonlar
+window.getExamTypes = function getExamTypes() {
+  return Object.keys(examData).map(key => ({ code: key, name: examData[key].name }));
+};
 
-function getSubjectsByExam(examType) {
+window.getSubjectsByExam = function getSubjectsByExam(examType) {
   if (!examData[examType]) return [];
-  return Object.keys(examData[examType].subjects).map(key => ({
-    code: key,
-    name: examData[examType].subjects[key].name
-  }));
-}
+  return Object.keys(examData[examType].subjects).map(key => ({ code: key, name: examData[examType].subjects[key].name }));
+};
 
-function getTopicsByExamAndSubject(examType, subject) {
+window.getTopicsByExamAndSubject = function getTopicsByExamAndSubject(examType, subject) {
   if (!examData[examType]?.subjects[subject]) return [];
   return examData[examType].subjects[subject].topics;
-}
+};
+
+// <optgroup> için ünite bazlı liste: [{ unit, topics: ["Ünite - Konu", ...] }]
+window.getTopicGroupsByExamAndSubject = function getTopicGroupsByExamAndSubject(examType, subject) {
+  const entry = examData[examType]?.subjects[subject];
+  if (!entry) return [];
+  return Object.entries(entry.groups).map(([unit, items]) => ({ unit, topics: items.map(item => `${unit} - ${item}`) }));
+};
+})();
