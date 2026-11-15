@@ -186,6 +186,7 @@ public partial class CurriculumTables : Migration
             columns: new[] { "Id", "Name", "FullName" },
             values: new object[,]
             {
+                { "lgs", "LGS", "Liselere Geçiş Sistemi" },
                 { "tyt", "TYT", "Temel Yeterlilik Testi" },
                 { "ayt", "AYT", "Alan Yeterlilik Testleri" },
                 { "kpss", "KPSS", "Kamu Personel Seçme Sınavı (GY-GK)" },
@@ -198,6 +199,13 @@ public partial class CurriculumTables : Migration
             columns: new[] { "Id", "ExamId", "Name", "SortOrder" },
             values: new object[,]
             {
+                // LGS
+                { "lgs-turkce", "lgs", "Türkçe", 1 },
+                { "lgs-matematik", "lgs", "Matematik", 2 },
+                { "lgs-fen", "lgs", "Fen Bilimleri", 3 },
+                { "lgs-inkilap", "lgs", "T.C. İnkılap Tarihi ve Atatürkçülük", 4 },
+                { "lgs-din", "lgs", "Din Kültürü ve Ahlak Bilgisi", 5 },
+                { "lgs-ingilizce", "lgs", "İngilizce", 6 },
                 // TYT
                 { "tyt-turkce", "tyt", "Türkçe", 1 },
                 { "tyt-matematik", "tyt", "Matematik", 2 },

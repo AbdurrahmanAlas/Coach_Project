@@ -237,6 +237,14 @@ if (app.Environment.IsDevelopment())
             };
             db.Exams.AddRange(exams);
             var subjects = new[] {
+                // LGS
+                new Subject { Id = "lgs-turkce", ExamId = "lgs", Name = "Türkçe", SortOrder = 1 },
+                new Subject { Id = "lgs-matematik", ExamId = "lgs", Name = "Matematik", SortOrder = 2 },
+                new Subject { Id = "lgs-fen", ExamId = "lgs", Name = "Fen Bilimleri", SortOrder = 3 },
+                new Subject { Id = "lgs-inkilap", ExamId = "lgs", Name = "T.C. İnkılap Tarihi ve Atatürkçülük", SortOrder = 4 },
+                new Subject { Id = "lgs-din", ExamId = "lgs", Name = "Din Kültürü ve Ahlak Bilgisi", SortOrder = 5 },
+                new Subject { Id = "lgs-ingilizce", ExamId = "lgs", Name = "İngilizce", SortOrder = 6 },
+                // TYT
                 new Subject { Id = "tyt-turkce", ExamId = "tyt", Name = "Türkçe", SortOrder = 1 },
                 new Subject { Id = "tyt-matematik", ExamId = "tyt", Name = "Matematik", SortOrder = 2 },
                 new Subject { Id = "tyt-geometri", ExamId = "tyt", Name = "Geometri", SortOrder = 3 },
