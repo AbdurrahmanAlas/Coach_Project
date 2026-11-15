@@ -181,18 +181,85 @@
 
     /* ---------- Sekme: Veli raporu ---------- */
     const commentKey = () => 'kocluk-report-comment-' + st.studentId;
-    function viewReport() {
+    function reportModel() {
       const list = ranged(), t = agg(list), topics = byTopic(list).filter(x => x.total >= 3);
       const strong = [...topics].sort((a, b) => b.rate - a.rate).slice(0, 3), weak = [...topics].sort((a, b) => a.rate - b.rate).filter(x => x.rate < 75).slice(0, 3);
       const tasks = st.data.tasks, done = tasks.filter(x => x.isCompleted).length, ex = [...st.data.exams].sort((x, y) => String(y.examDate).localeCompare(String(x.examDate)))[0];
       const rangeLabel = RANGES.find(r => r[0] === st.range)[1], coach = document.getElementById('profile-name')?.textContent?.trim() || 'Eğitim koçu';
+      return { t, strong, weak, tasks, done, ex, rangeLabel, coach };
+    }
+    function viewReport() {
+      const { t, strong, weak, tasks, done, ex, rangeLabel, coach } = reportModel();
       const li = x => `<li><b>${esc(x.subject)} · ${esc(x.topic)}</b> <span>%${r1(x.rate)} · ${x.total} soru</span></li>`;
-      return `<div class="report-tools"><div class="card-lite"><label for="report-comment">💬 Öğretmen görüşü <small>(isteğe bağlı, rapora eklenir)</small></label><textarea id="report-comment" rows="3" placeholder="Örn: ${esc(student().firstName || 'Öğrenci')} son zamanlarda çok iyi gidiyor. Bu istikrarı sürdürelim.">${esc(localStorage.getItem(commentKey()) || '')}</textarea></div><button type="button" class="primary" id="report-print">📄 PDF raporu paylaş / yazdır</button></div>
+      return `<div class="report-tools"><div class="card-lite"><label for="report-comment">💬 Öğretmen görüşü <small>(isteğe bağlı, rapora eklenir)</small></label><textarea id="report-comment" rows="3" placeholder="Örn: ${esc(student().firstName || 'Öğrenci')} son zamanlarda çok iyi gidiyor. Bu istikrarı sürdürelim.">${esc(localStorage.getItem(commentKey()) || '')}</textarea></div><div class="report-actions"><button type="button" class="primary" id="report-image">🖼️ Görsel olarak WhatsApp'a gönder</button><button type="button" class="lf-pub" id="report-pdf">📄 PDF olarak gönder</button><button type="button" class="lf-pub" id="report-print">🖨️ Yazdır</button><span class="lf-msg" id="report-share-msg"></span></div></div>
       <div id="perf-report" class="report"><div class="report-head"><div><small>Öğrenci gelişim raporu</small><h2>${esc(studentName())}</h2><p>${rangeLabel} · ${new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div><div class="report-brand"><img src="/logo.svg" width="42" height="42" alt=""><span>Alas Eğitim Koçluk</span></div></div>
         <div class="perf-stats">${stat('📅', 'Çalışma günü', t.days, 'indigo')}${stat('📄', 'Toplam soru', t.total, 'violet')}${stat('🎯', 'Başarı oranı', '%' + r1(t.rate), 'teal')}${stat('📈', 'Toplam net', r1(t.net), 'amber')}</div>
         <div class="report-cols"><div><h4>💪 Güçlü konular</h4><ul>${strong.length ? strong.map(li).join('') : '<li class="perf-muted">Yeterli veri yok</li>'}</ul></div><div><h4>🎯 Geliştirilecek konular</h4><ul>${weak.length ? weak.map(li).join('') : '<li class="perf-muted">Belirgin bir zayıf konu yok</li>'}</ul></div></div>
         <div class="report-cols"><div><h4>🗒️ Plan uyumu</h4><p class="report-big">${tasks.length ? done + ' / ' + tasks.length + ' görev tamamlandı' : 'Henüz plan görevi yok'}</p></div><div><h4>📝 Son deneme</h4><p class="report-big">${ex ? esc(ex.title) + ' · ' + r1(ex.correct - ex.wrong / 4) + ' net' : 'Deneme kaydı yok'}</p></div></div>
         <div class="report-comment" id="report-comment-view" ${localStorage.getItem(commentKey()) ? '' : 'hidden'}><h4>Öğretmen görüşü</h4><p>${esc(localStorage.getItem(commentKey()) || '')}</p><small>— ${esc(coach)}</small></div></div>`;
+    }
+
+    /* ---------- Görsel / PDF paylaşımı ---------- */
+    const slug = s => String(s || '').toLocaleLowerCase('tr-TR').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'dosya';
+    const phoneFor = who => { const s = student(), g = s.guardian || {}; return who === 'guardian' ? (g.phoneNumber || s.phoneNumber || '') : (s.phoneNumber || g.phoneNumber || ''); };
+    const deliverMsg = (res, asPdf) => {
+      if (res.mode === 'cancel') return '';
+      if (res.mode === 'share') return 'Paylaşım penceresi açıldı.';
+      const how = asPdf ? 'PDF indirildi, WhatsApp açıldı. Dosyayı 📎 ile sohbete ekleyin.' : (res.copied ? 'Görsel panoya kopyalandı ve indirildi. WhatsApp sohbetine yapıştırın (Ctrl+V).' : 'Görsel indirildi, WhatsApp açıldı. Dosyayı 📎 ile ekleyin.');
+      return how + (res.hasNumber ? '' : ' Kayıtlı telefon numarası yok, sohbeti kendiniz seçin.');
+    };
+    async function shareReport(asPdf) {
+      const msg = document.getElementById('report-share-msg');
+      const say = (m, err) => { if (msg) { msg.textContent = m; msg.className = 'lf-msg' + (err ? ' err' : ''); } };
+      if (!window.KoclukShare) { say('Paylaşım modülü yüklenemedi. Sayfayı yenileyin.', true); return; }
+      say('Hazırlanıyor…');
+      try {
+        const m = reportModel(), dateLabel = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const item = x => ({ title: x.subject + ' · ' + x.topic, sub: x.total + ' soru', value: '%' + r1(x.rate) });
+        const canvas = KoclukShare.reportCanvas({
+          name: studentName(), rangeLabel: m.rangeLabel, dateLabel, coach: m.coach, comment: (localStorage.getItem(commentKey()) || '').trim(),
+          stats: [{ label: 'Çalışma günü', value: String(m.t.days) }, { label: 'Toplam soru', value: String(m.t.total) }, { label: 'Başarı oranı', value: '%' + r1(m.t.rate) }, { label: 'Toplam net', value: r1(m.t.net) }],
+          strong: m.strong.map(item), weak: m.weak.map(item),
+          plan: m.tasks.length ? m.done + ' / ' + m.tasks.length + ' görev tamamlandı' : 'Henüz plan görevi yok',
+          exam: m.ex ? m.ex.title + ' · ' + r1(m.ex.correct - m.ex.wrong / 4) + ' net' : 'Deneme kaydı yok'
+        });
+        const blob = asPdf ? await KoclukShare.toPdf(canvas) : await KoclukShare.toBlob(canvas, 'image/png');
+        const res = await KoclukShare.deliver({ blob, filename: 'gelisim-raporu-' + slug(studentName()) + (asPdf ? '.pdf' : '.png'), text: studentName() + ' - öğrenci gelişim raporu (' + m.rangeLabel + ')', phone: phoneFor('guardian') });
+        say(deliverMsg(res, asPdf));
+      } catch (e) { console.warn(e); say('Rapor hazırlanamadı. Tekrar deneyin.', true); }
+    }
+    const DOWL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    function weekShareModel() {
+      const days = windowDays(st.weekOffset), keys = days.map(key), todayKey = key(new Date());
+      const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      const lessons = lessonStore(), sessions = st.data.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected'), tasks = st.data.tasks;
+      let total = 0;
+      const out = days.map((d, i) => {
+        const k = keys[i];
+        const items = [
+          ...lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime)).map(l => ({ kind: 'lesson', time: l.startTime.slice(0, 5) + (l.endTime ? ' – ' + l.endTime.slice(0, 5) : ''), title: lessonLabel(l), topic: l.topic ? l.topic.replace(/^.* - /, '') : '', meta: l.questionCount ? '✏️ ' + l.questionCount + ' soru' : '', note: l.note || '' })),
+          ...sessions.filter(s => key(s.startsAtUtc) === k).map(s => ({ kind: 'session', time: clock(s.startsAtUtc), title: 'Koçluk görüşmesi', topic: s.durationMinutes + ' dk', meta: '', note: '' })),
+          ...tasks.filter(t => t.dueDate === k).map(t => ({ kind: 'task', time: 'Görev', title: t.title, topic: '', meta: t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru', note: '' }))
+        ];
+        total += items.length;
+        return { label: DOWL[d.getDay()], date: d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }), today: k === todayKey, items };
+      });
+      const range = days[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' – ' + days[6].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const sessionList = sessions.filter(s => keys.includes(key(s.startsAtUtc))).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(s => ({ day: new Date(s.startsAtUtc).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }), time: clock(s.startsAtUtc) + (s.status === 'Confirmed' || s.status === 'Completed' ? '' : ' (onay bekliyor)'), dur: s.durationMinutes + ' dk' }));
+      return { name: studentName(), range, coach: document.getElementById('profile-name')?.textContent?.trim() || '', days: out, total, sessions: sessionList };
+    }
+    async function shareWeek(asPdf) {
+      const say = (m, err) => { st.lessonMsg = m; st.lessonMsgErr = !!err; renderWeekForm(); };
+      if (!window.KoclukShare) { say('Paylaşım modülü yüklenemedi. Sayfayı yenileyin.', true); return; }
+      const model = weekShareModel();
+      if (!model.total) { say('Bu 7 günde paylaşılacak program yok.', true); return; }
+      say('Görsel hazırlanıyor…');
+      try {
+        const canvas = KoclukShare.scheduleCanvas(model);
+        const blob = asPdf ? await KoclukShare.toPdf(canvas) : await KoclukShare.toBlob(canvas, 'image/png');
+        const res = await KoclukShare.deliver({ blob, filename: 'haftalik-program-' + slug(studentName()) + (asPdf ? '.pdf' : '.png'), text: studentName() + ' - haftalık ders programı (' + model.range + ')', phone: phoneFor(st.shareTo || 'guardian') });
+        say(deliverMsg(res, asPdf));
+      } catch (e) { console.warn(e); say('Program görseli hazırlanamadı. Tekrar deneyin.', true); }
     }
 
     /* ---------- Çerçeve ---------- */
@@ -219,7 +286,7 @@
           <label class="lf2-field lf2-wide"><span>Not / açıklama <em>(isteğe bağlı)</em></span><input id="lesson-note" type="text" maxlength="500" placeholder="Örn: Önce konu özetini oku, sonra 40 soru çöz" value="${esc(st.lessonNote)}"></label>
         </div>
         <div class="lf2-foot"><span class="lf-msg ${st.lessonMsgErr ? 'err' : ''}">${esc(st.lessonMsg || '')}</span><button type="button" id="add-lesson" class="primary">＋ Derse ekle</button></div>
-        <div class="lf2-share"><div><b>Bu 7 günlük programı paylaş</b><span>Öğrenciye ve velisine bildirim gönder ya da WhatsApp ile ilet.</span></div><div class="lf2-share-actions"><button type="button" id="week-publish" class="lf-pub">📣 Öğrenci ve veliye gönder</button><button type="button" id="week-share" class="lf-wa">📱 WhatsApp ile paylaş</button></div></div>
+        <div class="lf2-share"><div><b>Bu 7 günlük programı paylaş</b><span>Panele bildirim gönder; WhatsApp için görsel veya PDF olarak paylaş.</span></div><div class="lf2-share-actions"><label class="lf2-who"><span>Gönderilecek kişi</span><select id="week-recipient"><option value="guardian" ${(st.shareTo || 'guardian') === 'guardian' ? 'selected' : ''}>Veli</option><option value="student" ${st.shareTo === 'student' ? 'selected' : ''}>Öğrenci</option></select></label><button type="button" id="week-publish" class="lf-pub">📣 Öğrenci ve veliye bildir</button><button type="button" id="week-image" class="lf-wa">🖼️ Görsel olarak paylaş</button><button type="button" id="week-pdf" class="lf-pub">📄 PDF</button><button type="button" id="week-share" class="lf-pub">💬 Metin</button></div></div>
       </div>`;
       const bind = (id, fn) => document.getElementById(id)?.addEventListener('change', fn);
       bind('lesson-exam', e => { st.lessonExamType = e.target.value; st.lessonSubject = ''; st.lessonTopic = ''; renderWeekForm(); });
@@ -230,6 +297,7 @@
       bind('lesson-end', e => { st.lessonEnd = e.target.value; });
       bind('lesson-questions', e => { st.lessonQuestions = e.target.value; });
       bind('lesson-note', e => { st.lessonNote = e.target.value; });
+      bind('week-recipient', e => { st.shareTo = e.target.value; });
       setupDragDrop();
     }
     function setupDragDrop() {
@@ -252,18 +320,14 @@
       });
     }
     function shareWeekSchedule() {
-      const days = windowDays(st.weekOffset);
-      const lessons = lessonStore().filter(l => days.some(d => l.date === key(d)));
-      if (!lessons.length) { st.lessonMsg = 'Bu hafta paylaşılacak ders yok.'; st.lessonMsgErr = true; renderWeekForm(); return; }
-      const range = days[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' - ' + days[6].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-      const blocks = days.map(d => {
-        const ls = lessons.filter(l => l.date === key(d)).sort((a, b) => a.startTime.localeCompare(b.startTime));
-        if (!ls.length) return '';
-        return '*' + d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) + '*\n' + ls.map(l => '🕐 ' + l.startTime.slice(0, 5) + (l.endTime ? ' - ' + l.endTime.slice(0, 5) : '') + '  ' + lessonLabel(l) + (l.topic ? '\n     ▫️ ' + l.topic : '') + (l.questionCount ? '\n     ✏️ ' + l.questionCount + ' soru' : '') + (l.note ? '\n     📝 ' + l.note : '')).join('\n');
-      }).filter(Boolean);
-      const text = '📚 *' + studentName() + ' - Haftalık Ders Programı*\n' + range + '\n\n' + blocks.join('\n\n') + '\n\n_Alas Eğitim Koçluk panelinden gönderildi_';
-      const url = 'https://wa.me/?text=' + encodeURIComponent(text);
-      window.open(url, '_blank');
+      const m = weekShareModel();
+      if (!m.total) { st.lessonMsg = 'Bu 7 günde paylaşılacak program yok.'; st.lessonMsgErr = true; renderWeekForm(); return; }
+      const icon = kind => kind === 'task' ? '📌 ' : kind === 'session' ? '💬 ' : '🕐 ';
+      const blocks = m.days.filter(d => d.items.length).map(d => '*' + d.label + ', ' + d.date + '*\n' + d.items.map(i => icon(i.kind) + i.time + '  ' + i.title + (i.topic ? '\n     ▫️ ' + i.topic : '') + (i.meta ? '\n     ' + i.meta : '') + (i.note ? '\n     📝 ' + i.note : '')).join('\n'));
+      const sessions = m.sessions.length ? '\n\n*Koçluk görüşmeleri*\n' + m.sessions.map(s => '💬 ' + s.day + ' · ' + s.time + ' · ' + s.dur).join('\n') : '';
+      const body = '📚 *' + m.name + ' - Haftalık Ders Programı*\n' + m.range + '\n\n' + blocks.join('\n\n') + sessions + '\n\n_Alas Eğitim Koçluk panelinden gönderildi_';
+      const number = (window.KoclukShare && KoclukShare.normalizePhone(phoneFor(st.shareTo || 'guardian'))) || '';
+      window.open('https://wa.me/' + number + '?text=' + encodeURIComponent(body), '_blank');
     }
     function render() {
       const views = { perf: viewPerf, topic: viewTopic, week: viewWeek, alarms: viewAlarms, report: viewReport };
@@ -272,13 +336,15 @@
       if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0);
     }
     root.addEventListener('click', async event => {
-      const t = event.target.closest('[data-tab],[data-week],[data-alarm-filter],[data-alarm],[data-open-topic],#report-print,[data-del-lesson],#add-lesson,#week-share,#week-publish,[data-add-day]'); if (!t) return;
+      const t = event.target.closest('[data-tab],[data-week],[data-alarm-filter],[data-alarm],[data-open-topic],#report-print,[data-del-lesson],#add-lesson,#week-share,#week-publish,[data-add-day],#report-image,#report-pdf,#week-image,#week-pdf'); if (!t) return;
       if (t.dataset.addDay) { st.lessonDate = t.dataset.addDay; renderWeekForm(); document.getElementById('lesson-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
       else if (t.dataset.tab) { st.tab = t.dataset.tab; render(); if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0); }
       else if (t.dataset.week !== undefined) { st.weekOffset = t.dataset.week === '0' ? 0 : st.weekOffset + Number(t.dataset.week); render(); if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0); }
       else if (t.dataset.alarmFilter) { st.alarmFilter = t.dataset.alarmFilter; render(); }
       else if (t.dataset.openTopic) { st.topicKey = t.dataset.openTopic; st.tab = 'topic'; render(); }
       else if (t.dataset.alarm) { const store = alarmStore(), a = store[t.dataset.alarm] || { firstSeen: Date.now() }; if (t.dataset.act === 'resolve') a.status = 'resolved'; else if (t.dataset.act === 'snooze') { a.status = 'snoozed'; a.until = Date.now() + DAY; } else delete a.status; store[t.dataset.alarm] = a; saveAlarms(store); render(); }
+      else if (t.id === 'report-image' || t.id === 'report-pdf') await shareReport(t.id === 'report-pdf');
+      else if (t.id === 'week-image' || t.id === 'week-pdf') await shareWeek(t.id === 'week-pdf');
       else if (t.id === 'report-print') window.print();
       else if (t.dataset.delLesson) {
         if (!confirm('Bu ders programdan silinsin mi?')) return;

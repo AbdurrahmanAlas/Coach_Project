@@ -158,3 +158,9 @@
 @media(max-width:560px){.lf2-field.lf2-wide{grid-column:span 1}}
 .chip-meta{margin-top:3px;font-size:11px;font-weight:750}
 .chip-note{margin-top:4px;padding-top:4px;border-top:1px dashed rgba(30,64,175,.25);font-size:11px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;opacity:.95}
+.report-actions{display:flex;flex-direction:column;gap:8px;min-width:260px}
+.report-actions button{width:100%}
+.report-actions .lf-msg{font-size:12.5px;line-height:1.4;min-height:0}
+.lf2-who{display:flex;align-items:center;gap:8px}
+.lf2-who span{font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#64748b;white-space:nowrap}
+.lf2-who select{padding:9px 12px;border:1px solid #d4d8f5;border-radius:12px;background:#fafaff;font:700 13px inherit;color:#1e1b4b}
