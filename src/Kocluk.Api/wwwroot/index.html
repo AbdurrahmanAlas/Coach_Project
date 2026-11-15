@@ -558,6 +558,8 @@
       const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 12000);
       const requestOptions = { ...options, credentials: 'include', signal: options.signal || controller.signal, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } };
       delete requestOptions.timeoutMs;
+      const activeTenant = localStorage.getItem('tenantId');
+      if (activeTenant && typeof url === 'string' && url.startsWith('/api/student/me/') && !/[?&]tenantId=/.test(url)) url += (url.includes('?') ? '&' : '?') + 'tenantId=' + encodeURIComponent(activeTenant);
       try { return await fetch(url, requestOptions); } finally { clearTimeout(timeout); }
     };
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -1794,7 +1796,7 @@
       }
       // Tenant ve bildirim istekleri panelin ilk görünümünü bloke etmemeli.
       // Dashboard yüklemesi doğrudan başlar; tamamlandığında mevcut shell'i günceller.
-      loadTenants().catch(error => console.warn('Koçluk alanları yüklenemedi', error));
+      await loadTenants().catch(error => console.warn('Koçluk alanları yüklenemedi', error));
       loadNotifications().catch(error => console.warn('Bildirimler yüklenemedi', error));
       if (role === 'Parent') loadParentDashboard().catch(error => console.warn('Veli paneli yüklenemedi', error)); else if (role === 'Student') loadStudentDashboard().catch(error => { console.warn('Öğrenci paneli yüklenemedi', error); content.innerHTML = `<div class="welcome"><div><h1>Merhaba, ${escapeHtml(name)} 👋</h1><p>Öğrenci verileri alınamadı.</p></div><div class="date">Öğrenci paneli</div></div><div class="card section"><div class="section-title"><h2>Panel verileri yüklenemedi</h2><button type="button" class="tag blue" onclick="location.reload()">Yenile</button></div><p style="color:var(--muted);margin:0">Sayfayı yenileyerek tekrar deneyebilirsin.</p></div>`; }); else { loadDashboardData().catch(error => console.warn('Koç paneli yüklenemedi', error)); if (role === 'Admin') loadAdminDashboard().catch(error => console.warn('Yönetim paneli yüklenemedi', error)); }
       // Koç ve admin hesapları her girişte Genel Bakış ile başlamalıdır.
@@ -1826,7 +1828,16 @@
       }
       const selected = tenants.find(x => x.id === localStorage.getItem('tenantId')) || tenants[0];
       localStorage.setItem('tenantId', selected.id);
-      document.getElementById('tenant-name').textContent = `· ${selected.name}`;
+      const tenantLabel = document.getElementById('tenant-name');
+      if (tenants.length > 1) {
+        tenantLabel.textContent = '· ';
+        const switcher = document.createElement('select');
+        switcher.id = 'tenant-switch'; switcher.title = 'Koçluk alanını değiştir';
+        switcher.style.cssText = 'border:1px solid #d9e2ee;border-radius:8px;padding:4px 8px;background:#fff;color:#4f83ff;font:inherit;font-weight:600;max-width:240px';
+        tenants.forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.selected = item.id === selected.id; switcher.appendChild(option); });
+        switcher.addEventListener('change', () => { localStorage.setItem('tenantId', switcher.value); location.reload(); });
+        tenantLabel.appendChild(switcher);
+      } else tenantLabel.textContent = `· ${selected.name}`;
       createButton.classList.add('hidden');
     }
     function closeTenantModal() { document.getElementById('tenant-modal').classList.add('hidden'); }

@@ -508,11 +508,11 @@ app.MapGet("/api/parent/students/{studentId:guid}/overview", async (
     });
 }).RequireAuthorization();
 
-app.MapGet("/api/student/me/overview", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+app.MapGet("/api/student/me/overview", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
     if (student is null) return Results.NotFound();
     var plans = await db.StudyPlans.AsNoTracking().Include(nameof(StudyPlan.Tasks)).Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderByDescending(x => x.WeekStart).ToListAsync(ct);
     var sessions = await db.CoachingSessions.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderBy(x => x.StartsAtUtc).ToListAsync(ct);
@@ -530,11 +530,11 @@ app.MapGet("/api/student/me/overview", async (ClaimsPrincipal principal, UserMan
     return Results.Ok(new { student = ToStudentResponse(student), coaches, plans = plans.Select(ToPlanResponse), sessions = sessions.Select(ToSessionResponse), exams = exams.Select(ToExamResponse), subjects, questionSummary, lessonSlots = lessonSlots.Select(ToLessonSlotResponse) });
 }).RequireAuthorization();
 
-app.MapGet("/api/student/me/availability", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct) =>
+app.MapGet("/api/student/me/availability", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
     if (student is null) return Results.NotFound();
     var availability = await db.CoachAvailabilities.AsNoTracking().Where(x => x.TenantId == student.TenantId).ToListAsync(ct);
     var booked = await db.CoachingSessions.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.Status != "Cancelled" && x.StartsAtUtc >= DateTime.UtcNow.AddMinutes(-1)).ToListAsync(ct);
@@ -565,11 +565,11 @@ app.MapGet("/api/student/me/availability", async (ClaimsPrincipal principal, Use
     return Results.Ok(slots.OrderBy(x => x.StartsAtUtc).ThenBy(x => x.DurationMinutes).Take(120));
 }).RequireAuthorization();
 
-app.MapGet("/api/student/me/insights", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+app.MapGet("/api/student/me/insights", async (ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
     if (student is null) return Results.NotFound();
     var exams = await db.ExamAttempts.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).OrderByDescending(x => x.ExamDate).Take(8).ToListAsync(ct);
     var subjects = await db.SubjectProgresses.AsNoTracking().Where(x => x.TenantId == student.TenantId && x.StudentId == student.Id).ToListAsync(ct);
@@ -585,11 +585,11 @@ app.MapGet("/api/student/me/insights", async (ClaimsPrincipal principal, UserMan
     return Results.Ok(new { generatedAtUtc = DateTime.UtcNow, insights });
 }).RequireAuthorization();
 
-app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct) =>
+app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, IConfiguration configuration, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal);
     if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct);
     if (student is null) return Results.NotFound(new { error = "Öğrenci profili bulunamadı." });
     try
     {
@@ -613,19 +613,19 @@ app.MapPost("/api/student/me/session-requests", async (CreateSessionRequest requ
     }
     catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
-app.MapPost("/api/student/me/session-requests/{sessionId:guid}/cancel", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+app.MapPost("/api/student/me/session-requests/{sessionId:guid}/cancel", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "Pending", ct);
     if (session is null) return Results.NotFound(new { error = "Bekleyen görüşme talebi bulunamadı." });
     session.Cancel(); await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "Cancelled", "CoachingSession", session.Id, "StudentRequest", ct); return Results.Ok(ToSessionResponse(session));
 }).RequireAuthorization();
 
-app.MapPost("/api/student/me/session-requests/{sessionId:guid}/confirm", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+app.MapPost("/api/student/me/session-requests/{sessionId:guid}/confirm", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "PendingStudent", ct);
     if (session is null) return Results.NotFound(new { error = "Öğrenci onayı bekleyen randevu bulunamadı." });
     session.Confirm();
@@ -634,10 +634,10 @@ app.MapPost("/api/student/me/session-requests/{sessionId:guid}/confirm", async (
     await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "StudentConfirmed", "CoachingSession", sessionId, "CoachProposal", ct); return Results.Ok(ToSessionResponse(session));
 }).RequireAuthorization();
 
-app.MapPost("/api/student/me/session-requests/{sessionId:guid}/reject", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct) =>
+app.MapPost("/api/student/me/session-requests/{sessionId:guid}/reject", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
 {
     var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
-    var student = await db.Students.AsNoTracking().Where(x => x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email)).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "PendingStudent", ct);
     if (session is null) return Results.NotFound(new { error = "Öğrenci onayı bekleyen randevu bulunamadı." });
     session.Reject();
