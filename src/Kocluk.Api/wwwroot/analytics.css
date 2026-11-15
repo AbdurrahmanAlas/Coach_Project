@@ -153,3 +153,8 @@
 .week-col:hover .week-add,.week-add:focus-visible{opacity:1}
 .week-add:hover{background:#eef2ff}
 @media(hover:none){.week-add{opacity:1}}
+.lf2-field.lf2-wide{grid-column:span 2}
+@media(max-width:900px){.lf2-field.lf2-wide{grid-column:span 2}}
+@media(max-width:560px){.lf2-field.lf2-wide{grid-column:span 1}}
+.chip-meta{margin-top:3px;font-size:11px;font-weight:750}
+.chip-note{margin-top:4px;padding-top:4px;border-top:1px dashed rgba(30,64,175,.25);font-size:11px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;opacity:.95}

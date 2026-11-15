@@ -1,9 +1,9 @@
 /* Öğrenci ve veli takvim sayfaları: koçun hazırladığı ders programı, görevler, koçluk görüşmeleri ve konu başarısı. */
 (() => {
-  const DAY = 86400000;
-  const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  const DOW = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
   const key = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
-  const weekStart = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const windowStart = offset => { const x = new Date(); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + (offset || 0) * 7); return x; };
+  const windowDays = offset => { const s = windowStart(offset); return [...Array(7)].map((_, i) => { const d = new Date(s); d.setDate(s.getDate() + i); return d; }); };
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const lessonLabel = l => (l.examType ? (l.examType === 'YÖS' ? 'TR-YÖS' : l.examType) + ' · ' : '') + l.subject;
   const hhmm = t => String(t || '').slice(0, 5);
@@ -27,9 +27,7 @@
 
     function view() {
       const o = st.overview;
-      const start = weekStart(Date.now() + st.weekOffset * 7 * DAY);
-      const days = [...Array(7)].map((_, i) => new Date(start.getTime() + i * DAY));
-      const keys = days.map(key), todayKey = key(new Date());
+      const days = windowDays(st.weekOffset), keys = days.map(key), todayKey = key(new Date());
       const lessons = (o.lessonSlots || []).filter(l => keys.includes(l.date));
       const tasks = (o.plans || []).flatMap(p => p.tasks || []).filter(t => keys.includes(String(t.dueDate).slice(0, 10)));
       const sessions = (o.sessions || []).filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(s.startsAtUtc)));
@@ -38,25 +36,27 @@
       const topics = ((st.summary && st.summary.byTopic) || []).slice().sort((a, b) => b.total - a.total).slice(0, 6);
       const rate = st.summary ? st.summary.rate : 0;
       const tone = r => r >= 75 ? 'good' : r >= 50 ? 'mid' : 'low';
+      const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
       const picker = st.kids.length > 1
         ? `<div class="perf-bar"><label>Öğrenci<select id="cal-kid">${st.kids.map(k => `<option value="${esc(k.id)}" ${k.id === st.kidId ? 'selected' : ''}>${esc(k.firstName + ' ' + (k.lastName || ''))}</option>`).join('')}</select></label></div>`
         : '';
       const who = o.student ? esc((o.student.firstName + ' ' + (o.student.lastName || '')).trim()) : '';
+      const lessonChip = l => `<div class="chip lesson" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + (l.note ? ' · ' + l.note : ''))}"><b class="chip-time">${hhmm(l.startTime)}${l.endTime ? ' – ' + hhmm(l.endTime) : ''}</b><strong>${esc(lessonLabel(l))}</strong>${l.topic ? '<small class="chip-topic">' + esc(l.topic.replace(/^.* - /, '')) + '</small>' : ''}${l.questionCount ? '<small class="chip-meta">✏️ ' + l.questionCount + ' soru</small>' : ''}${l.note ? '<small class="chip-note">📝 ' + esc(l.note) + '</small>' : ''}</div>`;
+      const sessionChip = s => `<div class="chip session"><b class="chip-time">${clock(s.startsAtUtc)}</b><strong>Koçluk görüşmesi</strong><small class="chip-topic">${s.durationMinutes} dk</small></div>`;
+      const taskChip = (t, k) => `<div class="chip ${t.isCompleted ? 'done' : (k < todayKey ? 'late' : 'todo')}"><strong>${esc(t.title)}</strong><small class="chip-topic">${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</small></div>`;
+      const column = (d, i) => {
+        const k = keys[i], isToday = k === todayKey;
+        const body = lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime)).map(lessonChip).join('')
+          + sessions.filter(s => key(s.startsAtUtc) === k).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(sessionChip).join('')
+          + tasks.filter(t => String(t.dueDate).slice(0, 10) === k).map(t => taskChip(t, k)).join('');
+        return `<div class="week-col ${isToday ? 'today' : ''}"><div class="week-head"><div class="wh-day"><b>${DOW[d.getDay()]}</b>${isToday ? '<em>Bugün</em>' : ''}</div><div class="wh-date"><span>${d.getDate()}</span><small>${d.toLocaleDateString('tr-TR', { month: 'short' })}</small></div></div><div class="week-items">${body || '<div class="week-none">Boş gün</div>'}</div></div>`;
+      };
 
       return `${picker}
-      <div class="week-nav"><button type="button" data-cal-week="-1">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-cal-week="1">›</button>${st.weekOffset ? '<button type="button" data-cal-week="0" class="today">Bu hafta</button>' : ''}</div>
-      <div class="perf-stats compact">${stat('📚', 'Bu haftaki ders', lessons.length, 'indigo')}${stat('🗒️', 'Görev (biten / toplam)', doneTasks + ' / ' + tasks.length, 'teal')}${stat('💬', 'Koçluk görüşmesi', sessions.length, 'violet')}${stat('🎯', 'Genel soru başarısı', '%' + Math.round(rate), 'amber')}</div>
-      <div class="week-grid">${days.map((d, i) => {
-        const k = keys[i];
-        const ls = lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime));
-        const ss = sessions.filter(s => key(s.startsAtUtc) === k);
-        const ts = tasks.filter(t => String(t.dueDate).slice(0, 10) === k);
-        const body = ls.map(l => `<div class="chip lesson" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : ''))}"><b>${hhmm(l.startTime)}${l.endTime ? ' – ' + hhmm(l.endTime) : ''}</b><span>${esc(lessonLabel(l))}</span>${l.topic ? '<small class="chip-topic">' + esc(l.topic.replace(/^.* - /, '')) + '</small>' : ''}</div>`).join('')
-          + ss.map(s => `<div class="chip session"><b>${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</b><span>Koçluk görüşmesi · ${s.durationMinutes} dk</span></div>`).join('')
-          + ts.map(t => `<div class="chip ${t.isCompleted ? 'done' : (k < todayKey ? 'late' : 'todo')}"><b>${esc(t.title)}</b><span>${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</span></div>`).join('');
-        return `<div class="week-col ${k === todayKey ? 'today' : ''}"><div class="week-head"><b>${DAYS[i]}</b><span>${d.getDate()}</span></div>${body || '<div class="week-none">—</div>'}</div>`;
-      }).join('')}</div>
+      <div class="perf-stats compact">${stat('📚', 'Bu 7 günde ders', lessons.length, 'indigo')}${stat('🗒️', 'Görev (biten / toplam)', doneTasks + ' / ' + tasks.length, 'teal')}${stat('💬', 'Koçluk görüşmesi', sessions.length, 'violet')}${stat('🎯', 'Genel soru başarısı', '%' + Math.round(rate), 'amber')}</div>
+      <div class="week-nav"><button type="button" data-cal-week="-1" aria-label="Önceki 7 gün">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-cal-week="1" aria-label="Sonraki 7 gün">›</button>${st.weekOffset ? '<button type="button" data-cal-week="0" class="today">Bugüne dön</button>' : '<em class="week-note">Bugünden itibaren 7 gün</em>'}</div>
+      <div class="week-grid">${days.map(column).join('')}</div>
       <div class="week-legend"><span class="d lesson"></span>Ders<span class="d done"></span>Tamamlandı<span class="d todo"></span>Bekliyor<span class="d late"></span>Geciken<span class="d session"></span>Görüşme</div>
       <h3 class="perf-h">Konu bazlı başarı ${who ? '<span class="tag">' + who + '</span>' : ''}</h3>
       ${topics.length ? `<div class="perf-topics">${topics.map(t => `<div class="topic-card ${tone(t.rate)}"><div class="topic-top"><div><strong>${esc(t.subject)}</strong><small>${esc(t.topic)}</small></div><span class="topic-rate">%${Math.round(t.rate)}</span></div><div class="topic-bar"><span style="width:${Math.min(100, t.rate)}%"></span></div><small>${t.correct} doğru / ${t.total} soru</small></div>`).join('')}</div>` : empty('Henüz çözülmüş soru yok', 'Koçun atadığı soruları çözdükçe konu bazlı başarı burada görünür.')}`;

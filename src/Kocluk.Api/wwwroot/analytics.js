@@ -26,7 +26,7 @@
   window.loadPerformancePage = async function (ctx) {
     const { authRequest, escapeHtml: esc, tenantId } = ctx;
     const content = document.querySelector('.content');
-    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'perf', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonMsg: '', lessonMsgErr: false };
+    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'perf', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonNote: '', lessonQuestions: '', lessonMsg: '', lessonMsgErr: false };
     content.innerHTML = '<div class="welcome"><div><h1>Performans & analiz</h1><p>Öğrencinin çalışma, soru çözümü ve plan verilerini tek ekranda izle.</p></div></div><div id="perf-root" class="perf"><div class="perf-empty">Yükleniyor…</div></div>';
     const root = document.getElementById('perf-root');
 
@@ -110,7 +110,7 @@
       } catch { return { ok: false, data: null }; }
     };
     const withSeconds = t => (t && t.length === 5 ? t + ':00' : t || null);
-    const lessonBody = l => ({ date: l.date, startTime: withSeconds(l.startTime), endTime: withSeconds(l.endTime), examType: l.examType, subject: l.subject, topic: l.topic || null, note: l.note || null });
+    const lessonBody = l => ({ date: l.date, startTime: withSeconds(l.startTime), endTime: withSeconds(l.endTime), examType: l.examType, subject: l.subject, topic: l.topic || null, note: l.note || null, questionCount: l.questionCount ? Number(l.questionCount) : null });
     async function importLegacyLessons() {
       const legacyKey = 'kocluk-lessons-' + st.studentId;
       let legacy = []; try { legacy = JSON.parse(localStorage.getItem(legacyKey) || '[]'); } catch { }
@@ -131,7 +131,7 @@
       const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       const span = l => l.startTime.slice(0, 5) + (l.endTime ? ' – ' + l.endTime.slice(0, 5) : '');
       const overdue = st.weekOffset === 0 ? st.data.tasks.filter(t => !t.isCompleted && t.dueDate < todayKey) : [];
-      const lessonChip = l => `<div class="chip lesson" draggable="true" data-lesson-id="${esc(l.id)}" data-lesson-date="${l.date}" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + ' · ' + span(l))}"><b class="chip-time">${span(l)}</b><strong>${esc(lessonLabel(l))}</strong>${l.topic ? `<small class="chip-topic">${esc(l.topic.replace(/^.* - /, ''))}</small>` : ''}<button type="button" class="chip-del" data-del-lesson="${esc(l.id)}" aria-label="Dersi sil">✕</button></div>`;
+      const lessonChip = l => `<div class="chip lesson" draggable="true" data-lesson-id="${esc(l.id)}" data-lesson-date="${l.date}" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + (l.questionCount ? ' · ' + l.questionCount + ' soru' : '') + (l.note ? ' · ' + l.note : '') + ' · ' + span(l))}"><b class="chip-time">${span(l)}</b><strong>${esc(lessonLabel(l))}</strong>${l.topic ? `<small class="chip-topic">${esc(l.topic.replace(/^.* - /, ''))}</small>` : ''}${l.questionCount ? `<small class="chip-meta">✏️ ${l.questionCount} soru</small>` : ''}${l.note ? `<small class="chip-note">📝 ${esc(l.note)}</small>` : ''}<button type="button" class="chip-del" data-del-lesson="${esc(l.id)}" aria-label="Dersi sil">✕</button></div>`;
       const sessionChip = s => `<div class="chip session"><b class="chip-time">${clock(s.startsAtUtc)}</b><strong>Koçluk görüşmesi</strong><small class="chip-topic">${s.durationMinutes} dk</small></div>`;
       const taskChip = t => `<div class="chip ${cls(t)}" title="${esc(t.planTitle || '')}"><strong>${esc(t.title)}</strong><small class="chip-topic">${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</small></div>`;
       const column = (d, i) => {
@@ -215,6 +215,8 @@
           <label class="lf2-field"><span>Gün</span><select id="lesson-date">${days.map((d, i) => opt(dayKeys[i], DOW[d.getDay()] + ' · ' + d.getDate() + ' ' + d.toLocaleDateString('tr-TR', { month: 'long' }) + (dayKeys[i] === todayKey ? ' (Bugün)' : ''), dayKeys[i] === st.lessonDate)).join('')}</select></label>
           <label class="lf2-field"><span>Başlangıç saati</span><input id="lesson-start" type="time" value="${esc(st.lessonStart)}"></label>
           <label class="lf2-field"><span>Bitiş saati</span><input id="lesson-end" type="time" value="${esc(st.lessonEnd)}"></label>
+          <label class="lf2-field"><span>Soru sayısı <em>(isteğe bağlı)</em></span><input id="lesson-questions" type="number" min="1" max="1000" inputmode="numeric" placeholder="Örn: 40" value="${esc(st.lessonQuestions)}"></label>
+          <label class="lf2-field lf2-wide"><span>Not / açıklama <em>(isteğe bağlı)</em></span><input id="lesson-note" type="text" maxlength="500" placeholder="Örn: Önce konu özetini oku, sonra 40 soru çöz" value="${esc(st.lessonNote)}"></label>
         </div>
         <div class="lf2-foot"><span class="lf-msg ${st.lessonMsgErr ? 'err' : ''}">${esc(st.lessonMsg || '')}</span><button type="button" id="add-lesson" class="primary">＋ Derse ekle</button></div>
         <div class="lf2-share"><div><b>Bu 7 günlük programı paylaş</b><span>Öğrenciye ve velisine bildirim gönder ya da WhatsApp ile ilet.</span></div><div class="lf2-share-actions"><button type="button" id="week-publish" class="lf-pub">📣 Öğrenci ve veliye gönder</button><button type="button" id="week-share" class="lf-wa">📱 WhatsApp ile paylaş</button></div></div>
@@ -226,6 +228,8 @@
       bind('lesson-date', e => { st.lessonDate = e.target.value; });
       bind('lesson-start', e => { st.lessonStart = e.target.value; });
       bind('lesson-end', e => { st.lessonEnd = e.target.value; });
+      bind('lesson-questions', e => { st.lessonQuestions = e.target.value; });
+      bind('lesson-note', e => { st.lessonNote = e.target.value; });
       setupDragDrop();
     }
     function setupDragDrop() {
@@ -255,7 +259,7 @@
       const blocks = days.map(d => {
         const ls = lessons.filter(l => l.date === key(d)).sort((a, b) => a.startTime.localeCompare(b.startTime));
         if (!ls.length) return '';
-        return '*' + d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) + '*\n' + ls.map(l => '🕐 ' + l.startTime.slice(0, 5) + (l.endTime ? ' - ' + l.endTime.slice(0, 5) : '') + '  ' + lessonLabel(l) + (l.topic ? '\n     ▫️ ' + l.topic : '')).join('\n');
+        return '*' + d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }) + '*\n' + ls.map(l => '🕐 ' + l.startTime.slice(0, 5) + (l.endTime ? ' - ' + l.endTime.slice(0, 5) : '') + '  ' + lessonLabel(l) + (l.topic ? '\n     ▫️ ' + l.topic : '') + (l.questionCount ? '\n     ✏️ ' + l.questionCount + ' soru' : '') + (l.note ? '\n     📝 ' + l.note : '')).join('\n');
       }).filter(Boolean);
       const text = '📚 *' + studentName() + ' - Haftalık Ders Programı*\n' + range + '\n\n' + blocks.join('\n\n') + '\n\n_Koçluk panelinden gönderildi_';
       const url = 'https://wa.me/?text=' + encodeURIComponent(text);
@@ -293,14 +297,18 @@
         st.lessonDate = document.getElementById('lesson-date')?.value || st.lessonDate;
         st.lessonStart = document.getElementById('lesson-start')?.value || '';
         st.lessonEnd = document.getElementById('lesson-end')?.value || '';
+        st.lessonQuestions = document.getElementById('lesson-questions')?.value || '';
+        st.lessonNote = (document.getElementById('lesson-note')?.value || '').trim();
+        const questionCount = st.lessonQuestions ? Number(st.lessonQuestions) : null;
         const subj = getSubjectsByExam(st.lessonExamType).find(s => s.code === st.lessonSubject);
         const fail = msg => { st.lessonMsg = msg; st.lessonMsgErr = true; };
         if (!subj) fail('Önce bir ders seç.');
         else if (!st.lessonStart) fail('Başlangıç saatini gir.');
         else if (st.lessonEnd && st.lessonEnd <= st.lessonStart) fail('Bitiş saati başlangıçtan sonra olmalı.');
+        else if (questionCount !== null && !(Number.isInteger(questionCount) && questionCount >= 1 && questionCount <= 1000)) fail('Soru sayısı 1 ile 1000 arasında bir sayı olmalı.');
         else {
-          const r = await api('POST', '/students/' + st.studentId + '/lesson-slots', lessonBody({ date: st.lessonDate, examType: st.lessonExamType, subject: subj.name, topic: st.lessonTopic, startTime: st.lessonStart, endTime: st.lessonEnd }));
-          if (r.ok) { st.data.lessons.push(r.data); st.lessonMsg = 'Ders eklendi.'; st.lessonMsgErr = false; }
+          const r = await api('POST', '/students/' + st.studentId + '/lesson-slots', lessonBody({ date: st.lessonDate, examType: st.lessonExamType, subject: subj.name, topic: st.lessonTopic, startTime: st.lessonStart, endTime: st.lessonEnd, note: st.lessonNote, questionCount }));
+          if (r.ok) { st.data.lessons.push(r.data); st.lessonMsg = 'Ders eklendi.'; st.lessonMsgErr = false; st.lessonNote = ''; st.lessonQuestions = ''; }
           else fail(r.data?.error || 'Ders kaydedilemedi.');
         }
         render();

@@ -215,6 +215,7 @@ if (app.Environment.IsDevelopment())
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS ResourceAssignments (Id TEXT NOT NULL CONSTRAINT PK_ResourceAssignments PRIMARY KEY, TenantId TEXT NOT NULL, ResourceId TEXT NOT NULL, StudentId TEXT NOT NULL, AssignedByUserId TEXT NULL, DueDateUtc TEXT NULL, Note TEXT NULL, Status TEXT NOT NULL, AssignedAtUtc TEXT NOT NULL, OpenedAtUtc TEXT NULL);");
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ResourceAssignments_TenantId_StudentId_Status_AssignedAtUtc ON ResourceAssignments (TenantId, StudentId, Status, AssignedAtUtc);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS LessonSlots (Id TEXT NOT NULL CONSTRAINT PK_LessonSlots PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, CreatedByUserId TEXT NULL, Date TEXT NOT NULL, StartTime TEXT NOT NULL, EndTime TEXT NULL, ExamType TEXT NOT NULL, Subject TEXT NOT NULL, Topic TEXT NULL, Note TEXT NULL, CreatedAtUtc TEXT NOT NULL);");
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE LessonSlots ADD COLUMN QuestionCount INTEGER NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_TenantId_StudentId_Date ON LessonSlots (TenantId, StudentId, Date);");
     }
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
@@ -1301,7 +1302,7 @@ tenantApi.MapPost("/students/{studentId:guid}/lesson-slots", async (Guid tenantI
     if (!await db.Students.AsNoTracking().AnyAsync(x => x.TenantId == tenantId && x.Id == studentId, ct)) return Results.NotFound();
     try
     {
-        var slot = new LessonSlot(tenantId, studentId, userId, request.Date, request.StartTime, request.EndTime, request.ExamType, request.Subject, request.Topic, request.Note);
+        var slot = new LessonSlot(tenantId, studentId, userId, request.Date, request.StartTime, request.EndTime, request.ExamType, request.Subject, request.Topic, request.Note, request.QuestionCount);
         db.LessonSlots.Add(slot);
         await db.SaveChangesAsync(ct);
         return Results.Created($"/api/tenants/{tenantId}/lesson-slots/{slot.Id}", ToLessonSlotResponse(slot));
@@ -1315,7 +1316,7 @@ tenantApi.MapPut("/lesson-slots/{slotId:guid}", async (Guid tenantId, Guid slotI
     if (slot is null) return Results.NotFound();
     try
     {
-        slot.Update(request.Date, request.StartTime, request.EndTime, request.ExamType, request.Subject, request.Topic, request.Note);
+        slot.Update(request.Date, request.StartTime, request.EndTime, request.ExamType, request.Subject, request.Topic, request.Note, request.QuestionCount);
         await db.SaveChangesAsync(ct);
         return Results.Ok(ToLessonSlotResponse(slot));
     }
@@ -2020,7 +2021,7 @@ static StudentResponse ToStudentResponse(Student student, StudentGuardian? guard
     AccountLinked = accountLinked ?? student.ApplicationUserId.HasValue
 };
 static CoachingSessionResponse ToSessionResponse(CoachingSession session) => new(session.Id, session.StudentId, session.StartsAtUtc, session.DurationMinutes, session.Note, session.Status);
-static LessonSlotResponse ToLessonSlotResponse(LessonSlot slot) => new(slot.Id, slot.StudentId, slot.Date, slot.StartTime, slot.EndTime, slot.ExamType, slot.Subject, slot.Topic, slot.Note);
+static LessonSlotResponse ToLessonSlotResponse(LessonSlot slot) => new(slot.Id, slot.StudentId, slot.Date, slot.StartTime, slot.EndTime, slot.ExamType, slot.Subject, slot.Topic, slot.Note, slot.QuestionCount);
 static ExamResponse ToExamResponse(ExamAttempt exam) => new(exam.Id, exam.StudentId, exam.Title, exam.ExamDate, exam.Correct, exam.Wrong, exam.Blank, exam.Score);
 static StudyPlanResponse ToPlanResponse(StudyPlan plan) => new(
     plan.Id, plan.TenantId, plan.StudentId, plan.Title, plan.WeekStart,
@@ -2074,9 +2075,9 @@ public sealed record QuestionAssignmentCompleteRequest(string? Answer, bool? IsC
 public sealed record QuestionAssignmentResponse(Guid Id, Guid TenantId, Guid QuestionBankItemId, Guid StudentId, string? StudentName, string Subject, string Topic, string Prompt, string Difficulty, string ExamType, string QuestionType, string? OptionsJson, DateTime? DueDateUtc, string? Note, string Status, string? ErrorReason, string? StudentNote, DateTime AssignedAtUtc, DateTime? CompletedAtUtc, bool? IsCorrect = null, string? CorrectAnswer = null, string? Explanation = null);
 public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, DateTime? DueDateUtc, string? Note);
 public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
-public sealed record LessonSlotRequest(DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note);
+public sealed record LessonSlotRequest(DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note, int? QuestionCount = null);
 public sealed record PublishLessonScheduleRequest(DateOnly WeekStart);
-public sealed record LessonSlotResponse(Guid Id, Guid StudentId, DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note);
+public sealed record LessonSlotResponse(Guid Id, Guid StudentId, DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note, int? QuestionCount);
 public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
 
 
