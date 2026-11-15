@@ -11,7 +11,7 @@
   <script src="/exam-data.js?v=20261116000000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
   <script src="/modal-questions.js?v=20261108254000"></script>
-  <script src="/modal-worksheet.js?v=20261108254000"></script>
+  <script src="/modal-worksheet.js?v=20261116010000"></script>
   <script src="/worksheet.js?v=20261108260000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -458,15 +458,7 @@
           <label style="display:flex;align-items:center;gap:8px;color:#52627a;font-size:12px;cursor:pointer"><input id="w-select-all-students" type="checkbox" style="width:16px;height:16px"> Tüm öğrencilere gönder</label>
         </div>
 
-        <div class="w-section-title">1️⃣ Sınav Türü Seç</div>
-        <div class="w-exam-buttons">
-          <button type="button" class="w-exam-btn" data-exam="LGS">🎓 LGS</button>
-          <button type="button" class="w-exam-btn" data-exam="TYT">📝 TYT</button>
-          <button type="button" class="w-exam-btn" data-exam="AYT">📊 AYT</button>
-          <button type="button" class="w-exam-btn" data-exam="KPSS">💼 KPSS</button>
-          <button type="button" class="w-exam-btn" data-exam="YÖS">🌍 YÖS</button>
-          <button type="button" class="w-exam-btn" data-exam="DGS">📈 DGS</button>
-        </div>
+        <div><label class="w-label">1️⃣ Sınav Türü *</label><select id="w-exam" class="w-select" required style="margin-bottom:16px"><option value="">Sınav türü seç</option></select></div>
 
         <div class="w-grid">
           <div><label class="w-label">📚 Ders *</label><select id="w-subject" class="w-select" required><option value="">Sınav türü seç</option></select></div>

@@ -32,8 +32,9 @@ class WorksheetModal {
 
     // Prefill data varsa ekle
     if (prefillData.examType) {
+      const examSelect = document.getElementById('w-exam');
+      if (examSelect) examSelect.value = prefillData.examType;
       this.examType = prefillData.examType;
-      this.selectExam(prefillData.examType);
       this.populateSubjects(prefillData.examType);
 
       if (prefillData.subject) {
@@ -99,13 +100,13 @@ class WorksheetModal {
     const form = document.getElementById('w-form');
     if (form) form.reset();
 
+    const examSelect = document.getElementById('w-exam');
+    if (examSelect) examSelect.value = '';
+
     document.getElementById('w-subject').innerHTML = '<option value="">Sınav türü seç</option>';
     document.getElementById('w-topic').innerHTML = '<option value="">Ders seç</option>';
     document.getElementById('w-status').innerHTML = '';
     document.getElementById('w-status').classList.add('hidden');
-
-    // Sınav düğmelerini pasif yap
-    document.querySelectorAll('.w-exam-btn').forEach(btn => btn.classList.remove('active'));
 
     // Dosya seçimini sıfırla
     const fileInput = document.getElementById('w-file');
@@ -122,9 +123,6 @@ class WorksheetModal {
   // Sınav türü seç
   selectExam(examCode) {
     this.examType = examCode;
-    document.querySelectorAll('.w-exam-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.exam === examCode);
-    });
     this.populateSubjects(examCode);
     document.getElementById('w-topic').innerHTML = '<option value="">Ders seç</option>';
   }
@@ -165,7 +163,7 @@ class WorksheetModal {
   init() {
     const studentSelect = document.getElementById('w-student');
     const selectAllCheckbox = document.getElementById('w-select-all-students');
-    const examButtons = document.querySelectorAll('.w-exam-btn');
+    const examSelect = document.getElementById('w-exam');
     const subjectSelect = document.getElementById('w-subject');
     const topicSelect = document.getElementById('w-topic');
     const closeBtn = document.getElementById('w-close');
@@ -194,13 +192,12 @@ class WorksheetModal {
       });
     }
 
-    // Sınav türü düğmeleri
-    examButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.selectExam(btn.dataset.exam);
+    // Sınav türü dropdown'ı
+    if (examSelect) {
+      examSelect.addEventListener('change', (e) => {
+        this.selectExam(e.target.value);
       });
-    });
+    }
 
     if (subjectSelect) {
       subjectSelect.addEventListener('change', (e) => {
@@ -251,6 +248,17 @@ class WorksheetModal {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         await this.submit();
+      });
+    }
+
+    // Sınav türlerini dropdown'a ekle
+    if (examSelect && typeof getExamTypes === 'function') {
+      const exams = getExamTypes();
+      exams.forEach(exam => {
+        const option = document.createElement('option');
+        option.value = exam.code;
+        option.textContent = exam.name;
+        examSelect.appendChild(option);
       });
     }
   }
