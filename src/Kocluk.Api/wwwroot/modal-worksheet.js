@@ -129,36 +129,42 @@ class WorksheetModal {
     document.getElementById('w-topic').innerHTML = '<option value="">Ders seç</option>';
   }
 
-  // Dersleri populate et
-  populateSubjects(examType) {
+  // Dersleri populate et (async)
+  async populateSubjects(examType) {
     const select = document.getElementById('w-subject');
-    select.innerHTML = '<option value="">Ders seç</option>';
+    select.innerHTML = '<option value="">Yükleniyor...</option>';
 
-    if (!examType || typeof getSubjectsByExam !== 'function') return;
+    if (!examType) { select.innerHTML = '<option value="">Ders seç</option>'; return; }
 
-    const subjects = getSubjectsByExam(examType);
-    subjects.forEach(subject => {
-      const option = document.createElement('option');
-      option.value = subject.code;
-      option.textContent = subject.name;
-      select.appendChild(option);
-    });
+    try {
+      const subjects = await CurriculumManager.getSubjectsByExam(examType);
+      select.innerHTML = '<option value="">Ders seç</option>';
+      subjects.forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject.id;
+        option.textContent = subject.name;
+        select.appendChild(option);
+      });
+    } catch (e) { console.error('Dersler yüklenemedi:', e); select.innerHTML = '<option value="">Hata</option>'; }
   }
 
-  // Konuları populate et
-  populateTopics(examType, subject) {
+  // Konuları populate et (async)
+  async populateTopics(examType, subject) {
     const select = document.getElementById('w-topic');
-    select.innerHTML = '<option value="">Konu seç</option>';
+    select.innerHTML = '<option value="">Yükleniyor...</option>';
 
-    if (!examType || !subject || typeof getTopicsByExamAndSubject !== 'function') return;
+    if (!examType || !subject) { select.innerHTML = '<option value="">Konu seç</option>'; return; }
 
-    const topics = getTopicsByExamAndSubject(examType, subject);
-    topics.forEach(topic => {
-      const option = document.createElement('option');
-      option.value = topic;
-      option.textContent = topic;
-      select.appendChild(option);
-    });
+    try {
+      const topics = await CurriculumManager.getTopicsBySubject(subject);
+      select.innerHTML = '<option value="">Konu seç</option>';
+      topics.forEach(topic => {
+        const option = document.createElement('option');
+        option.value = topic.name;
+        option.textContent = topic.name;
+        select.appendChild(option);
+      });
+    } catch (e) { console.error('Konular yüklenemedi:', e); select.innerHTML = '<option value="">Hata</option>'; }
   }
 
   // Initialize - Event listener'ları ekle

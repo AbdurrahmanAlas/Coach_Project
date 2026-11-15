@@ -82,35 +82,41 @@ class QuestionModal {
   }
 
   // Dersleri populate et
-  populateSubjects(examType) {
+  async populateSubjects(examType) {
     const select = document.getElementById('q-subject');
-    select.innerHTML = '<option value="">Ders seç</option>';
+    select.innerHTML = '<option value="">Yükleniyor...</option>';
 
-    if (!examType || typeof getSubjectsByExam !== 'function') return;
+    if (!examType) { select.innerHTML = '<option value="">Ders seç</option>'; return; }
 
-    const subjects = getSubjectsByExam(examType);
-    subjects.forEach(subject => {
-      const option = document.createElement('option');
-      option.value = subject.code;
-      option.textContent = subject.name;
-      select.appendChild(option);
-    });
+    try {
+      const subjects = await CurriculumManager.getSubjectsByExam(examType);
+      select.innerHTML = '<option value="">Ders seç</option>';
+      subjects.forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject.id;
+        option.textContent = subject.name;
+        select.appendChild(option);
+      });
+    } catch (e) { console.error('Dersler yüklenemedi:', e); select.innerHTML = '<option value="">Hata</option>'; }
   }
 
   // Konuları populate et
-  populateTopics(examType, subject) {
+  async populateTopics(examType, subject) {
     const select = document.getElementById('q-topic');
-    select.innerHTML = '<option value="">Konu seç</option>';
+    select.innerHTML = '<option value="">Yükleniyor...</option>';
 
-    if (!examType || !subject || typeof getTopicsByExamAndSubject !== 'function') return;
+    if (!examType || !subject) { select.innerHTML = '<option value="">Konu seç</option>'; return; }
 
-    const topics = getTopicsByExamAndSubject(examType, subject);
-    topics.forEach(topic => {
-      const option = document.createElement('option');
-      option.value = topic;
-      option.textContent = topic;
-      select.appendChild(option);
-    });
+    try {
+      const topics = await CurriculumManager.getTopicsBySubject(subject);
+      select.innerHTML = '<option value="">Konu seç</option>';
+      topics.forEach(topic => {
+        const option = document.createElement('option');
+        option.value = topic.name;
+        option.textContent = topic.name;
+        select.appendChild(option);
+      });
+    } catch (e) { console.error('Konular yüklenemedi:', e); select.innerHTML = '<option value="">Hata</option>'; }
   }
 
   // Initialize - Dropdown event listener'ları ekle
@@ -186,14 +192,15 @@ class QuestionModal {
     }
 
     // Sınav türlerini initial populate et
-    if (examSelect && typeof getExamTypes === 'function') {
-      const exams = getExamTypes();
-      exams.forEach(exam => {
-        const option = document.createElement('option');
-        option.value = exam.code;
-        option.textContent = exam.name;
-        examSelect.appendChild(option);
-      });
+    if (examSelect) {
+      CurriculumManager.getExams().then(exams => {
+        exams.forEach(exam => {
+          const option = document.createElement('option');
+          option.value = exam.id;
+          option.textContent = exam.name;
+          examSelect.appendChild(option);
+        });
+      }).catch(e => console.error('Sınavlar yüklenemedi:', e));
     }
   }
 

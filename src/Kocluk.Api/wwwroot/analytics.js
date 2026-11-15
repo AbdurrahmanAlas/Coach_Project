@@ -34,22 +34,31 @@
     if (!st.students.length) { root.innerHTML = '<div class="perf-empty"><div class="perf-emoji">🎓</div><strong>Henüz öğrenci yok</strong><p>Öğrenci ekledikten sonra analizleri burada görürsün.</p></div>'; return; }
     if (!st.students.some(s => s.id === st.studentId)) st.studentId = st.students[0].id;
 
-    // Müfredat verisi yükle (API'den)
+    // Müfredat verisi yükle (API'den) - window.curriculum'a da kaydet
     async function loadCurriculum() {
       try {
         const exams = await (await fetch('/api/curriculum/exams')).json();
-        const curriculum = { exams: {}, subjects: {}, topics: {} };
+        st.curriculum = { exams: {}, subjects: {}, topics: {} };
+        if (!Array.isArray(exams)) throw new Error('Sınavlar yüklenemedi');
+
         for (const exam of exams) {
-          curriculum.exams[exam.id] = exam;
-          const subjs = await (await fetch('/api/curriculum/exams/' + exam.id + '/subjects')).json();
-          for (const subj of subjs) {
-            curriculum.subjects[subj.id] = { ...subj, examId: exam.id };
-            const tops = await (await fetch('/api/curriculum/subjects/' + subj.id + '/topics')).json();
-            curriculum.topics[subj.id] = tops;
-          }
+          st.curriculum.exams[exam.id] = exam;
+          try {
+            const subjs = await (await fetch('/api/curriculum/exams/' + exam.id + '/subjects')).json();
+            if (Array.isArray(subjs)) {
+              for (const subj of subjs) {
+                st.curriculum.subjects[subj.id] = { ...subj, examId: exam.id };
+                try {
+                  const tops = await (await fetch('/api/curriculum/subjects/' + subj.id + '/topics')).json();
+                  if (Array.isArray(tops)) st.curriculum.topics[subj.id] = tops;
+                } catch (e) { console.warn('Konular yüklenemedi: ' + subj.id, e); }
+              }
+            }
+          } catch (e) { console.warn('Dersler yüklenemedi: ' + exam.id, e); }
         }
-        st.curriculum = curriculum;
-      } catch { console.error('Müfredat yüklenemedi'); }
+        window.curriculum = st.curriculum; // Modaller için global'e kaydet
+        console.log('Müfredat yüklendi:', st.curriculum);
+      } catch (e) { console.error('Müfredat yüklenemedi:', e); st.curriculum = { exams: {}, subjects: {}, topics: {} }; }
     }
     await loadCurriculum();
 
