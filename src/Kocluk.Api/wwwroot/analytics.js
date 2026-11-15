@@ -141,10 +141,10 @@
           + tasks.filter(t => t.dueDate === k).map(taskChip).join('');
         return `<div class="week-col ${isToday ? 'today' : ''}" data-date-key="${k}"><div class="week-head"><div class="wh-day"><b>${DOW[d.getDay()]}</b>${isToday ? '<em>Bugün</em>' : ''}</div><div class="wh-date"><span>${d.getDate()}</span><small>${d.toLocaleDateString('tr-TR', { month: 'short' })}</small></div></div><div class="week-items">${items || '<div class="week-none">Boş gün</div>'}</div><button type="button" class="week-add" data-add-day="${k}">＋ Ders ekle</button></div>`;
       };
-      return `<div class="week-nav"><button type="button" data-week="-1" aria-label="Önceki 7 gün">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-week="1" aria-label="Sonraki 7 gün">›</button>${st.weekOffset ? '<button type="button" data-week="0" class="today">Bugüne dön</button>' : '<em class="week-note">Bugünden itibaren 7 gün</em>'}</div>
-      <div class="perf-stats compact">${stat('🗒️', 'Toplam görev', tasks.length, 'indigo')}${stat('✅', 'Tamamlanan', done, 'teal')}${stat('📊', 'Tamamlanma', '%' + pct, 'amber')}${stat('✏️', 'Çözülen / hedef soru', solved + ' / ' + target, 'violet')}</div>
+      return `<div class="perf-stats compact">${stat('🗒️', 'Toplam görev', tasks.length, 'indigo')}${stat('✅', 'Tamamlanan', done, 'teal')}${stat('📊', 'Tamamlanma', '%' + pct, 'amber')}${stat('✏️', 'Çözülen / hedef soru', solved + ' / ' + target, 'violet')}</div>
       ${overdue.length ? `<div class="week-overdue"><b>⚠️ ${overdue.length} geciken görev</b><span>${overdue.slice(0, 3).map(t => esc(t.title) + ' (' + fmt(new Date(t.dueDate + 'T00:00:00')) + ')').join(' · ')}${overdue.length > 3 ? ' …' : ''}</span></div>` : ''}
       <div id="week-form-container"></div>
+      <div class="week-nav"><button type="button" data-week="-1" aria-label="Önceki 7 gün">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-week="1" aria-label="Sonraki 7 gün">›</button>${st.weekOffset ? '<button type="button" data-week="0" class="today">Bugüne dön</button>' : '<em class="week-note">Bugünden itibaren 7 gün</em>'}</div>
       <div class="week-grid" id="week-grid-root">${days.map(column).join('')}</div>
       <div class="week-legend"><span class="d lesson"></span>Ders<span class="d session"></span>Görüşme<span class="d done"></span>Tamamlandı<span class="d part"></span>Devam ediyor<span class="d todo"></span>Bekliyor<span class="d late"></span>Geciken</div>`;
     }
