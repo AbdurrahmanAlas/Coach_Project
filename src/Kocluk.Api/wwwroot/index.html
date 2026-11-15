@@ -11,7 +11,7 @@
   <script src="/exam-data.js?v=20261116050000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
   <script src="/modal-questions.js?v=20261108254000"></script>
-  <script src="/worksheet.js?v=20261116030000"></script>
+  <script src="/worksheet.js?v=20261116060000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
       --primary:#2563eb;--primary-dark:#1d4ed8;--primary-light:#eef4ff;
@@ -463,7 +463,6 @@
           <a href="#question-bank" data-qb="send">Çalışma gönder</a>
           <a href="#question-bank" data-qb="results">Gelen cevaplar</a>
           <a href="#question-bank" data-qb="questions">Soru havuzu</a>
-          <a href="#question-bank" data-qb="cards">PDF'den soru kartı</a>
           <a href="#question-bank" data-qb="files">Dosya kaynakları</a>
         </div>
       </nav>
@@ -642,8 +641,7 @@
       const go = target => { window.qbViewPending = target; document.querySelector('[data-page="question-bank"]')?.click(); };
       const heads = {
         send: ['Çalışma gönder', 'PDF veya görsel yükle, soru sayısını ve istersen cevap anahtarını gir, öğrencilerine gönder.'],
-        results: ['Gelen cevaplar', 'Gönderdiğin çalışmalar, öğrencilerin durumu ve sonuçları.'],
-        cards: ["PDF'den soru kartı", 'PDF içindeki soruları ayıkla, kontrol et ve soru havuzuna ekle.']
+        results: ['Gelen cevaplar', 'Gönderdiğin çalışmalar, öğrencilerin durumu ve sonuçları.']
       };
       if (view !== 'home') {
         const [title, text] = heads[view];
@@ -656,7 +654,6 @@
         ['send', '📤', 'Çalışma gönder', 'PDF/görseli optik formla öğrencilerine gönder.'],
         ['results', '📥', 'Gelen cevaplar', 'Kim çözdü, kim bekliyor, net ve soru analizi.'],
         ['questions', '🗂️', 'Soru havuzu', 'Tek tek soru oluştur, filtrele ve ata.'],
-        ['cards', '✂️', "PDF'den soru kartı", 'PDF sorularını ayıklayıp havuza ekle.'],
         ['files', '📚', 'Dosya kaynakları', 'Word, Excel ve diğer dosyaları paylaş.']
       ];
       shell.innerHTML = `<div class="qb-head"><div><h1>Soru Bankası</h1><p>Ne yapmak istiyorsun? Bir başlık seç.</p></div></div>
@@ -681,7 +678,7 @@
       if (canManage) {
         const view = window.qbViewPending || 'home'; window.qbViewPending = null;
         document.querySelectorAll('[data-qb]').forEach(link => link.classList.toggle('active', link.dataset.qb === view));
-        const titles = { home: 'Soru Bankası', send: 'Çalışma gönder', results: 'Gelen cevaplar', questions: 'Soru havuzu', cards: "PDF'den soru kartı", files: 'Dosya kaynakları' };
+        const titles = { home: 'Soru Bankası', send: 'Çalışma gönder', results: 'Gelen cevaplar', questions: 'Soru havuzu', files: 'Dosya kaynakları' };
         document.querySelector('.crumb').textContent = view === 'home' ? 'Soru Bankası' : 'Soru Bankası / ' + titles[view];
         if (view !== 'questions' && view !== 'files') { await renderCoachQuestionBank(shell, tenantId, view); return; }
         qbFocus = view;

@@ -725,7 +725,7 @@
   /* Koç paneli                                                           */
   /* ------------------------------------------------------------------ */
 
-  /** Tek bir koç ekranını sekmesiz çizer: 'send' | 'cards' | 'results'. */
+  /** Tek bir koç ekranını sekmesiz çizer: 'send' | 'results'. */
   function mountCoachView(parent, ctx, view) {
     injectStyles();
     const card = root.document.createElement('section');
@@ -734,7 +734,7 @@
     parent.appendChild(card);
     const body = card.querySelector('[data-body]');
     const state = { students: null };
-    ({ send: renderSendTab, cards: renderCardsTab, results: renderResultsTab }[view] || renderSendTab)(body, ctx, state);
+    ({ send: renderSendTab, results: renderResultsTab }[view] || renderSendTab)(body, ctx, state);
     return card;
   }
 
@@ -751,7 +751,6 @@
         <button type="button" class="ws-subtab" data-tab="results">📊 Gelen cevaplar</button>
         <button type="button" class="ws-subtab" data-tab="dashboard">📈 Pano</button>
         <button type="button" class="ws-subtab" data-tab="alerts">⚠️ Uyarılar</button>
-        <button type="button" class="ws-subtab" data-tab="cards">🎴 PDF'den soru</button>
       </div>
       <div class="ws-tabbody" data-body></div>`;
     parent.appendChild(card);
@@ -759,7 +758,6 @@
     const state = { students: null };
     const tabs = {
       send: () => renderSendTab(body, ctx, state),
-      cards: () => renderCardsTab(body, ctx, state),
       results: () => renderResultsTab(body, ctx),
       dashboard: () => renderDashboard(body, ctx),
       alerts: () => renderAlertsTab(body, ctx)
@@ -1442,17 +1440,7 @@
     };
   }
 
-  /* ---------- Sekme: PDF'den soru kartı ---------- */
-
-  /** pdf.js metin katmanından satır satır metin üretir; iki sütunlu sayfalarda önce sol sonra sağ sütunu okur. */
-  async function extractPdfText(pdf, maxPages, onProgress) {
-    let text = '';
-    for (let n = 1; n <= Math.min(pdf.numPages, maxPages); n++) {
-      onProgress?.(`Sayfa ${n}/${Math.min(pdf.numPages, maxPages)} okunuyor…`);
-      text += '\n' + (await pdfPageLines(await pdf.getPage(n))).join('\n');
-    }
-    return text;
-  }
+  /* ---------- PDF metin okuma ve tarama ---------- */
 
   /** Bir PDF sayfasının metin satırları (iki sütunlu sayfada önce sol, sonra sağ sütun). */
   async function pdfPageLines(page) {
@@ -1517,152 +1505,6 @@
     }
     if (cacheKey && (layout.total > 0 || root.Tesseract)) storage('set', cacheKey, JSON.stringify({ v: 1, layout }));
     return layout;
-  }
-
-  async function ocrPdf(pdf, maxPages, onProgress) {
-    if (!root.Tesseract) return '';
-    const worker = await root.Tesseract.createWorker('tur', 1);
-    let text = '';
-    try {
-      for (let n = 1; n <= Math.min(pdf.numPages, maxPages); n++) {
-        onProgress?.(`Taranmış sayfa ${n}/${Math.min(pdf.numPages, maxPages)} okunuyor (OCR)…`);
-        const page = await pdf.getPage(n);
-        // Yüksek çözünürlükte oku: renkli vurgular ve iki sütunlu kitaplar için
-        const viewport = page.getViewport({ scale: 3 });
-        const canvas = root.document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        const result = await worker.recognize(canvas);
-        text += '\n' + ((result?.data?.text) || '');
-      }
-    } finally { await worker.terminate(); }
-    return text;
-  }
-
-  async function renderCardsTab(body, ctx, state) {
-    body.innerHTML = '<p class="ws-hint">Yükleniyor…</p>';
-    const students = await loadStudents(ctx, state);
-    body.innerHTML = `
-      <p class="ws-hint">Metin katmanlı bir PDF seç; sorular ve şıklar ayıklanır. <strong>Gönderilmeden önce sen kontrol edip düzeltirsin</strong> (taranmış veya karışık sayfalarda ayıklama hata yapabilir). Öğrenci soruları tek tek kart olarak çözer.</p>
-      <div class="ws-form">
-        <div class="ws-col"><h3>1 · Öğrenciler</h3>${studentPicker(students)}</div>
-        <div class="ws-col"><h3>2 · PDF</h3>
-          <div class="ws-grid2"><label>Ders<input data-c="subject" maxlength="100"></label><label>Konu<input data-c="topic" maxlength="180"></label></div>
-          <div class="ws-grid2"><label>Zorluk<select data-c="difficulty"><option>Kolay</option><option selected>Orta</option><option>Zor</option></select></label><label>Sınav türü<input data-c="exam" value="TYT" maxlength="40"></label></div>
-          <label>PDF dosyası<input type="file" data-c="file" accept=".pdf"></label>
-          <button type="button" class="ws-btn" data-extract>Soruları ayıkla</button> <span class="ws-status" data-cstatus></span>
-        </div>
-      </div>
-      <div data-review></div>`;
-    body.querySelector('[data-all]')?.addEventListener('change', e => body.querySelectorAll('[data-student]').forEach(c => { c.checked = e.target.checked; }));
-    const c = name => body.querySelector(`[data-c="${name}"]`);
-    const status = (text, kind) => { const el = body.querySelector('[data-cstatus]'); el.textContent = text; el.className = 'ws-status ' + (kind || ''); };
-    const review = body.querySelector('[data-review]');
-    let draft = null;
-
-    body.querySelector('[data-extract]').addEventListener('click', async () => {
-      const file = c('file').files[0];
-      if (!file) return status('Bir PDF seç.', 'err');
-      try {
-        status('PDF açılıyor…');
-        const lib = await loadPdfJs();
-        const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-        let text = await extractPdfText(pdf, 60, status);
-        if (text.replace(/\s+/g, '').length < 120) {
-          status('Metin katmanı yok, OCR deneniyor (yavaş olabilir)…');
-          text = await ocrPdf(pdf, 30, status);
-        }
-        draft = parseWorksheetText(text);
-        if (!draft.questions.length) { review.innerHTML = ''; return status('Soru bulunamadı. PDF numaralı sorular ("1.", "2)") içermiyor olabilir. Bunun yerine "Çalışma gönder" sekmesindeki optik formu kullan.', 'err'); }
-        status(`${draft.questions.length} soru bulundu. Kontrol edip gönder.`, 'ok');
-        renderReview();
-      } catch (error) {
-        status('PDF okunamadı. Dosya bozuk veya bağlantı sorunu olabilir.', 'err');
-      }
-    });
-
-    const renderReview = () => {
-      const keyArr = draft.answerKey ? [...draft.answerKey] : [];
-      review.innerHTML = `
-        <div class="ws-review-bar"><strong>${draft.questions.length} soru</strong>
-          <label>Cevap anahtarını yapıştır <input data-keypaste placeholder="ABCDE… veya 1-A 2-C …"></label>
-          <span class="ws-hint">Her soruda doğru şık zorunludur.</span></div>
-        <div class="ws-qlist">${draft.questions.map((q, i) => `
-          <div class="ws-q${q.warnings.length ? ' warn' : ''}" data-i="${i}">
-            <div class="ws-q-head"><strong>Soru ${q.no}</strong>${q.warnings.map(w => `<span class="ws-tag warn">${esc(w)}</span>`).join('')}<button type="button" class="ws-link danger" data-del>Sil</button></div>
-            <textarea rows="3" data-stem>${esc(q.stem)}</textarea>
-            <div class="ws-opts-edit">${LETTERS.slice(0, draft.optionCount).split('').map((letter, k) => `
-              <label class="ws-optline"><input type="radio" name="ok-${i}" value="${letter}" ${keyArr[i] === letter ? 'checked' : ''} aria-label="Doğru şık ${letter}"><b>${letter}</b><input data-opt="${k}" value="${esc(q.options[k]?.text || '')}"></label>`).join('')}</div>
-          </div>`).join('')}</div>
-        <div class="ws-send-foot"><button type="button" class="ws-btn ws-primary" data-publish>Öğrencilere soru kartı olarak gönder</button><span class="ws-status" data-pstatus></span></div>`;
-      review.querySelector('[data-keypaste]').addEventListener('input', e => {
-        const parsed = parseKeyInput(e.target.value, draft.questions.length, draft.optionCount);
-        [...parsed.answers].forEach((letter, i) => {
-          if (letter === '-') return;
-          const radio = review.querySelector(`input[name="ok-${i}"][value="${letter}"]`);
-          if (radio) radio.checked = true;
-        });
-      });
-      review.addEventListener('click', e => {
-        if (!e.target.matches('[data-del]')) return;
-        const i = Number(e.target.closest('.ws-q').dataset.i);
-        syncDraft();
-        draft.questions.splice(i, 1);
-        if (draft.answerKey) draft.answerKey = draft.answerKey.slice(0, i) + draft.answerKey.slice(i + 1);
-        renderReview();
-      });
-      review.querySelector('[data-publish]').addEventListener('click', publish);
-    };
-
-    // Ekrandaki düzenlemeleri taslağa yazar.
-    const syncDraft = () => {
-      const keyChars = [];
-      review.querySelectorAll('.ws-q').forEach((el, i) => {
-        const q = draft.questions[i];
-        q.stem = el.querySelector('[data-stem]').value.trim();
-        q.options = [...el.querySelectorAll('[data-opt]')].map((input, k) => ({ letter: LETTERS[k], text: input.value.trim() }));
-        keyChars[i] = el.querySelector('input[type="radio"]:checked')?.value || '-';
-      });
-      draft.answerKey = keyChars.join('');
-    };
-
-    const publish = async () => {
-      const pstatus = review.querySelector('[data-pstatus]');
-      const say = (text, kind) => { pstatus.textContent = text; pstatus.className = 'ws-status ' + (kind || ''); };
-      syncDraft();
-      const studentIds = [...body.querySelectorAll('[data-student]:checked')].map(x => x.value);
-      const subject = c('subject').value.trim(), topic = c('topic').value.trim();
-      if (!studentIds.length) return say('En az bir öğrenci seç.', 'err');
-      if (!subject || !topic) return say('Ders ve konu zorunlu.', 'err');
-      for (const [i, q] of draft.questions.entries()) {
-        const filled = q.options.filter(o => o.text);
-        if (!q.stem) return say(`Soru ${q.no}: metin boş.`, 'err');
-        if (filled.length < 2) return say(`Soru ${q.no}: en az 2 şık gerekli.`, 'err');
-        if (draft.answerKey[i] === '-' || !q.options[LETTERS.indexOf(draft.answerKey[i])]?.text) return say(`Soru ${q.no}: doğru şıkkı seç.`, 'err');
-      }
-      const button = review.querySelector('[data-publish]');
-      button.disabled = true;
-      let created = 0, assigned = 0;
-      try {
-        for (const [i, q] of draft.questions.entries()) {
-          say(`Gönderiliyor… ${i + 1}/${draft.questions.length}`);
-          const options = q.options.filter(o => o.text).map(o => o.text.replace(/\|/g, '/'));
-          const correct = q.options[LETTERS.indexOf(draft.answerKey[i])].text.replace(/\|/g, '/');
-          const response = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/question-bank`, {
-            method: 'POST',
-            body: JSON.stringify({ subject, topic, prompt: q.stem, answer: correct, explanation: null, difficulty: c('difficulty').value, examType: c('exam').value.trim() || 'TYT', isPublished: true, questionType: 'MultipleChoice', optionsJson: options.join('|'), resourceId: null, points: 1 })
-          });
-          if (!response.ok) { say(`Soru ${q.no} kaydedilemedi: ${await readError(response)}`, 'err'); button.disabled = false; return; }
-          const item = await response.json();
-          created++;
-          for (const studentId of studentIds) {
-            const a = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/question-assignments`, { method: 'POST', body: JSON.stringify({ questionBankItemId: item.id, studentId, dueDateUtc: null, note: null }) });
-            if (a.ok) assigned++;
-          }
-        }
-        say(`${created} soru oluşturuldu, ${assigned} görev öğrencilere gönderildi ✓`, 'ok');
-      } catch { say('Gönderim yarıda kesildi. Soru bankasını kontrol edip tekrar dene.', 'err'); button.disabled = false; }
-    };
   }
 
   /* ------------------------------------------------------------------ */
