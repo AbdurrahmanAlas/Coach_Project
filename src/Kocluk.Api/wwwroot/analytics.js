@@ -197,7 +197,7 @@
         <div class="exam-pills">${exams.map(e => `<button type="button" class="exam-type-btn ${e.code === st.lessonExamType ? 'on' : ''}" data-exam="${esc(e.code)}" title="${esc(e.name)}">${esc(e.code === 'YÖS' ? 'TR-YÖS' : e.code)}</button>`).join('')}</div>
         <div class="lf-grid">
           <label class="lf-field lf-wide"><span>Ders</span><select id="lesson-subject">${subjects.map(s => opt(s.code, s.name, s.code === st.lessonSubject)).join('')}</select></label>
-          <label class="lf-field lf-wide"><span>Konu</span><select id="lesson-topic"><option value="">Konu seç (isteğe bağlı)</option>${groups.map(g => `<optgroup label="${esc(g.unit)}">${g.topics.map(t => opt(t, t.slice(g.unit.length + 3), t === st.lessonTopic)).join('')}</optgroup>`).join('')}</select></label>
+          <label class="lf-field lf-wide"><span>Konu</span><select id="lesson-topic"><option value="">Konu seç (isteğe bağlı)</option>${groups.map(g => g.unit ? `<optgroup label="${esc(g.unit)}">${g.topics.map(t => opt(t, t.slice(g.unit.length + 3), t === st.lessonTopic)).join('')}</optgroup>` : g.topics.map(t => opt(t, t, t === st.lessonTopic)).join('')).join('')}</select></label>
           <label class="lf-field"><span>Gün</span><select id="lesson-date">${days.map((d, i) => opt(dayKeys[i], DAYS[i] + ' · ' + d.getDate() + ' ' + d.toLocaleDateString('tr-TR', { month: 'short' }), dayKeys[i] === st.lessonDate)).join('')}</select></label>
           <label class="lf-field"><span>Başlangıç</span><input id="lesson-start" type="time" value="${esc(st.lessonStart)}"></label>
           <label class="lf-field"><span>Bitiş</span><input id="lesson-end" type="time" value="${esc(st.lessonEnd)}"></label>

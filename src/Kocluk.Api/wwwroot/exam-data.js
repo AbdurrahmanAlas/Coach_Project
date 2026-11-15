@@ -341,6 +341,7 @@ window.getTopicsByExamAndSubject = function getTopicsByExamAndSubject(examType, 
 window.getTopicGroupsByExamAndSubject = function getTopicGroupsByExamAndSubject(examType, subject) {
   const entry = examData[examType]?.subjects[subject];
   if (!entry) return [];
+  if (!Object.keys(entry.groups).length) return entry.topics.length ? [{ unit: '', topics: entry.topics }] : [];
   return Object.entries(entry.groups).map(([unit, items]) => ({
     unit,
     topics: items.map(item => `${unit} - ${item}`)
