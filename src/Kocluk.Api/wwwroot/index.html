@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261116100000">
+  <link rel="stylesheet" href="/theme.css?v=20261116131000">
   <link rel="stylesheet" href="/analytics.css?v=20261116112000">
   <script src="/share-image.js?v=20261116120000"></script>
   <script src="/analytics.js?v=20261116120000b"></script>
@@ -508,7 +508,7 @@
       students: `<div class="welcome"><div><h1>Öğrenciler</h1><p>Öğrencilerini koçluk alanına ata, gelişimlerini tek ekrandan yönet.</p></div><button class="primary">+ Öğrenci ata</button></div><div class="card section"><div class="section-title"><h2>Öğrenci listesi</h2><span id="student-count" class="tag blue">Yükleniyor</span></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 18px"><div class="task" style="margin:0;border-left:3px solid #2cc6a7"><div class="task-text"><strong>1. Öğrenciyi ekle</strong><small>Ad, soyad ve girişte kullanacağı e-postayı yaz.</small></div></div><div class="task" style="margin:0;border-left:3px solid #4d83ff"><div class="task-text"><strong>2. WhatsApp daveti gönder</strong><small>Karttaki düğmeyle hazır mesajı WhatsApp’ta aç.</small></div></div><div class="task" style="margin:0;border-left:3px solid #f0b429"><div class="task-text"><strong>3. Öğrenci giriş yapar</strong><small>Öğrenci e-postasıyla kayıt olur veya giriş yapar, daveti kabul eder.</small></div></div></div><p style="color:var(--muted);margin:0 0 16px;line-height:1.6">Bu listeye eklenen öğrenci aktif koçluk alanına atanır. Öğrencinin hesabıyla otomatik eşleşmesi için e-posta adresini öğrencinin kullanacağı adresle aynı girin. WhatsApp mesajı öğrencinin telefonuna hazır açılır; gönder düğmesine basmanız gerekir. E-posta boşsa önce “Düzenle” ile ekleyin.</p><div id="student-list" class="student-grid"><div class="task"><div class="task-text"><strong>Öğrenciler yükleniyor...</strong></div></div></div></div>`,
       plans: `<div class="welcome"><div><h1>Çalışma Planları</h1><p>Haftalık hedefleri planla ve ilerlemeyi takip et.</p></div><button class="primary">+ Plan oluştur</button></div><div class="grid pl-stats"><div class="card stat"><div class="stat-head"><span>Aktif plan</span><span class="stat-icon">▣</span></div><div id="plans-active-count" class="stat-value">0</div><div class="stat-foot">Öğrencilere verilmiş haftalık plan</div></div><div class="card stat"><div class="stat-head"><span>Bekleyen görev</span><span class="stat-icon">⏰</span></div><div id="plans-pending-count" class="stat-value">0</div><div id="plans-pending-foot" class="stat-foot">Tamamlanmayı bekleyen görev</div></div><div class="card stat"><div class="stat-head"><span>Tamamlanan görev</span><span class="stat-icon">✓</span></div><div id="plans-task-progress" class="stat-value">0 / 0</div><div class="pl-mini-bar"><i id="plans-task-bar"></i></div><div id="plans-task-progress-foot" class="stat-foot">Henüz görev yok</div></div><div class="card stat"><div class="stat-head"><span>Soru hedefi</span><span class="stat-icon">◷</span></div><div id="plans-question-target" class="stat-value">0</div><div class="pl-mini-bar"><i id="plans-question-bar"></i></div><div id="plans-question-foot" class="stat-foot">Tüm planların toplam hedefi</div></div></div><div class="card section"><div class="section-title"><div><h2>Aktif planlar</h2><p class="pl-sub">Her öğrencinin haftalık planı ve görevleri. Güncel haftalar üstte.</p></div><a href="#" id="plans-export">CSV indir ↓</a></div><div id="plans-list" class="pl-list"><div class="pl-empty-state"><strong>Planlar yükleniyor...</strong></div></div></div>`,
       schedule: `<div class="card section schedule-card"><div class="section-title"><h2>Haftalık koçluk takvimi</h2><div class="schedule-nav"><button type="button" class="primary schedule-add-button">＋ Etkinlik ekle</button><button type="button" data-schedule-prev>‹ Önceki</button><button type="button" class="today" data-schedule-today>Bugüne dön</button><span data-schedule-range></span><button type="button" data-schedule-next>Sonraki ›</button></div></div><div class="schedule" data-schedule-grid></div><div class="tasks schedule-events" style="margin-top:22px"></div></div>`,
-      exams: `<div class="welcome"><div><h1>Deneme &amp; Sınavlar</h1><p>Sonuçları karşılaştır, gelişim alanlarını keşfet.</p></div><button class="primary">+ Deneme ekle</button></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Toplam deneme</span><span class="stat-icon">◒</span></div><div id="exams-total-count" class="stat-value">0</div><div class="stat-foot">Bu dönem</div></div><div class="card stat"><div class="stat-head"><span>Ortalama puan</span><span class="stat-icon">★</span></div><div id="exams-average-score" class="stat-value">—</div><div class="stat-foot">Kayıtlı sonuçların ortalaması</div></div><div class="card stat"><div class="stat-head"><span>En yüksek puan</span><span class="stat-icon">↗</span></div><div id="exams-best-score" class="stat-value">—</div><div class="stat-foot">En iyi deneme sonucu</div></div></div><div class="card section"><div class="section-title"><h2>Son denemeler</h2><a href="#">Raporu indir ↓</a></div><div class="tasks"><div class="task"><div class="task-text"><strong>Denemeler yükleniyor...</strong></div></div></div></div>`,
+      exams: `<div class="welcome"><div><h1>Deneme &amp; Sınavlar</h1><p>Sonuçları karşılaştır, gelişim alanlarını keşfet.</p></div><button class="primary">+ Deneme ekle</button></div><div class="grid ex-stats"><div class="card stat"><div class="stat-head"><span>Toplam deneme</span><span class="stat-icon">◒</span></div><div id="exams-total-count" class="stat-value">0</div><div class="stat-foot">Filtrelere uyan sonuç</div></div><div class="card stat"><div class="stat-head"><span>Ortalama net</span><span class="stat-icon">★</span></div><div id="exams-average-net" class="stat-value">—</div><div class="stat-foot">Tüm denemelerin ortalaması</div></div><div class="card stat"><div class="stat-head"><span>En yüksek net</span><span class="stat-icon">↗</span></div><div id="exams-best-net" class="stat-value">—</div><div id="exams-best-net-foot" class="stat-foot">—</div></div><div class="card stat"><div class="stat-head"><span>Ortalama puan</span><span class="stat-icon">◎</span></div><div id="exams-average-score" class="stat-value">—</div><div class="stat-foot">Kayıtlı puanların ortalaması</div></div></div><div class="card section ex-section"><div class="ex-toolbar"><div class="ex-search"><span aria-hidden="true">🔎</span><input id="exam-search" type="search" placeholder="Öğrenci veya deneme adı ara…" autocomplete="off"></div><select id="exam-student-filter" aria-label="Öğrenci"><option value="">Tüm öğrenciler</option></select><select id="exam-range" aria-label="Tarih aralığı"><option value="all">Tüm zamanlar</option><option value="30">Son 30 gün</option><option value="90">Son 90 gün</option><option value="365">Son 1 yıl</option></select><select id="exam-sort" aria-label="Sıralama"><option value="date">En yeni önce</option><option value="net">En yüksek net</option><option value="score">En yüksek puan</option><option value="student">Öğrenci adı (A-Z)</option></select><button type="button" class="ex-btn" id="exam-export">CSV indir ↓</button></div><div id="exam-trend"></div><div class="section-title"><h2>Son denemeler</h2><span id="exam-count" class="tag blue">0 sonuç</span></div><div id="exam-list" class="ex-list"><div class="ex-empty"><strong>Denemeler yükleniyor...</strong></div></div><div id="exam-more" class="ex-more"></div></div>`,
       messages: `<div class="welcome"><div><h1>Mesajlar</h1><p>Koç, öğrenci ve veli arasındaki iletişimi tek ekrandan yönetin.</p></div></div><div class="card section chat-card"><div class="section-title"><h2>Konuşmalar</h2><button id="messages-refresh" class="tag blue" type="button">↻ Yenile</button></div><div id="messages-list" class="chat-list"><p style="color:var(--muted)">Yükleniyor...</p></div></div><div class="card section composer-card"><form id="message-form" class="composer"><div class="composer-head"><label class="composer-to"><span>Kime</span><select id="message-recipient" required></select></label><span class="tag blue">🔒 Güvenli iletişim</span></div><textarea id="message-content" maxlength="4000" rows="3" required placeholder="Mesajını yaz… (Ctrl + Enter ile gönder)"></textarea><div class="composer-foot"><span id="message-counter" class="composer-counter">0 / 4000</span><span id="message-form-status" class="hidden"></span><button class="primary composer-send" type="submit">Gönder <span aria-hidden="true">➤</span></button></div></form></div>`,
       settings: `<div class="welcome"><div><h1>Ayarlar</h1><p>Koçluk hesabını ve bildirim tercihlerini yönet.</p></div></div><div class="card section"><div class="section-title"><h2>Profil bilgileri</h2><button class="primary">Değişiklikleri kaydet</button></div><div class="tasks"><div class="task"><div class="task-text"><strong>Ad soyad</strong><small>Ayşe Yılmaz</small></div><span class="tag blue">Düzenle</span></div><div class="task"><div class="task-text"><strong>E-posta</strong><small>ayse@example.com</small></div><span class="tag blue">Düzenle</span></div><div class="task"><div class="task-text"><strong>Bildirimler</strong><small>Günlük görev hatırlatıcıları açık</small></div><span class="tag">Açık</span></div></div></div>`,
       performance: `<div class="welcome"><div><h1>Performans &amp; analiz</h1><p>Yükleniyor...</p></div></div>`,
@@ -1341,6 +1341,7 @@
         card.querySelectorAll('.availability-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu müsaitlik saatini silmek istiyor musunuz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/availability/${button.dataset.id}`, { method: 'DELETE' }); if (response.ok) await loadSchedulePage(); }));
       }
     }
+    const examsView = { q: '', student: '', range: 'all', sort: 'date', limit: 15 };
     async function loadExamsPage() {
       const tenantId = localStorage.getItem('tenantId');
       if (!tenantId) { renderCoachSetupState('Deneme ve sınav sonuçlarını kullanmak için önce koçluk alanınızı oluşturun.'); return; }
@@ -1349,23 +1350,104 @@
       const students = await studentsResponse.json();
       const addButton = document.querySelector('.content .welcome .primary');
       if (addButton && !addButton.dataset.bound) { addButton.dataset.bound = 'true'; addButton.addEventListener('click', () => openExamModal(students)); }
-      const list = document.querySelector('.content .section .tasks');
-      if (!list || !students.length) return;
-      const student = students[0];
-      const reportLink = document.querySelector('.content .section .section-title a');
-      if (reportLink && !reportLink.dataset.bound) { reportLink.dataset.bound = 'true'; reportLink.addEventListener('click', async event => { event.preventDefault(); const exportResponse = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/exams/export`); if (!exportResponse.ok) return; const blob = await exportResponse.blob(); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'deneme-sonuclari.csv'; anchor.click(); URL.revokeObjectURL(url); }); }
-      const response = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/exams`);
-      if (!response.ok) return;
-      const exams = await response.json();
-      const totalCount = document.getElementById('exams-total-count');
-      const averageScore = document.getElementById('exams-average-score');
-      const bestScore = document.getElementById('exams-best-score');
-      if (totalCount) totalCount.textContent = exams.length;
-      if (averageScore) averageScore.textContent = exams.length ? (exams.reduce((sum, exam) => sum + Number(exam.score || 0), 0) / exams.length).toFixed(1) : '—';
-      if (bestScore) bestScore.textContent = exams.length ? Math.max(...exams.map(exam => Number(exam.score || 0))).toFixed(1) : '—';
-      list.innerHTML = exams.length ? exams.map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş · Net: ${exam.net}</small></div><span class="tag blue">${exam.score} puan · Net ${exam.net}</span><button class="tag blue exam-edit" data-student="${student.id}" data-id="${exam.id}">Düzenle</button><button class="tag exam-delete" data-student="${student.id}" data-id="${exam.id}">Sil</button></div>`).join('') : '<div class="task"><div class="task-text"><strong>Henüz deneme sonucu yok.</strong><small>Öğrenci detayından ilk deneme sonucunu ekleyebilirsiniz.</small></div></div>';
-      list.querySelectorAll('.exam-edit').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); const exam = exams.find(item => item.id === button.dataset.id); if (exam) openExamModal(students, exam); }));
-      list.querySelectorAll('.exam-delete').forEach(button => button.addEventListener('click', async event => { event.stopPropagation(); if (!confirm('Bu deneme sonucunu silmek istiyor musunuz?')) return; const deleteResponse = await authRequest(`/api/tenants/${tenantId}/students/${button.dataset.student}/exams/${button.dataset.id}`, { method: 'DELETE' }); if (deleteResponse.ok) await loadExamsPage(); }));
+      const root = document.getElementById('exam-list');
+      if (!root) return;
+      if (!students.length) { root.innerHTML = '<div class="ex-empty"><strong>Henüz öğrenci yok</strong><p>Deneme sonucu eklemek için önce Öğrenciler sayfasından bir öğrenci ekle.</p></div>'; return; }
+
+      const groups = await Promise.all(students.map(async student => {
+        const response = await authRequest(`/api/tenants/${tenantId}/students/${student.id}/exams`);
+        const items = response.ok ? await response.json() : [];
+        return items.map(exam => {
+          const total = Number(exam.correct || 0) + Number(exam.wrong || 0) + Number(exam.blank || 0);
+          const net = Number(exam.net ?? (Number(exam.correct || 0) - Number(exam.wrong || 0) / 4));
+          return { ...exam, studentId: exam.studentId || student.id, studentName: `${student.firstName} ${student.lastName || ''}`.trim(), net, total, scoreN: Number(exam.score || 0) };
+        });
+      }));
+      const all = groups.flat();
+      const fmtDate = iso => new Date(`${iso}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+      const fmtNum = n => (Math.round(n * 100) / 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+      const initials = name => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toLocaleUpperCase('tr-TR')).join('');
+      const tones = ['#4f46e5', '#0d9488', '#d97706', '#e11d48', '#7c3aed', '#0284c7'];
+      const tone = name => tones[[...name].reduce((s, c) => s + c.charCodeAt(0), 0) % tones.length];
+      const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+      const studentFilter = document.getElementById('exam-student-filter');
+      if (studentFilter) {
+        studentFilter.innerHTML = '<option value="">Tüm öğrenciler</option>' + students.map(s => `<option value="${s.id}">${escapeHtml(`${s.firstName} ${s.lastName || ''}`.trim())}</option>`).join('');
+        if (!students.some(s => s.id === examsView.student)) examsView.student = '';
+        studentFilter.value = examsView.student;
+      }
+      for (const [id, key] of [['exam-search', 'q'], ['exam-range', 'range'], ['exam-sort', 'sort']]) { const el = document.getElementById(id); if (el) el.value = examsView[key]; }
+
+      const trendSvg = points => {
+        const W = 640, H = 150, pad = 30, values = points.map(p => p.net), max = Math.max(...values), min = Math.min(0, ...values);
+        const x = i => pad + (points.length === 1 ? 0 : i * (W - pad * 2) / (points.length - 1)), y = v => H - pad - (v - min) / ((max - min) || 1) * (H - pad * 2);
+        const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.net).toFixed(1)}`).join(' ');
+        return `<svg viewBox="0 0 ${W} ${H}" class="ex-trend-svg" role="img" aria-label="Net gelişimi"><polygon points="${x(0)},${H - pad} ${line} ${x(points.length - 1)},${H - pad}" fill="rgba(79,70,229,.10)"/><polyline points="${line}" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round"/>${points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.net).toFixed(1)}" r="4.5" fill="#fff" stroke="#4f46e5" stroke-width="2.5"><title>${escapeHtml(p.title)} · ${fmtDate(p.examDate)} · ${fmtNum(p.net)} net</title></circle><text x="${x(i).toFixed(1)}" y="${(y(p.net) - 10).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#3730a3">${fmtNum(p.net)}</text>`).join('')}</svg>`;
+      };
+
+      const render = () => {
+        const term = examsView.q.trim().toLocaleLowerCase('tr-TR');
+        const since = examsView.range === 'all' ? null : new Date(Date.now() - Number(examsView.range) * 86400000);
+        let rows = all.filter(e => (!examsView.student || e.studentId === examsView.student)
+          && (!term || e.studentName.toLocaleLowerCase('tr-TR').includes(term) || String(e.title || '').toLocaleLowerCase('tr-TR').includes(term))
+          && (!since || new Date(`${e.examDate}T00:00:00`) >= since));
+        const sorters = { date: (a, b) => String(b.examDate).localeCompare(String(a.examDate)), net: (a, b) => b.net - a.net, score: (a, b) => b.scoreN - a.scoreN, student: (a, b) => a.studentName.localeCompare(b.studentName, 'tr') || String(b.examDate).localeCompare(String(a.examDate)) };
+        rows = [...rows].sort(sorters[examsView.sort] || sorters.date);
+
+        const best = rows.length ? rows.reduce((m, e) => e.net > m.net ? e : m, rows[0]) : null;
+        setText('exams-total-count', rows.length);
+        setText('exams-average-net', rows.length ? fmtNum(rows.reduce((s, e) => s + e.net, 0) / rows.length) : '—');
+        setText('exams-best-net', best ? fmtNum(best.net) : '—');
+        setText('exams-best-net-foot', best ? best.studentName : 'Sonuç yok');
+        setText('exams-average-score', rows.length ? fmtNum(rows.reduce((s, e) => s + e.scoreN, 0) / rows.length) : '—');
+        setText('exam-count', `${rows.length} sonuç`);
+
+        const trend = document.getElementById('exam-trend');
+        if (trend) {
+          const series = examsView.student ? [...rows].sort((a, b) => String(a.examDate).localeCompare(String(b.examDate))) : [];
+          if (series.length >= 2) {
+            const diff = series[series.length - 1].net - series[series.length - 2].net;
+            trend.innerHTML = `<div class="ex-trend"><div class="ex-trend-head"><div><strong>Net gelişimi</strong><small>${escapeHtml(series[0].studentName)} · ${series.length} deneme</small></div><span class="ex-delta ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(diff))} net <em>son denemede</em></span></div>${trendSvg(series.slice(-12))}</div>`;
+          } else trend.innerHTML = '';
+        }
+
+        const visible = rows.slice(0, examsView.limit);
+        root.innerHTML = rows.length
+          ? `<div class="ex-head"><span>Öğrenci</span><span>Deneme</span><span>Tarih</span><span>Doğru / Yanlış / Boş</span><span>Net</span><span>Puan</span><span></span></div>` + visible.map(e => {
+            const pct = e.total ? Math.max(0, Math.min(100, e.net / e.total * 100)) : 0;
+            return `<div class="ex-row"><div class="ex-who"><span class="ex-av" style="background:${tone(e.studentName)}">${escapeHtml(initials(e.studentName))}</span><strong>${escapeHtml(e.studentName)}</strong></div><div class="ex-title">${escapeHtml(e.title)}</div><div class="ex-date">${fmtDate(e.examDate)}</div><div class="ex-dyb"><span class="ok">${e.correct} D</span><span class="bad">${e.wrong} Y</span><span class="blank">${e.blank} B</span></div><div class="ex-net"><b>${fmtNum(e.net)}</b><div class="ex-bar"><i style="width:${pct.toFixed(0)}%"></i></div></div><div class="ex-score"><b>${fmtNum(e.scoreN)}</b></div><div class="ex-actions"><button type="button" class="ex-btn exam-edit" data-id="${e.id}">Düzenle</button><button type="button" class="ex-btn danger exam-delete" data-id="${e.id}" data-student="${e.studentId}">Sil</button></div></div>`;
+          }).join('')
+          : `<div class="ex-empty"><strong>${all.length ? 'Filtrelere uyan deneme yok' : 'Henüz deneme sonucu yok'}</strong><p>${all.length ? 'Arama veya filtreleri değiştirmeyi dene.' : 'Sağ üstteki "+ Deneme ekle" ile ilk sonucu girebilirsin.'}</p></div>`;
+        const more = document.getElementById('exam-more');
+        if (more) more.innerHTML = rows.length > visible.length ? `<button type="button" class="ex-btn more" id="exam-show-more">Daha fazla göster (${rows.length - visible.length} kalan)</button>` : '';
+        root.dataset.rows = JSON.stringify(rows.map(r => r.id));
+      };
+
+      const page = document.querySelector('.ex-section');
+      if (page && !page.dataset.bound) {
+        page.dataset.bound = 'true';
+        const bind = (id, event, key) => document.getElementById(id)?.addEventListener(event, e => { examsView[key] = e.target.value; examsView.limit = 15; page.__render(); });
+        bind('exam-search', 'input', 'q'); bind('exam-student-filter', 'change', 'student'); bind('exam-range', 'change', 'range'); bind('exam-sort', 'change', 'sort');
+        page.addEventListener('click', async event => {
+          const t = event.target.closest('button'); if (!t) return;
+          const ctx = page.__ctx;
+          if (t.id === 'exam-show-more') { examsView.limit += 15; page.__render(); }
+          else if (t.id === 'exam-export') {
+            const ids = JSON.parse(root.dataset.rows || '[]'), rows = ids.map(id => ctx.all.find(e => e.id === id)).filter(Boolean);
+            const csv = ['Öğrenci;Deneme;Tarih;Doğru;Yanlış;Boş;Net;Puan', ...rows.map(e => [e.studentName, e.title, e.examDate, e.correct, e.wrong, e.blank, ctx.fmtNum(e.net), ctx.fmtNum(e.scoreN)].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\r\n');
+            const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a');
+            a.href = url; a.download = 'deneme-sonuclari.csv'; a.click(); URL.revokeObjectURL(url);
+          } else if (t.classList.contains('exam-edit')) { const exam = ctx.all.find(e => e.id === t.dataset.id); if (exam) openExamModal(ctx.students, exam); }
+          else if (t.classList.contains('exam-delete')) {
+            if (!confirm('Bu deneme sonucunu silmek istiyor musunuz?')) return;
+            const deleteResponse = await authRequest(`/api/tenants/${ctx.tenantId}/students/${t.dataset.student}/exams/${t.dataset.id}`, { method: 'DELETE' });
+            if (deleteResponse.ok) await loadExamsPage();
+          }
+        });
+      }
+      if (page) { page.__render = render; page.__ctx = { all, students, tenantId, fmtNum }; }
+      render();
     }
     let editingExam = null;
     function openExamModal(students, exam = null) {

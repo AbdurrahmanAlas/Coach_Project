@@ -228,3 +228,45 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#818cf8!import
 .brand-text b{font-size:23px;font-weight:850;letter-spacing:.2px;color:#fff}
 .brand-text small{margin-top:3px;font-size:10.5px;font-weight:750;letter-spacing:2.2px;text-transform:uppercase;color:#8d94d6;white-space:nowrap}
 .brand-text.brand-dark b{color:#1e1b4b}.brand-text.brand-dark small{color:#6366f1}
+
+/* ---------- Deneme & Sınavlar sayfası ---------- */
+.ex-stats .stat-head span:first-child{font-size:13px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#475569}
+.ex-stats .stat-value{font-size:34px;margin:14px 0 8px}
+.ex-stats .stat-foot{color:#64748b!important;font-size:13px!important;font-weight:600}
+.ex-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.ex-search{flex:1 1 260px;display:flex;align-items:center;gap:8px;padding:0 14px;border:1px solid #d4d8f5;border-radius:12px;background:#fafaff}
+.ex-search:focus-within{border-color:#4f46e5;background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.ex-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;padding:12px 0;font:600 14px inherit;color:#1e1b4b}
+.ex-toolbar select{padding:11px 12px;border:1px solid #d4d8f5;border-radius:12px;background:#fafaff;font:650 13.5px inherit;color:#1e1b4b;max-width:210px}
+.ex-btn{padding:9px 14px;border:1px solid #d7dcf3;background:#fff;color:#3730a3;border-radius:10px;font-size:12.5px;font-weight:750;cursor:pointer;transition:background .15s,transform .15s;width:auto}
+.ex-btn:hover{background:#eef2ff;transform:translateY(-1px)}
+.ex-btn.danger{color:#be123c;border-color:#fecdd3}.ex-btn.danger:hover{background:#fff1f2}
+.ex-list{display:grid;gap:0;border:1px solid #e6e8f5;border-radius:18px;overflow:hidden;background:#fff}
+.ex-head,.ex-row{display:grid;grid-template-columns:minmax(170px,1.2fr) minmax(150px,1.3fr) 110px 170px 130px 80px 150px;gap:14px;align-items:center;padding:13px 20px}
+.ex-head{background:#f6f7ff;border-bottom:1px solid #e6e8f5;font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
+.ex-row{border-top:1px solid #eef0fa;transition:background .12s}
+.ex-head+.ex-row{border-top:0}
+.ex-row:hover{background:#fafaff}
+.ex-who{display:flex;align-items:center;gap:10px;min-width:0}
+.ex-who strong{font-size:14px;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-av{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;color:#fff;font-size:13px;font-weight:800;flex:none}
+.ex-title{font-size:14px;font-weight:700;color:#334155;min-width:0;overflow-wrap:anywhere}
+.ex-date{font-size:13px;color:#64748b;font-weight:600}
+.ex-dyb{display:flex;gap:6px;flex-wrap:wrap}
+.ex-dyb span{padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800}
+.ex-dyb .ok{background:#dcfce7;color:#166534}.ex-dyb .bad{background:#ffe4e6;color:#be123c}.ex-dyb .blank{background:#f1f5f9;color:#475569}
+.ex-net b,.ex-score b{font-size:16px;font-weight:850;color:#1e1b4b}
+.ex-bar{height:6px;border-radius:6px;background:#e8ebf7;margin-top:6px;overflow:hidden}
+.ex-bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#4f46e5,#14b8a6)}
+.ex-actions{display:flex;gap:6px;justify-content:flex-end}
+.ex-empty{padding:46px 20px;text-align:center;color:#64748b}
+.ex-empty strong{display:block;color:#1e1b4b;font-size:16px;margin-bottom:6px}.ex-empty p{margin:0;font-size:13px}
+.ex-more{display:flex;justify-content:center;margin-top:14px}.ex-btn.more{padding:10px 20px}
+.ex-trend{margin:0 0 20px;padding:18px 20px;border:1px solid #e6e8f5;border-radius:18px;background:linear-gradient(135deg,#f8f9ff,#f4fbfa)}
+.ex-trend-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.ex-trend-head strong{display:block;font-size:16px;color:#1e1b4b}.ex-trend-head small{color:#64748b;font-size:12.5px}
+.ex-delta{padding:6px 12px;border-radius:999px;font-size:13px;font-weight:800}.ex-delta em{font-style:normal;font-weight:600;opacity:.8}
+.ex-delta.up{background:#dcfce7;color:#166534}.ex-delta.down{background:#ffe4e6;color:#be123c}
+.ex-trend-svg{width:100%;max-height:190px}
+@media(max-width:1100px){.ex-head{display:none}.ex-row{grid-template-columns:1fr 1fr;gap:10px 14px}.ex-actions{justify-content:flex-start}}
+.ex-search input{border:0!important;box-shadow:none!important;background:transparent!important;padding:12px 0!important;border-radius:0!important;outline:0!important}
