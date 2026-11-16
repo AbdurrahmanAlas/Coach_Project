@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="/exam-data.js?v=20261116050000"></script>
   <script src="/exam-filters.js?v=20261108254000"></script>
-  <script src="/modal-questions.js?v=20261108254000"></script>
+  <script src="/modal-questions.js?v=20261116150000"></script>
   <script src="/worksheet.js?v=20261116060000"></script>
   <style>.student-calendar-day{position:relative;overflow:hidden}.student-calendar-day:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#25c6a7,#4d83ff);border-radius:18px 18px 0 0;pointer-events:none}
     :root{
@@ -354,9 +354,9 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261116131000">
+  <link rel="stylesheet" href="/theme.css?v=20261116140000">
   <link rel="stylesheet" href="/analytics.css?v=20261116112000">
-  <script src="/share-image.js?v=20261116120000"></script>
+  <script src="/share-image.js?v=20261116141000"></script>
   <script src="/analytics.js?v=20261116120000b"></script>
   <script src="/calendar.js?v=20261116090000"></script>
 </head>
@@ -962,26 +962,22 @@
         const toggleBtn = document.getElementById('question-add-toggle');
         if (toggleBtn) {
           toggleBtn.addEventListener('click', () => {
-            window.questionModal.open(async (data, isFormData) => {
-              // Soru'yu API'ye gönder
-              const options = {
-                method: 'POST'
-              };
-
-              if (isFormData) {
-                // FormData (dosya var) - body'ye doğrudan FormData gönder
-                options.body = data;
-              } else {
-                // JSON (dosya yok)
-                options.body = JSON.stringify(data);
-                options.headers = { 'Content-Type': 'application/json' };
+            window.questionModal.open(async (data, hasFile, file) => {
+              const body = { ...data };
+              if (hasFile && file) {
+                const form = new FormData();
+                form.append('examType', data.examType); form.append('subject', data.subject); form.append('topic', data.topic); form.append('file', file);
+                const upload = await fetch(`/api/tenants/${tenantId}/resources`, { method: 'POST', body: form, credentials: 'include' });
+                const uploaded = await upload.json().catch(() => ({}));
+                if (!upload.ok) return { success: false, error: uploaded.error || 'Dosya yüklenemedi' };
+                body.resourceId = uploaded.id;
               }
-
-              const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, options);
+              const response = await authRequest(`/api/tenants/${tenantId}/question-bank`, { method: 'POST', body: JSON.stringify(body) });
+              const failure = response.ok ? null : await response.json().catch(() => ({}));
 
               return {
                 success: response.ok,
-                error: response.ok ? '' : 'Soru kaydedilemedi',
+                error: response.ok ? '' : ((failure && failure.error) || 'Soru kaydedilemedi'),
                 callback: async () => {
                   await refresh();
                 }
@@ -1379,21 +1375,53 @@
       }
       for (const [id, key] of [['exam-search', 'q'], ['exam-range', 'range'], ['exam-sort', 'sort']]) { const el = document.getElementById(id); if (el) el.value = examsView[key]; }
 
+      const shortDate = iso => new Date(`${iso}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
       const trendSvg = points => {
-        const W = 640, H = 150, pad = 30, values = points.map(p => p.net), max = Math.max(...values), min = Math.min(0, ...values);
-        const x = i => pad + (points.length === 1 ? 0 : i * (W - pad * 2) / (points.length - 1)), y = v => H - pad - (v - min) / ((max - min) || 1) * (H - pad * 2);
+        const W = 640, H = 190, padX = 44, top = 34, bottom = 52, base = H - bottom, values = points.map(p => p.net), max = Math.max(...values), min = Math.min(0, ...values);
+        const x = i => padX + (points.length === 1 ? (W - padX * 2) / 2 : i * (W - padX * 2) / (points.length - 1)), y = v => top + (1 - (v - min) / ((max - min) || 1)) * (base - top);
         const line = points.map((p, i) => `${x(i).toFixed(1)},${y(p.net).toFixed(1)}`).join(' ');
-        return `<svg viewBox="0 0 ${W} ${H}" class="ex-trend-svg" role="img" aria-label="Net gelişimi"><polygon points="${x(0)},${H - pad} ${line} ${x(points.length - 1)},${H - pad}" fill="rgba(79,70,229,.10)"/><polyline points="${line}" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round"/>${points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.net).toFixed(1)}" r="4.5" fill="#fff" stroke="#4f46e5" stroke-width="2.5"><title>${escapeHtml(p.title)} · ${fmtDate(p.examDate)} · ${fmtNum(p.net)} net</title></circle><text x="${x(i).toFixed(1)}" y="${(y(p.net) - 10).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#3730a3">${fmtNum(p.net)}</text>`).join('')}</svg>`;
+        const every = Math.ceil(points.length / 9);
+        return `<svg viewBox="0 0 ${W} ${H}" class="ex-trend-svg" role="img" aria-label="Net gelişimi"><line x1="14" y1="${base}" x2="${W - 14}" y2="${base}" stroke="#e2e8f0" stroke-width="1.5"/>${points.length > 1 ? `<polygon points="${x(0)},${base} ${line} ${x(points.length - 1)},${base}" fill="rgba(79,70,229,.10)"/><polyline points="${line}" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linejoin="round"/>` : ''}${points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.net).toFixed(1)}" r="4.5" fill="#fff" stroke="#4f46e5" stroke-width="2.5"><title>${escapeHtml(p.title)} · ${fmtDate(p.examDate)} · ${fmtNum(p.net)} net</title></circle><text x="${x(i).toFixed(1)}" y="${(y(p.net) - 10).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="#3730a3">${fmtNum(p.net)}</text>${i % every === 0 || i === points.length - 1 ? `<text x="${x(i).toFixed(1)}" y="${base + 22}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#64748b">${shortDate(p.examDate)}</text>` : ''}`).join('')}</svg>`;
       };
 
-      const render = () => {
+      const getRows = () => {
         const term = examsView.q.trim().toLocaleLowerCase('tr-TR');
         const since = examsView.range === 'all' ? null : new Date(Date.now() - Number(examsView.range) * 86400000);
-        let rows = all.filter(e => (!examsView.student || e.studentId === examsView.student)
+        const rows = all.filter(e => (!examsView.student || e.studentId === examsView.student)
           && (!term || e.studentName.toLocaleLowerCase('tr-TR').includes(term) || String(e.title || '').toLocaleLowerCase('tr-TR').includes(term))
           && (!since || new Date(`${e.examDate}T00:00:00`) >= since));
         const sorters = { date: (a, b) => String(b.examDate).localeCompare(String(a.examDate)), net: (a, b) => b.net - a.net, score: (a, b) => b.scoreN - a.scoreN, student: (a, b) => a.studentName.localeCompare(b.studentName, 'tr') || String(b.examDate).localeCompare(String(a.examDate)) };
-        rows = [...rows].sort(sorters[examsView.sort] || sorters.date);
+        return [...rows].sort(sorters[examsView.sort] || sorters.date);
+      };
+      const slug = s => String(s || '').toLocaleLowerCase('tr-TR').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ogrenci';
+      const shareExams = async asPdf => {
+        const msg = document.getElementById('exam-share-msg');
+        const say = (m, err) => { if (msg) { msg.textContent = m; msg.className = 'ex-msg' + (err ? ' err' : ''); } };
+        const student = students.find(s => s.id === examsView.student);
+        const series = getRows().sort((a, b) => String(a.examDate).localeCompare(String(b.examDate)));
+        if (!student || !series.length) { say('Önce bir öğrenci seç ve en az bir deneme olsun.', true); return; }
+        if (!window.KoclukShare) { say('Paylaşım modülü yüklenemedi. Sayfayı yenileyin.', true); return; }
+        say('Hazırlanıyor…');
+        try {
+          const name = series[0].studentName, last = series[series.length - 1], prev = series[series.length - 2], best = series.reduce((m, e) => e.net > m.net ? e : m, series[0]);
+          const rangeText = { all: 'Tüm zamanlar', 30: 'Son 30 gün', 90: 'Son 90 gün', 365: 'Son 1 yıl' }[examsView.range] || 'Tüm zamanlar';
+          const diff = prev ? last.net - prev.net : null;
+          const canvas = KoclukShare.examReportCanvas({
+            name, sub: `${series.length} deneme · ${rangeText}`, dateLabel: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }), coach: document.getElementById('profile-name')?.textContent?.trim() || '',
+            stats: [{ label: 'Toplam deneme', value: String(series.length) }, { label: 'Ortalama net', value: fmtNum(series.reduce((s, e) => s + e.net, 0) / series.length) }, { label: 'En yüksek net', value: fmtNum(best.net) }, { label: 'Son deneme neti', value: fmtNum(last.net) }],
+            delta: diff === null ? null : { up: diff >= 0, text: `${diff >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(diff))} net son denemede` },
+            points: series.slice(-12).map(e => ({ net: e.net, label: fmtNum(e.net), date: shortDate(e.examDate) })),
+            rows: [...series].reverse().slice(0, 12).map(e => ({ date: fmtDate(e.examDate), title: e.title, d: String(e.correct), y: String(e.wrong), b: String(e.blank), net: fmtNum(e.net), score: fmtNum(e.scoreN) }))
+          });
+          const blob = asPdf ? await KoclukShare.toPdf(canvas) : await KoclukShare.toBlob(canvas, 'image/png');
+          const guardian = student.guardian || {}, phone = examsView.shareTo === 'student' ? (student.phoneNumber || guardian.phoneNumber || '') : (guardian.phoneNumber || student.phoneNumber || '');
+          const res = await KoclukShare.deliver({ blob, filename: `deneme-raporu-${slug(name)}${asPdf ? '.pdf' : '.png'}`, text: `${name} - deneme sonuç raporu (${series.length} deneme, son net: ${fmtNum(last.net)})`, phone });
+          say(KoclukShare.describe(res, asPdf));
+        } catch (e) { console.warn(e); say('Rapor hazırlanamadı. Tekrar deneyin.', true); }
+      };
+
+      const render = () => {
+        const rows = getRows();
 
         const best = rows.length ? rows.reduce((m, e) => e.net > m.net ? e : m, rows[0]) : null;
         setText('exams-total-count', rows.length);
@@ -1406,10 +1434,14 @@
         const trend = document.getElementById('exam-trend');
         if (trend) {
           const series = examsView.student ? [...rows].sort((a, b) => String(a.examDate).localeCompare(String(b.examDate))) : [];
+          let html = '';
           if (series.length >= 2) {
             const diff = series[series.length - 1].net - series[series.length - 2].net;
-            trend.innerHTML = `<div class="ex-trend"><div class="ex-trend-head"><div><strong>Net gelişimi</strong><small>${escapeHtml(series[0].studentName)} · ${series.length} deneme</small></div><span class="ex-delta ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(diff))} net <em>son denemede</em></span></div>${trendSvg(series.slice(-12))}</div>`;
-          } else trend.innerHTML = '';
+            html += `<div class="ex-trend"><div class="ex-trend-head"><div><strong>Net gelişimi</strong><small>${escapeHtml(series[0].studentName)} · ${series.length} deneme</small></div><span class="ex-delta ${diff >= 0 ? 'up' : 'down'}">${diff >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(diff))} net <em>son denemede</em></span></div>${trendSvg(series.slice(-12))}</div>`;
+          }
+          if (series.length) html += `<div class="ex-share"><div><b>Sonuçları paylaş</b><span>${escapeHtml(series[0].studentName)} için deneme raporunu WhatsApp ile gönder.</span></div><div class="ex-share-actions"><label class="ex-who2"><span>Gönderilecek kişi</span><select id="exam-recipient"><option value="guardian" ${examsView.shareTo !== 'student' ? 'selected' : ''}>Veli</option><option value="student" ${examsView.shareTo === 'student' ? 'selected' : ''}>Öğrenci</option></select></label><button type="button" class="ex-btn main" id="exam-share-image">🖼️ Görsel olarak paylaş</button><button type="button" class="ex-btn" id="exam-share-pdf">📄 PDF</button></div><span id="exam-share-msg" class="ex-msg"></span></div>`;
+          else if (!examsView.student) html = '<div class="ex-hint">💡 Bir öğrenci seçince net gelişimi grafiğini görür ve sonuçlarını veli veya öğrenciye WhatsApp\'tan gönderebilirsin.</div>';
+          trend.innerHTML = html;
         }
 
         const visible = rows.slice(0, examsView.limit);
@@ -1429,10 +1461,12 @@
         page.dataset.bound = 'true';
         const bind = (id, event, key) => document.getElementById(id)?.addEventListener(event, e => { examsView[key] = e.target.value; examsView.limit = 15; page.__render(); });
         bind('exam-search', 'input', 'q'); bind('exam-student-filter', 'change', 'student'); bind('exam-range', 'change', 'range'); bind('exam-sort', 'change', 'sort');
+        page.addEventListener('change', event => { if (event.target.id === 'exam-recipient') examsView.shareTo = event.target.value; });
         page.addEventListener('click', async event => {
           const t = event.target.closest('button'); if (!t) return;
           const ctx = page.__ctx;
           if (t.id === 'exam-show-more') { examsView.limit += 15; page.__render(); }
+          else if (t.id === 'exam-share-image' || t.id === 'exam-share-pdf') await ctx.share(t.id === 'exam-share-pdf');
           else if (t.id === 'exam-export') {
             const ids = JSON.parse(root.dataset.rows || '[]'), rows = ids.map(id => ctx.all.find(e => e.id === id)).filter(Boolean);
             const csv = ['Öğrenci;Deneme;Tarih;Doğru;Yanlış;Boş;Net;Puan', ...rows.map(e => [e.studentName, e.title, e.examDate, e.correct, e.wrong, e.blank, ctx.fmtNum(e.net), ctx.fmtNum(e.scoreN)].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\r\n');
@@ -1446,7 +1480,7 @@
           }
         });
       }
-      if (page) { page.__render = render; page.__ctx = { all, students, tenantId, fmtNum }; }
+      if (page) { page.__render = render; page.__ctx = { all, students, tenantId, fmtNum, share: shareExams }; }
       render();
     }
     let editingExam = null;

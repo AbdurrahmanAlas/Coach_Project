@@ -202,6 +202,81 @@
     return c;
   }
 
+  /* ---------- Deneme sonuç raporu ---------- */
+  function drawTrend(ctx, x, y, w, h, pts) {
+    const padL = 60, padR = 60, top = 104, bottom = 62, base = y + h - bottom, span = w - padL - padR;
+    const px = i => x + padL + (pts.length === 1 ? span / 2 : i * span / (pts.length - 1));
+    const vals = pts.map(p => p.net), max = Math.max(...vals), min = Math.min(0, ...vals);
+    const py = v => y + top + (1 - (v - min) / ((max - min) || 1)) * (h - top - bottom);
+    ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 24, base); ctx.lineTo(x + w - 24, base); ctx.stroke();
+    if (pts.length > 1) {
+      ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(px(i), py(p.net)) : ctx.moveTo(px(i), py(p.net)));
+      ctx.lineTo(px(pts.length - 1), base); ctx.lineTo(px(0), base); ctx.closePath(); ctx.fillStyle = 'rgba(79,70,229,.10)'; ctx.fill();
+      ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(px(i), py(p.net)) : ctx.moveTo(px(i), py(p.net)));
+      ctx.strokeStyle = COL.indigo; ctx.lineWidth = 5; ctx.lineJoin = 'round'; ctx.stroke();
+    }
+    const every = Math.ceil(pts.length / 8);
+    pts.forEach((p, i) => {
+      ctx.beginPath(); ctx.arc(px(i), py(p.net), 9, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = COL.indigo; ctx.stroke();
+      text(ctx, p.label, px(i), py(p.net) - 24, { font: f(24, 800), color: '#3730a3', align: 'center' });
+      if (i % every === 0 || i === pts.length - 1) text(ctx, p.date, px(i), base + 38, { font: f(21, 600), color: COL.muted, align: 'center' });
+    });
+  }
+  function ellipsize(ctx, s, maxW) {
+    s = String(s || ''); if (ctx.measureText(s).width <= maxW) return s;
+    while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
+    return s + '…';
+  }
+  function paintExamReport(ctx, W, d) {
+    const pad = 64, gap = 26;
+    header(ctx, W, 270, 'DENEME SONUÇ RAPORU', d.name, d.sub);
+    let y = 270 + 46;
+    const cw = (W - pad * 2 - gap * 3) / 4, tones = [COL.indigo, COL.violet, COL.teal, COL.amber];
+    d.stats.forEach((s, i) => {
+      const x = pad + i * (cw + gap);
+      card(ctx, x, y, cw, 150);
+      ctx.fillStyle = tones[i]; roundRect(ctx, x + 22, y + 30, 8, 90, 4); ctx.fill();
+      text(ctx, s.value, x + 48, y + 84, { font: f(46, 850), color: COL.ink });
+      text(ctx, s.label, x + 48, y + 122, { font: f(21), color: COL.muted });
+    });
+    y += 150 + 40;
+    if (d.points.length) {
+      const ch = 470;
+      card(ctx, pad, y, W - pad * 2, ch);
+      text(ctx, 'Net gelişimi', pad + 32, y + 56, { font: f(28, 850), color: COL.ink });
+      if (d.delta) text(ctx, d.delta.text, W - pad - 32, y + 56, { font: f(24, 850), color: d.delta.up ? COL.green : COL.rose, align: 'right' });
+      drawTrend(ctx, pad, y + 40, W - pad * 2, ch - 40, d.points);
+      y += ch + 36;
+    }
+    const rowH = 62, tableH = 150 + d.rows.length * rowH;
+    card(ctx, pad, y, W - pad * 2, tableH);
+    text(ctx, 'Deneme sonuçları', pad + 32, y + 56, { font: f(28, 850), color: COL.ink });
+    const cols = { date: pad + 32, title: pad + 220, d: pad + 700, y: pad + 790, b: pad + 880, net: pad + 990, score: W - pad - 32 };
+    const hy = y + 112;
+    const head = (label, x, align) => text(ctx, label, x, hy, { font: f(18, 800), color: COL.muted, align, spacing: '1.5px' });
+    head('TARİH', cols.date); head('DENEME', cols.title); head('D', cols.d, 'center'); head('Y', cols.y, 'center'); head('B', cols.b, 'center'); head('NET', cols.net, 'center'); head('PUAN', cols.score, 'right');
+    d.rows.forEach((r, i) => {
+      const ry = y + 130 + i * rowH;
+      if (i % 2 === 0) { ctx.fillStyle = '#f8f9ff'; ctx.fillRect(pad + 2, ry, W - pad * 2 - 4, rowH); }
+      const base = ry + 40;
+      text(ctx, r.date, cols.date, base, { font: f(23), color: COL.muted });
+      ctx.font = f(24, 750); text(ctx, ellipsize(ctx, r.title, 440), cols.title, base, { font: f(24, 750), color: COL.ink });
+      text(ctx, r.d, cols.d, base, { font: f(24, 800), color: COL.green, align: 'center' });
+      text(ctx, r.y, cols.y, base, { font: f(24, 800), color: COL.rose, align: 'center' });
+      text(ctx, r.b, cols.b, base, { font: f(24, 800), color: COL.muted, align: 'center' });
+      text(ctx, r.net, cols.net, base, { font: f(26, 850), color: COL.indigo, align: 'center' });
+      text(ctx, r.score, cols.score, base, { font: f(24, 800), color: COL.ink, align: 'right' });
+    });
+    return y + tableH + gap;
+  }
+  function examReportCanvas(d) {
+    const W = 1240, bottom = paintExamReport(makeCanvas(W, 10).getContext('2d'), W, d), H = Math.max(1754, Math.round(bottom + 150));
+    const c = makeCanvas(W, H), ctx = c.getContext('2d');
+    ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H);
+    paintExamReport(ctx, W, d); footer(ctx, W, H, (d.coach ? d.coach + ' · ' : '') + d.dateLabel);
+    return c;
+  }
+
   /* ---------- Dosya üretimi ve paylaşım ---------- */
   const toBlob = (canvas, type = 'image/png', quality = 0.92) => new Promise(res => canvas.toBlob(res, type, quality));
   async function toPdf(canvas) {
@@ -257,5 +332,13 @@
     return { mode: 'fallback', copied, hasNumber: !!number, web: !isMobile() };
   }
 
-  window.KoclukShare = { reportCanvas, scheduleCanvas, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
+  function describe(res, asPdf) {
+    if (res.mode === 'cancel') return '';
+    if (res.mode === 'share') return 'Paylaşım penceresi açıldı.';
+    const where = res.web ? 'WhatsApp Web açıldı' : 'WhatsApp açıldı';
+    const how = asPdf ? 'PDF indirildi, ' + where + '. Sohbette 📎 → Belge ile indirilen PDF dosyasını seçin.' : (res.copied ? 'Görsel panoya kopyalandı, ' + where + '. Sohbet kutusuna tıklayıp Ctrl+V ile yapıştırın ve gönderin.' : 'Görsel indirildi, ' + where + '. Sohbette 📎 → Fotoğraflar ile indirilen görseli seçin.');
+    return how + (res.hasNumber ? '' : ' Kayıtlı telefon numarası yok, sohbeti kendiniz seçin.');
+  }
+
+  window.KoclukShare = { reportCanvas, scheduleCanvas, examReportCanvas, describe, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
 })();
