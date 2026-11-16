@@ -115,6 +115,8 @@ class QuestionModal {
 
   // Initialize - Dropdown event listener'ları ekle
   init() {
+    if (this._ready) return;
+    this._ready = true;
     const examSelect = document.getElementById('q-exam');
     const subjectSelect = document.getElementById('q-subject');
     const topicSelect = document.getElementById('q-topic');
