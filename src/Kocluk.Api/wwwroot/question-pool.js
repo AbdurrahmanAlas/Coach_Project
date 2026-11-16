@@ -7,10 +7,17 @@
   const examName = code => (typeof getExamTypes === 'function' && (getExamTypes().find(e => e.code === code) || {}).name) || code || '—';
   const examShort = code => code === 'YÖS' ? 'TR-YÖS' : (code || '—');
   const lower = s => String(s || '').toLocaleLowerCase('tr-TR');
+  const subjLabel = s => {
+    const v = String(s || '');
+    if (typeof getExamTypes === 'function') for (const e of getExamTypes()) { const m = getSubjectsByExam(e.code).find(x => x.code === v); if (m) return m.name; }
+    return v ? v.charAt(0).toLocaleUpperCase('tr-TR') + v.slice(1) : v;
+  };
+  const subjKey = s => lower(subjLabel(s));
+  const subjectList = list => { const map = new Map(); list.forEach(x => { const k = subjKey(x.subject); if (k && !map.has(k)) map.set(k, subjLabel(x.subject)); }); return [...map].map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label, 'tr')); };
 
   window.mountQuestionPool = async function (ctx) {
     const { shell, tenantId, authRequest, escapeHtml: esc } = ctx;
-    const st = { tab: 'resources', rsubject: '', rtype: '', rsort: 'new', q: '', exam: '', subject: '', topic: '', difficulty: '', type: '', status: '', sort: 'new', limit: 20, rq: '', rlimit: 20, items: [], resources: [], students: [], open: new Set(), assign: new Set() };
+    const st = { tab: ctx.tab || 'resources', rsubject: '', rtype: '', rsort: 'new', q: '', exam: '', subject: '', topic: '', difficulty: '', type: '', status: '', sort: 'new', limit: 20, rq: '', rlimit: 20, items: [], resources: [], students: [], open: new Set(), assign: new Set() };
     shell.style.maxWidth = ''; shell.style.padding = '';
     shell.innerHTML = '<div class="qp-root"><div class="perf-empty">Soru havuzu yükleniyor…</div></div>';
     const root = shell.querySelector('.qp-root');
@@ -25,7 +32,7 @@
     const scoped = () => st.items.filter(x => (!st.exam || x.examType === st.exam));
     function filtered() {
       const term = lower(st.q);
-      const rows = st.items.filter(x => (!st.exam || x.examType === st.exam) && (!st.subject || x.subject === st.subject) && (!st.topic || x.topic === st.topic)
+      const rows = st.items.filter(x => (!st.exam || x.examType === st.exam) && (!st.subject || subjKey(x.subject) === st.subject) && (!st.topic || x.topic === st.topic)
         && (!st.difficulty || x.difficulty === st.difficulty) && (!st.type || x.questionType === st.type)
         && (!st.status || (st.status === 'published' ? x.isPublished : !x.isPublished))
         && (!term || lower(x.prompt).includes(term) || lower(x.subject).includes(term) || lower(x.topic).includes(term)));
@@ -37,7 +44,7 @@
     const activeChips = () => {
       const chips = [];
       if (st.exam) chips.push(['exam', 'Sınav: ' + examShort(st.exam)]);
-      if (st.subject) chips.push(['subject', 'Ders: ' + st.subject]);
+      if (st.subject) chips.push(['subject', 'Ders: ' + subjLabel(st.subject)]);
       if (st.topic) chips.push(['topic', 'Konu: ' + st.topic]);
       if (st.difficulty) chips.push(['difficulty', 'Zorluk: ' + st.difficulty]);
       if (st.type) chips.push(['type', 'Tür: ' + TYPE[st.type]]);
@@ -60,7 +67,7 @@
       const studentOptions = '<option value="">Öğrenci seç</option>' + st.students.map(s => `<option value="${s.id}">${esc(s.firstName)} ${esc(s.lastName || '')}</option>`).join('');
       return `<article class="qp-row ${open ? 'open' : ''}" data-id="${x.id}">
         <div class="qp-main">
-          <div class="qp-meta"><span class="qp-exam" title="${esc(examName(x.examType))}">${esc(examShort(x.examType))}</span><strong>${esc(x.subject)}</strong><span class="qp-topic">${esc(String(x.topic || '').replace(/^.* - /, ''))}</span></div>
+          <div class="qp-meta"><span class="qp-exam" title="${esc(examName(x.examType))}">${esc(examShort(x.examType))}</span><strong>${esc(subjLabel(x.subject))}</strong><span class="qp-topic">${esc(String(x.topic || '').replace(/^.* - /, ''))}</span></div>
           <p class="qp-prompt">${esc(x.prompt)}</p>
           <div class="qp-tags"><span class="qp-pill d-${esc(x.difficulty)}">${esc(x.difficulty)}</span><span class="qp-pill">${esc(TYPE[x.questionType] || x.questionType)}</span><span class="qp-pill ${x.isPublished ? 'pub' : 'draft'}">${x.isPublished ? 'Yayımda' : 'Taslak'}</span>${x.resourceId ? '<span class="qp-pill">📎 Ekli dosya</span>' : ''}<span class="qp-date">${fmtDate(x.createdAtUtc)}</span></div>
         </div>
@@ -77,14 +84,14 @@
 
     function questionsPane() {
       const rows = filtered(), visible = rows.slice(0, st.limit), chips = activeChips();
-      const subjects = distinct(scoped(), 'subject'), topics = distinct(scoped().filter(x => !st.subject || x.subject === st.subject), 'topic');
+      const subjects = subjectList(scoped()), topics = distinct(scoped().filter(x => !st.subject || subjKey(x.subject) === st.subject), 'topic');
       return `<div class="qp-toolbar">
           <div class="qp-search"><span aria-hidden="true">🔎</span><input id="qp-search" type="search" placeholder="Soru metni, ders veya konu ara…" value="${esc(st.q)}" autocomplete="off"></div>
           <select id="qp-sort" aria-label="Sıralama"><option value="new" ${st.sort === 'new' ? 'selected' : ''}>En yeni önce</option><option value="old" ${st.sort === 'old' ? 'selected' : ''}>En eski önce</option><option value="subject" ${st.sort === 'subject' ? 'selected' : ''}>Ders / konu (A-Z)</option><option value="difficulty" ${st.sort === 'difficulty' ? 'selected' : ''}>Zorluk (kolaydan zora)</option></select>
         </div>
         <div class="qp-filters">
           <label><span>Sınav türü</span><select id="qp-exam"><option value="">Tümü</option>${opts(distinct(st.items, 'examType'), st.exam, examShort)}</select></label>
-          <label><span>Ders</span><select id="qp-subject"><option value="">Tümü</option>${opts(subjects, st.subject)}</select></label>
+          <label><span>Ders</span><select id="qp-subject"><option value="">Tümü</option>${subjects.map(o => `<option value="${esc(o.key)}" ${o.key === st.subject ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
           <label><span>Konu</span><select id="qp-topic"><option value="">Tümü</option>${opts(topics, st.topic, t => t.replace(/^.* - /, ''))}</select></label>
           <label><span>Zorluk</span><select id="qp-difficulty"><option value="">Tümü</option>${opts(['Kolay', 'Orta', 'Zor'], st.difficulty)}</select></label>
           <label><span>Soru türü</span><select id="qp-type"><option value="">Tümü</option>${opts(Object.keys(TYPE), st.type, t => TYPE[t])}</select></label>
@@ -100,11 +107,11 @@
     const fileExt = r => (String(r.fileName || '').split('.').pop() || '').slice(0, 4).toUpperCase() || 'DOSYA';
     function resourcesPane() {
       const term = lower(st.rq);
-      const rows = st.resources.filter(r => (!st.rsubject || r.subject === st.rsubject) && (!st.rtype || fileKind(r) === st.rtype) && (!term || lower(r.subject).includes(term) || lower(r.topic).includes(term) || lower(r.fileName).includes(term)));
+      const rows = st.resources.filter(r => (!st.rsubject || subjKey(r.subject) === st.rsubject) && (!st.rtype || fileKind(r) === st.rtype) && (!term || lower(r.subject).includes(term) || lower(r.topic).includes(term) || lower(r.fileName).includes(term)));
       const sorters = { new: () => 0, old: (a, b) => String(a.createdAtUtc).localeCompare(String(b.createdAtUtc)), subject: (a, b) => String(a.subject).localeCompare(String(b.subject), 'tr') || String(a.topic).localeCompare(String(b.topic), 'tr'), name: (a, b) => String(a.fileName).localeCompare(String(b.fileName), 'tr'), size: (a, b) => Number(b.size || 0) - Number(a.size || 0) };
       const sorted = [...rows].sort(sorters[st.rsort] || sorters.new), visible = sorted.slice(0, st.rlimit);
       const chips = [];
-      if (st.rsubject) chips.push(['rsubject', 'Ders: ' + st.rsubject]);
+      if (st.rsubject) chips.push(['rsubject', 'Ders: ' + subjLabel(st.rsubject)]);
       if (st.rtype) chips.push(['rtype', 'Tür: ' + KIND_LABEL[st.rtype]]);
       if (st.rq.trim()) chips.push(['rq', '“' + st.rq.trim() + '”']);
       const studentOptions = '<option value="">Öğrenci seç</option>' + st.students.map(s => `<option value="${s.id}">${esc(s.firstName)} ${esc(s.lastName || '')}</option>`).join('');
@@ -112,18 +119,18 @@
       return `<div class="qp-toolbar"><div class="qp-search"><span aria-hidden="true">🔎</span><input id="qp-rsearch" type="search" placeholder="Dosya adı, ders veya konu ara…" value="${esc(st.rq)}" autocomplete="off"></div>
           <select id="qp-rsort" aria-label="Sıralama"><option value="new" ${st.rsort === 'new' ? 'selected' : ''}>En yeni yüklenen önce</option><option value="old" ${st.rsort === 'old' ? 'selected' : ''}>En eski önce</option><option value="subject" ${st.rsort === 'subject' ? 'selected' : ''}>Ders / konu (A-Z)</option><option value="name" ${st.rsort === 'name' ? 'selected' : ''}>Dosya adı (A-Z)</option><option value="size" ${st.rsort === 'size' ? 'selected' : ''}>Boyut (büyükten küçüğe)</option></select></div>
         <div class="qp-filters two">
-          <label><span>Ders</span><select id="qp-rsubject"><option value="">Tüm dersler</option>${opts(distinct(st.resources, 'subject'), st.rsubject)}</select></label>
+          <label><span>Ders</span><select id="qp-rsubject"><option value="">Tüm dersler</option>${subjectList(st.resources).map(o => `<option value="${esc(o.key)}" ${o.key === st.rsubject ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
           <label><span>Dosya türü</span><select id="qp-rtype"><option value="">Tüm türler</option>${opts(kinds, st.rtype, k => KIND_LABEL[k])}</select></label>
         </div>
         <div class="qp-summary"><b>${rows.length}</b> kaynak bulundu${st.resources.length >= 200 ? ' <small>(en yeni 200 kaynak listelenir)</small>' : ''}${chips.map(([k, label]) => `<button type="button" class="qp-chip" data-clear="${k}">${esc(label)} ✕</button>`).join('')}${chips.length ? '<button type="button" class="qp-link" data-clear="rall">Tümünü temizle</button>' : ''}</div>
-        <div class="qp-list">${visible.length ? visible.map(r => `<article class="qp-row res" data-id="${r.id}"><div class="qp-main res-main"><span class="qp-fileico ${fileKind(r)}">${esc(fileExt(r))}</span><div><div class="qp-meta"><strong>${esc(r.subject)}</strong><span class="qp-topic">${esc(String(r.topic || '').replace(/^.* - /, ''))}</span></div><div class="qp-tags"><span class="qp-file">${esc(r.fileName)}</span><span class="qp-pill">${fmtSize(r.size || 0)}</span><span class="qp-date">${fmtDate(r.createdAtUtc)} tarihinde yüklendi</span></div></div></div><div class="qp-actions"><button type="button" class="qp-btn" data-act="preview" data-url="${esc(r.downloadUrl)}">Önizle</button><select class="qp-student" data-rid="${r.id}">${studentOptions}</select><button type="button" class="qp-btn main" data-act="send-resource" data-id="${r.id}">Öğrenciye gönder</button><a class="qp-btn" href="${esc(r.downloadUrl)}" download>İndir</a><span class="qp-msg" data-rmsg="${r.id}"></span></div></article>`).join('') : `<div class="qp-empty"><strong>${st.resources.length ? 'Filtrelere uyan kaynak yok' : 'Henüz kaynak yüklenmemiş'}</strong><p>${st.resources.length ? 'Arama veya filtreleri değiştirmeyi dene.' : '"Dosya yükle" ile PDF, Word, Excel veya görsel ekleyebilirsin.'}</p></div>`}</div>
+        <div class="qp-list">${visible.length ? visible.map(r => `<article class="qp-row res" data-id="${r.id}"><div class="qp-main res-main"><span class="qp-fileico ${fileKind(r)}">${esc(fileExt(r))}</span><div><div class="qp-meta"><strong>${esc(subjLabel(r.subject))}</strong><span class="qp-topic">${esc(String(r.topic || '').replace(/^.* - /, ''))}</span></div><div class="qp-tags"><span class="qp-file">${esc(r.fileName)}</span><span class="qp-pill">${fmtSize(r.size || 0)}</span><span class="qp-date">${fmtDate(r.createdAtUtc)} tarihinde yüklendi</span></div></div></div><div class="qp-actions"><button type="button" class="qp-btn" data-act="preview" data-url="${esc(r.downloadUrl)}">Önizle</button><select class="qp-student" data-rid="${r.id}">${studentOptions}</select><button type="button" class="qp-btn main" data-act="send-resource" data-id="${r.id}">Öğrenciye gönder</button><a class="qp-btn" href="${esc(r.downloadUrl)}" download>İndir</a><span class="qp-msg" data-rmsg="${r.id}"></span></div></article>`).join('') : `<div class="qp-empty"><strong>${st.resources.length ? 'Filtrelere uyan kaynak yok' : 'Henüz kaynak yüklenmemiş'}</strong><p>${st.resources.length ? 'Arama veya filtreleri değiştirmeyi dene.' : '"Dosya yükle" ile PDF, Word, Excel veya görsel ekleyebilirsin.'}</p>${st.resources.length ? '' : '<button type="button" class="qp-btn main big" data-act="upload" style="margin-top:14px">＋ İlk dosyanı yükle</button>'}</div>`}</div>
         ${sorted.length > visible.length ? `<div class="qp-more"><button type="button" class="qp-btn" data-act="rmore">Daha fazla göster (${sorted.length - visible.length} kalan)</button></div>` : ''}`;
     }
 
     function render(keepFocus) {
       const focusId = keepFocus && document.activeElement && root.contains(document.activeElement) ? document.activeElement.id : '';
       const caret = focusId && document.activeElement.selectionStart != null ? document.activeElement.selectionStart : null;
-      root.innerHTML = `<div class="welcome"><div><h1>Soru havuzu</h1><p>Yüklediğin kaynakları öğrencilerine gönder, sorularını oluştur ve ata.</p></div><div class="qp-head-actions"><button class="primary" id="qp-upload" type="button">＋ Dosya yükle</button><button class="primary ghost" id="qp-new" type="button">+ Yeni soru</button></div></div>
+      root.innerHTML = `<div class="welcome"><div><h1>${esc(ctx.title || 'Soru havuzu')}</h1><p>${esc(ctx.subtitle || 'Yüklediğin kaynakları öğrencilerine gönder, sorularını oluştur ve ata.')}</p></div><div class="qp-head-actions"><button class="primary" id="qp-upload" type="button">＋ Dosya yükle</button><button class="primary ghost" id="qp-new" type="button">+ Yeni soru</button></div></div>
         <div class="grid qp-stats">${statsHtml()}</div>
         <div class="card section qp-card">
           <div class="qp-tabs" role="tablist"><button type="button" role="tab" class="${st.tab === 'resources' ? 'on' : ''}" data-tab="resources">Yüklenen kaynaklar <em>${st.resources.length}</em></button><button type="button" role="tab" class="${st.tab === 'questions' ? 'on' : ''}" data-tab="questions">Sorular <em>${st.items.length}</em></button></div>
@@ -151,6 +158,83 @@
         return { success: response.ok, error: response.ok ? '' : ((failure && failure.error) || 'Soru kaydedilemedi'), callback: reload };
       });
     }
+    function openUpload() {
+      document.getElementById('qp-upload-modal')?.remove();
+      const exams = typeof getExamTypes === 'function' ? getExamTypes() : [];
+      const overlay = document.createElement('div');
+      overlay.id = 'qp-upload-modal'; overlay.className = 'qp-modal-backdrop';
+      overlay.innerHTML = `<div class="qp-modal" role="dialog" aria-modal="true" aria-labelledby="qpu-title">
+        <div class="qp-modal-head"><div><h2 id="qpu-title">Dosya yükle</h2><p>Kaynağı arşive ekle; istersen aynı anda bir öğrenciye gönder.</p></div><button type="button" class="qp-x" data-x aria-label="Kapat">✕</button></div>
+        <form class="qp-modal-body" novalidate>
+          <label class="qp-drop" id="qpu-drop"><input type="file" id="qpu-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp"><span class="qp-drop-ico">📁</span><strong>Dosyayı buraya sürükle veya seç</strong><small>PDF, Word, Excel veya görsel · en fazla 20 MB</small><em id="qpu-name"></em></label>
+          <div class="qp-grid3">
+            <label>Sınav türü *<select id="qpu-exam"><option value="">Sınav türü seç</option>${exams.map(e => `<option value="${esc(e.code)}">${esc(e.name)}</option>`).join('')}</select></label>
+            <label>Ders *<select id="qpu-subject"><option value="">Önce sınav türü seç</option></select></label>
+            <label>Konu *<select id="qpu-topic"><option value="">Önce ders seç</option></select></label>
+          </div>
+          <div class="qp-send"><div class="qp-send-title">Öğrenciye hemen gönder <em>(isteğe bağlı)</em></div>
+            <div class="qp-grid3">
+              <label>Öğrenci<select id="qpu-student"><option value="">Sadece arşive kaydet</option>${st.students.map(s => `<option value="${s.id}">${esc(s.firstName)} ${esc(s.lastName || '')}</option>`).join('')}</select></label>
+              <label>Son tarih<input type="date" id="qpu-due"></label>
+              <label>Koç notu<input type="text" id="qpu-note" maxlength="500" placeholder="Örn: Önce konu özetini oku"></label>
+            </div>
+          </div>
+          <div id="qpu-status" class="qp-msg" role="status"></div>
+          <div class="qp-modal-foot"><button type="button" class="qp-btn" data-x>İptal</button><button type="submit" class="qp-btn main big" id="qpu-submit">Yükle</button></div>
+        </form></div>`;
+      document.body.appendChild(overlay);
+      const $ = id => overlay.querySelector('#' + id);
+      const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+      const onKey = e => { if (e.key === 'Escape') close(); };
+      document.addEventListener('keydown', onKey);
+      overlay.addEventListener('click', e => { if (e.target === overlay || e.target.closest('[data-x]')) close(); });
+      const status = (text, err) => { const el = $('qpu-status'); el.textContent = text; el.className = 'qp-msg' + (text ? (err ? ' err' : ' ok') : ''); };
+      const MAX = 20 * 1024 * 1024, fileInput = $('qpu-file'), drop = $('qpu-drop');
+      const showFile = () => {
+        const f = fileInput.files[0];
+        if (f && f.size > MAX) { fileInput.value = ''; $('qpu-name').textContent = ''; drop.classList.remove('has'); status('Dosya çok büyük (en fazla 20 MB).', true); return; }
+        $('qpu-name').textContent = f ? `✓ ${f.name} · ${fmtSize(f.size)}` : ''; drop.classList.toggle('has', !!f); if (f) status('');
+      };
+      fileInput.addEventListener('change', showFile);
+      ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+      drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; showFile(); } });
+      $('qpu-exam').addEventListener('change', e => {
+        const subjects = e.target.value && typeof getSubjectsByExam === 'function' ? getSubjectsByExam(e.target.value) : [];
+        $('qpu-subject').innerHTML = `<option value="">${e.target.value ? 'Ders seç' : 'Önce sınav türü seç'}</option>` + subjects.map(s => `<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
+        $('qpu-topic').innerHTML = '<option value="">Önce ders seç</option>';
+      });
+      $('qpu-subject').addEventListener('change', e => {
+        const topics = e.target.value && typeof getTopicsByExamAndSubject === 'function' ? getTopicsByExamAndSubject($('qpu-exam').value, e.target.value) : [];
+        $('qpu-topic').innerHTML = `<option value="">${e.target.value ? 'Konu seç' : 'Önce ders seç'}</option>` + topics.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+      });
+      $('qpu-student').addEventListener('change', e => { $('qpu-submit').textContent = e.target.value ? 'Yükle ve gönder' : 'Yükle'; });
+      overlay.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault();
+        const file = fileInput.files[0], exam = $('qpu-exam').value, subjectSel = $('qpu-subject'), topic = $('qpu-topic').value, student = $('qpu-student').value;
+        if (!file) return status('Önce bir dosya seç.', true);
+        if (!exam || !subjectSel.value || !topic) return status('Sınav türü, ders ve konu seçimi zorunlu.', true);
+        const subject = subjectSel.selectedOptions[0].textContent.trim(), submit = $('qpu-submit');
+        submit.disabled = true; status('Dosya yükleniyor…');
+        try {
+          const form = new FormData();
+          form.append('examType', exam); form.append('subject', subject); form.append('topic', topic); form.append('file', file);
+          const upload = await fetch('/api/tenants/' + tenantId + '/resources', { method: 'POST', body: form, credentials: 'include' });
+          const uploaded = await upload.json().catch(() => ({}));
+          if (!upload.ok) { status(uploaded.error || `Dosya yüklenemedi (HTTP ${upload.status}).`, true); submit.disabled = false; return; }
+          let note = 'Dosya arşive eklendi.';
+          if (student) {
+            const due = $('qpu-due').value, comment = $('qpu-note').value.trim();
+            const assigned = await authRequest('/api/tenants/' + tenantId + '/resource-assignments', { method: 'POST', body: JSON.stringify({ resourceId: uploaded.id, studentId: student, dueDateUtc: due ? new Date(due + 'T23:59:00').toISOString() : null, note: comment || null }) });
+            const body = assigned.ok ? null : await assigned.json().catch(() => ({}));
+            note = assigned.ok ? 'Dosya yüklendi ve öğrenciye gönderildi.' : 'Dosya yüklendi ama öğrenciye gönderilemedi: ' + ((body && body.error) || 'bilinmeyen hata');
+          }
+          st.tab = 'resources'; st.rsubject = ''; st.rtype = ''; st.rq = ''; st.rsort = 'new';
+          await reload(); close();
+          const msg = document.createElement('div'); msg.className = 'qp-toast'; msg.textContent = '✓ ' + note; document.body.appendChild(msg); setTimeout(() => msg.remove(), 4500);
+        } catch { status('Sunucuya ulaşılamadı. Tekrar dene.', true); submit.disabled = false; }
+      });
+    }
     const say = (selector, text, err) => { const el = root.querySelector(selector); if (el) { el.textContent = text; el.className = 'qp-msg' + (err ? ' err' : ' ok'); } };
 
     root.addEventListener('input', e => {
@@ -170,7 +254,7 @@
     root.addEventListener('click', async e => {
       const t = e.target.closest('button, a'); if (!t) return;
       if (t.id === 'qp-new') { openNew(); return; }
-      if (t.id === 'qp-upload') { document.querySelector('[data-qb="files"]')?.click(); return; }
+      if (t.id === 'qp-upload' || t.dataset.act === 'upload') { openUpload(); return; }
       if (t.dataset.tab) { st.tab = t.dataset.tab; render(); return; }
       if (t.dataset.clear) {
         if (t.dataset.clear === 'rall') { Object.assign(st, { rq: '', rsubject: '', rtype: '' }); st.rlimit = 20; render(); return; }
@@ -205,7 +289,6 @@
         if (r.ok) { st.items = st.items.filter(x => x.id !== id); render(); } else alert('Soru silinemedi.');
       }
       else if (act === 'preview') window.open(t.dataset.url, '_blank', 'noopener');
-      else if (act === 'upload') document.querySelector('[data-qb="files"]')?.click();
       else if (act === 'send-resource') {
         const student = root.querySelector(`.qp-student[data-rid="${id}"]`)?.value;
         if (!student) { say(`[data-rmsg="${id}"]`, 'Önce öğrenci seç.', true); return; }

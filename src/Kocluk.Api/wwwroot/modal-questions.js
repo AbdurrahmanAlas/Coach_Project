@@ -202,7 +202,8 @@ class QuestionModal {
   // Form'u submit et
   async submit() {
     const examType = document.getElementById('q-exam').value.trim();
-    const subject = document.getElementById('q-subject').value.trim();
+    const subjectSelect = document.getElementById('q-subject');
+    const subject = subjectSelect.value ? (subjectSelect.selectedOptions[0]?.textContent || subjectSelect.value).trim() : '';
     const topic = document.getElementById('q-topic').value.trim();
     const prompt = document.getElementById('q-prompt').value.trim();
     const answer = document.getElementById('q-answer').value.trim();
