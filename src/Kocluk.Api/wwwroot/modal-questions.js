@@ -241,18 +241,9 @@ class QuestionModal {
         points: 1
       };
 
-      // Eğer dosya varsa FormData kullan, yoksa JSON kullan
-      let result;
-      if (fileInput && fileInput.files.length > 0) {
-        const formData = new FormData();
-        Object.keys(data).forEach(key => {
-          formData.append(key, data[key]);
-        });
-        formData.append('file', fileInput.files[0]);
-        result = await this.onSubmit(formData, true); // true = formData flag
-      } else {
-        result = await this.onSubmit(data, false);
-      }
+      // Dosya varsa çağıran taraf önce dosyayı kaynak olarak yükler, soruyu sonra JSON ile kaydeder.
+      const file = fileInput && fileInput.files.length > 0 ? fileInput.files[0] : null;
+      const result = await this.onSubmit(data, !!file, file);
 
       if (result.success) {
         status.textContent = '✅ Soru kaydedildi!';
