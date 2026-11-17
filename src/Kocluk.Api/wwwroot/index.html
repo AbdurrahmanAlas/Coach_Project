@@ -354,12 +354,13 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261116181000">
-  <link rel="stylesheet" href="/analytics.css?v=20261116112000">
+  <link rel="stylesheet" href="/theme.css?v=20261117110000">
+  <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261116141000"></script>
-  <script src="/analytics.js?v=20261116120000b"></script>
+  <script src="/analytics.js?v=20261117120000b"></script>
   <script src="/calendar.js?v=20261116090000"></script>
   <script src="/question-pool.js?v=20261116180000"></script>
+  <script src="/week-builder.js?v=20261117110000"></script>
 </head>
 <body>
   <!-- Professional Question Modal -->
@@ -435,8 +436,8 @@
   <div id="student-detail-modal" class="modal-backdrop hidden">
     <div class="modal-card student-detail-card" role="dialog" aria-modal="true">
       <div class="modal-head"><div><h2>Öğrenci gelişim dosyası</h2><p>Dersler, çalışma planları ve sınav ilerlemesi</p></div><button type="button" class="modal-close" id="student-detail-close">×</button></div>
-      <div class="detail-hero"><div id="detail-avatar" class="detail-avatar">Ö</div><div><h3 id="detail-name">Öğrenci</h3><p id="detail-contact">İletişim bilgileri</p></div></div>
-      <div class="detail-tabs" role="tablist" aria-label="Öğrenci gelişim sekmeleri"><button type="button" class="detail-tab active" role="tab" aria-selected="true" data-detail-tab="overview">Genel bakış</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="plans">Çalışma planları</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="exams">Denemeler</button></div>
+      <div class="detail-hero"><div id="detail-avatar" class="detail-avatar">Ö</div><div><h3 id="detail-name">Öğrenci</h3><p id="detail-contact">İletişim bilgileri</p></div><button type="button" class="detail-week-link" id="detail-open-week"><span>🗓️</span> Haftalık programı yönet <b>→</b></button></div>
+      <div class="detail-tabs" role="tablist" aria-label="Öğrenci gelişim sekmeleri"><button type="button" class="detail-tab active" role="tab" aria-selected="true" data-detail-tab="overview">Genel bakış</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="plans">Çalışma planları</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="exams">Denemeler</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="week">Haftalık program</button></div>
       <div id="student-detail-body" class="detail-body"><div class="detail-summary"><div class="detail-stat"><strong id="detail-plan-count">0</strong><span>Aktif plan</span></div><div class="detail-stat"><strong id="detail-task-count">0</strong><span>Toplam görev</span></div><div class="detail-stat"><strong id="detail-question-count">0</strong><span>Hedef soru</span></div><div class="detail-stat"><strong id="detail-solved-question-count">0</strong><span>Çözülen soru</span></div><div class="detail-stat"><strong id="detail-missing-topic-count">0</strong><span>Eksik konu</span></div><div class="detail-stat"><strong id="detail-session-count">0</strong><span>Takvim etkinliği</span></div></div><div class="form-section"><div class="section-title"><h3>Çalışma planları</h3><button type="button" class="tag blue" id="export-detail-plans">CSV indir</button></div><div id="detail-plans" class="tasks"><div class="task"><div class="task-text"><strong>Yükleniyor...</strong></div></div></div></div><div class="form-section"><div class="calendar-box"><h3>Koçluk takvimi</h3><p>Bu öğrenciyle yapılacak görüşmeleri planlayın. Takvimdeki tüm planlanan görüşmeler bu bölümle eşleşir.</p><form id="session-form" class="calendar-form"><div><label for="session-date">Tarih</label><input id="session-date" type="date" required></div><div><label for="session-time">Saat</label><input id="session-time" type="time" required></div><div><label for="session-duration">Süre</label><input id="session-duration" type="number" min="15" max="240" step="15" value="45" required></div><div><label for="session-note">Not</label><input id="session-note" placeholder="Haftalık değerlendirme"></div><button class="primary" type="submit">Takvime ekle</button></form><div id="detail-sessions"></div></div></div></div>
       <div class="form-section"><h3>Deneme sonuçları</h3><div id="detail-exams" class="tasks"><p style="font-size:12px;color:var(--muted)">Yükleniyor...</p></div></div>
     </div>
@@ -1148,6 +1149,7 @@
       closeStudentModal(); await loadStudentsPage();
     });
     let currentDetailStudentId = null;
+    let currentDetailStudentObj = null;
     function setStudentDetailTab(name) {
       document.querySelectorAll('[data-detail-tab]').forEach(tab => {
         const active = tab.dataset.detailTab === name;
@@ -1164,10 +1166,17 @@
         const isCalendar = title.includes('koçluk takvimi');
         const isExams = title.includes('deneme sonuç');
         const isSubjects = section.id === 'detail-subjects' || title.includes('ders ve konu');
-        section.classList.toggle('hidden', (name === 'overview' && (isPlans || isExams || isSubjects)) || (name === 'plans' && (isCalendar || isExams || isSubjects)) || (name === 'exams' && (isPlans || isCalendar)));
+        const isWeek = section.id === 'detail-week-section';
+        section.classList.toggle('hidden', isWeek ? name !== 'week' : (name === 'week' || (name === 'overview' && (isPlans || isExams || isSubjects)) || (name === 'plans' && (isCalendar || isExams || isSubjects)) || (name === 'exams' && (isPlans || isCalendar))));
       });
-      if (summary) summary.classList.toggle('hidden', false);
+      if (summary) summary.classList.toggle('hidden', name === 'week');
+      if (name === 'week') {
+        const weekHost = document.getElementById('detail-week-section');
+        if (weekHost && currentDetailStudentObj && weekHost.dataset.mounted !== currentDetailStudentObj.id) { weekHost.dataset.mounted = currentDetailStudentObj.id; window.mountWeekBuilder?.(weekHost, { tenantId: localStorage.getItem('tenantId'), authRequest, student: currentDetailStudentObj, escapeHtml }); }
+      }
     }
+    document.getElementById('student-detail-body')?.insertAdjacentHTML('beforeend', '<div class="form-section hidden" id="detail-week-section"></div>');
+    document.getElementById('detail-open-week')?.addEventListener('click', () => setStudentDetailTab('week'));
     document.querySelectorAll('[data-detail-tab]').forEach(tab => tab.addEventListener('click', () => setStudentDetailTab(tab.dataset.detailTab)));
     async function openStudentDetail(student) {
       const tenantId = localStorage.getItem('tenantId');
@@ -1176,6 +1185,8 @@
         if (detailResponse.ok) student = { ...student, ...(await detailResponse.json()) };
       }
       currentDetailStudentId = student.id;
+      currentDetailStudentObj = student;
+      const weekHostReset = document.getElementById('detail-week-section'); if (weekHostReset) { weekHostReset.dataset.mounted = ''; weekHostReset.replaceChildren(); }
       const modal = document.getElementById('student-detail-modal');
       document.getElementById('detail-avatar').textContent = (student.firstName[0] || '') + (student.lastName[0] || '');
       document.getElementById('detail-name').textContent = `${student.firstName} ${student.lastName}`;

@@ -3,13 +3,10 @@
    alarm durumları ve veli görüşü tarayıcıda (localStorage) tutulur. */
 (() => {
   const DAY = 86400000;
-  const TABS = [['perf', '📊 Performans'], ['topic', '🔬 Konu analizi'], ['week', '🗓️ Haftalık program'], ['alarms', '🔔 Alarmlar'], ['report', '👪 Veli raporu']];
+  const TABS = [['week', '🗓️ Haftalık program'], ['perf', '📊 Performans'], ['topic', '🔬 Konu analizi'], ['alarms', '🔔 Alarmlar'], ['report', '👪 Veli raporu']];
   const RANGES = [['7', 'Son 7 gün'], ['30', 'Son 30 gün'], ['all', 'Tüm zamanlar']];
   const key = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
   const r1 = v => (Math.round(v * 10) / 10).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
-  const DOW = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
-  const windowStart = offset => { const x = new Date(); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + (offset || 0) * 7); return x; };
-  const windowDays = offset => { const s = windowStart(offset); return [...Array(7)].map((_, i) => { const d = new Date(s); d.setDate(s.getDate() + i); return d; }); };
   const tone = rate => rate >= 80 ? 'good' : rate >= 60 ? 'mid' : 'low';
 
   function agg(list) {
@@ -26,7 +23,7 @@
   window.loadPerformancePage = async function (ctx) {
     const { authRequest, escapeHtml: esc, tenantId } = ctx;
     const content = document.querySelector('.content');
-    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'perf', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonNote: '', lessonQuestions: '', lessonMsg: '', lessonMsgErr: false };
+    const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'week', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonNote: '', lessonQuestions: '', lessonMsg: '', lessonMsgErr: false };
     content.innerHTML = '<div class="welcome"><div><h1>Performans & analiz</h1><p>Öğrencinin çalışma, soru çözümü ve plan verilerini tek ekranda izle.</p></div></div><div id="perf-root" class="perf"><div class="perf-empty">Yükleniyor…</div></div>';
     const root = document.getElementById('perf-root');
 
@@ -38,10 +35,8 @@
     async function loadData() {
       localStorage.setItem('perfStudent', st.studentId);
       root.querySelector('.perf-body')?.classList.add('loading');
-      await importLegacyLessons();
-      const [attempts, plans, subjects, exams, sessions, lessons] = await Promise.all(['question-attempts', 'plans', 'subjects', 'exams', 'sessions', 'lesson-slots'].map(p => get('/students/' + st.studentId + '/' + p)));
+      const [attempts, plans, subjects, exams, sessions] = await Promise.all(['question-attempts', 'plans', 'subjects', 'exams', 'sessions'].map(p => get('/students/' + st.studentId + '/' + p)));
       st.data = {
-        lessons: Array.isArray(lessons) ? lessons : [],
         attempts: (Array.isArray(attempts) ? attempts : []).map(a => ({ ...a, d: new Date(a.attemptedAtUtc) })),
         tasks: (Array.isArray(plans) ? plans : []).flatMap(p => (p.tasks || []).map(t => ({ ...t, planTitle: p.title }))),
         subjects: Array.isArray(subjects) ? subjects : [], exams: Array.isArray(exams) ? exams : [], sessions: Array.isArray(sessions) ? sessions : []
@@ -93,61 +88,6 @@
       return `<svg viewBox="0 0 ${W} ${H}" class="trend"><polygon points="${x(0)},${H - pad} ${line} ${x(pts.length - 1)},${H - pad}" fill="rgba(79,70,229,.10)"/><polyline points="${line}" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round"/>${pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.y).toFixed(1)}" r="3.5" fill="#fff" stroke="#4f46e5" stroke-width="2"><title>${p.k}: %${r1(p.y)}</title></circle>`).join('')}<text x="${pad}" y="12" font-size="10" fill="#64748b">${r1(Math.max(...pts.map(p => p.y)))}</text><text x="${pad}" y="${H - 6}" font-size="10" fill="#64748b">${pts[0].k.slice(5)}</text><text x="${W - pad}" y="${H - 6}" font-size="10" text-anchor="end" fill="#64748b">${pts[pts.length - 1].k.slice(5)}</text></svg>`;
     }
 
-    /* ---------- Sekme: Haftalık program ---------- */
-    const lessonLabel = l => (l.examType ? (l.examType === 'YÖS' ? 'TR-YÖS' : l.examType) + ' · ' : '') + l.subject;
-    function ensureLessonSelection() {
-      const exams = getExamTypes();
-      if (!exams.some(e => e.code === st.lessonExamType)) st.lessonExamType = exams[0].code;
-      const subjects = getSubjectsByExam(st.lessonExamType);
-      if (!subjects.some(s => s.code === st.lessonSubject)) { st.lessonSubject = subjects[0]?.code || ''; st.lessonTopic = ''; }
-      if (st.lessonTopic && !getTopicsByExamAndSubject(st.lessonExamType, st.lessonSubject).includes(st.lessonTopic)) st.lessonTopic = '';
-    }
-    const lessonStore = () => st.data?.lessons || [];
-    const api = async (method, path, body) => {
-      try {
-        const r = await authRequest('/api/tenants/' + tenantId + path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
-        return { ok: r.ok, data: r.status === 204 ? null : await r.json().catch(() => null) };
-      } catch { return { ok: false, data: null }; }
-    };
-    const withSeconds = t => (t && t.length === 5 ? t + ':00' : t || null);
-    const lessonBody = l => ({ date: l.date, startTime: withSeconds(l.startTime), endTime: withSeconds(l.endTime), examType: l.examType, subject: l.subject, topic: l.topic || null, note: l.note || null, questionCount: l.questionCount ? Number(l.questionCount) : null });
-    async function importLegacyLessons() {
-      const legacyKey = 'kocluk-lessons-' + st.studentId;
-      let legacy = []; try { legacy = JSON.parse(localStorage.getItem(legacyKey) || '[]'); } catch { }
-      if (!Array.isArray(legacy) || !legacy.length) { localStorage.removeItem(legacyKey); return; }
-      for (const l of legacy) await api('POST', '/students/' + st.studentId + '/lesson-slots', lessonBody({ ...l, examType: l.examType || 'Özel' }));
-      localStorage.setItem('kocluk-lessons-imported-' + st.studentId, JSON.stringify(legacy));
-      localStorage.removeItem(legacyKey);
-    }
-    function viewWeek() {
-      const days = windowDays(st.weekOffset), keys = days.map(key), todayKey = key(new Date());
-      const tasks = st.data.tasks.filter(t => keys.includes(t.dueDate));
-      const sessions = st.data.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(s.startsAtUtc)));
-      const lessons = lessonStore().filter(l => keys.includes(l.date));
-      const done = tasks.filter(t => t.isCompleted).length, pct = tasks.length ? Math.round(done * 100 / tasks.length) : 0;
-      const target = tasks.reduce((s, t) => s + (t.targetQuestions || 0), 0), solved = tasks.reduce((s, t) => s + (t.completedQuestions || 0), 0);
-      const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
-      const cls = t => t.isCompleted ? 'done' : (t.dueDate < todayKey ? 'late' : (t.completedQuestions > 0 ? 'part' : 'todo'));
-      const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-      const span = l => l.startTime.slice(0, 5) + (l.endTime ? ' – ' + l.endTime.slice(0, 5) : '');
-      const overdue = st.weekOffset === 0 ? st.data.tasks.filter(t => !t.isCompleted && t.dueDate < todayKey) : [];
-      const lessonChip = l => `<div class="chip lesson" draggable="true" data-lesson-id="${esc(l.id)}" data-lesson-date="${l.date}" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + (l.questionCount ? ' · ' + l.questionCount + ' soru' : '') + (l.note ? ' · ' + l.note : '') + ' · ' + span(l))}"><b class="chip-time">${span(l)}</b><strong>${esc(lessonLabel(l))}</strong>${l.topic ? `<small class="chip-topic">${esc(l.topic.replace(/^.* - /, ''))}</small>` : ''}${l.questionCount ? `<small class="chip-meta">✏️ ${l.questionCount} soru</small>` : ''}${l.note ? `<small class="chip-note">📝 ${esc(l.note)}</small>` : ''}<button type="button" class="chip-del" data-del-lesson="${esc(l.id)}" aria-label="Dersi sil">✕</button></div>`;
-      const sessionChip = s => `<div class="chip session"><b class="chip-time">${clock(s.startsAtUtc)}</b><strong>Koçluk görüşmesi</strong><small class="chip-topic">${s.durationMinutes} dk</small></div>`;
-      const taskChip = t => `<div class="chip ${cls(t)}" title="${esc(t.planTitle || '')}"><strong>${esc(t.title)}</strong><small class="chip-topic">${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</small></div>`;
-      const column = (d, i) => {
-        const k = keys[i], isToday = k === todayKey;
-        const items = lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime)).map(lessonChip).join('')
-          + sessions.filter(s => key(s.startsAtUtc) === k).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(sessionChip).join('')
-          + tasks.filter(t => t.dueDate === k).map(taskChip).join('');
-        return `<div class="week-col ${isToday ? 'today' : ''}" data-date-key="${k}"><div class="week-head"><div class="wh-day"><b>${DOW[d.getDay()]}</b>${isToday ? '<em>Bugün</em>' : ''}</div><div class="wh-date"><span>${d.getDate()}</span><small>${d.toLocaleDateString('tr-TR', { month: 'short' })}</small></div></div><div class="week-items">${items || '<div class="week-none">Boş gün</div>'}</div><button type="button" class="week-add" data-add-day="${k}">＋ Ders ekle</button></div>`;
-      };
-      return `<div class="perf-stats compact">${stat('🗒️', 'Toplam görev', tasks.length, 'indigo')}${stat('✅', 'Tamamlanan', done, 'teal')}${stat('📊', 'Tamamlanma', '%' + pct, 'amber')}${stat('✏️', 'Çözülen / hedef soru', solved + ' / ' + target, 'violet')}</div>
-      ${overdue.length ? `<div class="week-overdue"><b>⚠️ ${overdue.length} geciken görev</b><span>${overdue.slice(0, 3).map(t => esc(t.title) + ' (' + fmt(new Date(t.dueDate + 'T00:00:00')) + ')').join(' · ')}${overdue.length > 3 ? ' …' : ''}</span></div>` : ''}
-      <div id="week-form-container"></div>
-      <div class="week-nav"><button type="button" data-week="-1" aria-label="Önceki 7 gün">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-week="1" aria-label="Sonraki 7 gün">›</button>${st.weekOffset ? '<button type="button" data-week="0" class="today">Bugüne dön</button>' : '<em class="week-note">Bugünden itibaren 7 gün</em>'}</div>
-      <div class="week-grid" id="week-grid-root">${days.map(column).join('')}</div>
-      <div class="week-legend"><span class="d lesson"></span>Ders<span class="d session"></span>Görüşme<span class="d done"></span>Tamamlandı<span class="d part"></span>Devam ediyor<span class="d todo"></span>Bekliyor<span class="d late"></span>Geciken</div>`;
-    }
 
     /* ---------- Sekme: Alarmlar ---------- */
     const alarmStore = () => { try { return JSON.parse(localStorage.getItem('kocluk-alarms-' + st.studentId) || '{}'); } catch { return {}; } };
@@ -229,158 +169,27 @@
         say(deliverMsg(res, asPdf));
       } catch (e) { console.warn(e); say('Rapor hazırlanamadı. Tekrar deneyin.', true); }
     }
-    const DOWL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-    function weekShareModel() {
-      const days = windowDays(st.weekOffset), keys = days.map(key), todayKey = key(new Date());
-      const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-      const lessons = lessonStore(), sessions = st.data.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected'), tasks = st.data.tasks;
-      let total = 0;
-      const out = days.map((d, i) => {
-        const k = keys[i];
-        const items = [
-          ...lessons.filter(l => l.date === k).sort((a, b) => a.startTime.localeCompare(b.startTime)).map(l => ({ kind: 'lesson', time: l.startTime.slice(0, 5) + (l.endTime ? ' – ' + l.endTime.slice(0, 5) : ''), title: lessonLabel(l), topic: l.topic ? l.topic.replace(/^.* - /, '') : '', meta: l.questionCount ? '✏️ ' + l.questionCount + ' soru' : '', note: l.note || '' })),
-          ...sessions.filter(s => key(s.startsAtUtc) === k).map(s => ({ kind: 'session', time: clock(s.startsAtUtc), title: 'Koçluk görüşmesi', topic: s.durationMinutes + ' dk', meta: '', note: '' })),
-          ...tasks.filter(t => t.dueDate === k).map(t => ({ kind: 'task', time: 'Görev', title: t.title, topic: '', meta: t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru', note: '' }))
-        ];
-        total += items.length;
-        return { label: DOWL[d.getDay()], date: d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }), today: k === todayKey, items };
-      });
-      const range = days[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' – ' + days[6].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-      const sessionList = sessions.filter(s => keys.includes(key(s.startsAtUtc))).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(s => ({ day: new Date(s.startsAtUtc).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }), time: clock(s.startsAtUtc) + (s.status === 'Confirmed' || s.status === 'Completed' ? '' : ' (onay bekliyor)'), dur: s.durationMinutes + ' dk' }));
-      return { name: studentName(), range, coach: document.getElementById('profile-name')?.textContent?.trim() || '', days: out, total, sessions: sessionList };
-    }
-    async function shareWeek(asPdf) {
-      const say = (m, err) => { st.lessonMsg = m; st.lessonMsgErr = !!err; renderWeekForm(); };
-      if (!window.KoclukShare) { say('Paylaşım modülü yüklenemedi. Sayfayı yenileyin.', true); return; }
-      const model = weekShareModel();
-      if (!model.total) { say('Bu 7 günde paylaşılacak program yok.', true); return; }
-      say('Görsel hazırlanıyor…');
-      try {
-        const canvas = KoclukShare.scheduleCanvas(model);
-        const blob = asPdf ? await KoclukShare.toPdf(canvas) : await KoclukShare.toBlob(canvas, 'image/png');
-        const res = await KoclukShare.deliver({ blob, filename: 'haftalik-program-' + slug(studentName()) + (asPdf ? '.pdf' : '.png'), text: studentName() + ' - haftalık ders programı (' + model.range + ')', phone: phoneFor(st.shareTo || 'guardian') });
-        say(deliverMsg(res, asPdf));
-      } catch (e) { console.warn(e); say('Program görseli hazırlanamadı. Tekrar deneyin.', true); }
-    }
 
     /* ---------- Çerçeve ---------- */
-    function renderWeekForm() {
-      const cnt = document.getElementById('week-form-container');
-      if (!cnt) return;
-      if (typeof getExamTypes !== 'function') { cnt.innerHTML = '<p class="perf-note">Müfredat verisi yüklenemedi. Sayfayı yenileyin.</p>'; return; }
-      const days = windowDays(st.weekOffset), dayKeys = days.map(key), todayKey = key(new Date());
-      if (!dayKeys.includes(st.lessonDate)) st.lessonDate = dayKeys[0];
-      ensureLessonSelection();
-      const exams = getExamTypes(), subjects = getSubjectsByExam(st.lessonExamType), groups = getTopicGroupsByExamAndSubject(st.lessonExamType, st.lessonSubject);
-      const opt = (v, label, sel) => `<option value="${esc(v)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
-      const topicOptions = groups.map(g => g.unit ? `<optgroup label="${esc(g.unit)}">${g.topics.map(t => opt(t, t.slice(g.unit.length + 3), t === st.lessonTopic)).join('')}</optgroup>` : g.topics.map(t => opt(t, t, t === st.lessonTopic)).join('')).join('');
-      cnt.innerHTML = `<div id="lesson-form" class="lesson-form">
-        <div class="lf-head"><b>Ders programına ekle</b><span>Sınavı, dersi ve konuyu seç; gün ve saati belirle. Eklenen dersleri takvimde sürükleyerek başka güne taşıyabilirsin.</span></div>
-        <div class="lf2-grid">
-          <label class="lf2-field"><span>Sınav türü</span><select id="lesson-exam">${exams.map(e => opt(e.code, e.name, e.code === st.lessonExamType)).join('')}</select></label>
-          <label class="lf2-field"><span>Ders</span><select id="lesson-subject">${subjects.map(s => opt(s.code, s.name, s.code === st.lessonSubject)).join('')}</select></label>
-          <label class="lf2-field"><span>Konu <em>(isteğe bağlı)</em></span><select id="lesson-topic"><option value="">Konu seçilmedi</option>${topicOptions}</select></label>
-          <label class="lf2-field"><span>Gün</span><select id="lesson-date">${days.map((d, i) => opt(dayKeys[i], DOW[d.getDay()] + ' · ' + d.getDate() + ' ' + d.toLocaleDateString('tr-TR', { month: 'long' }) + (dayKeys[i] === todayKey ? ' (Bugün)' : ''), dayKeys[i] === st.lessonDate)).join('')}</select></label>
-          <label class="lf2-field"><span>Başlangıç saati</span><input id="lesson-start" type="time" value="${esc(st.lessonStart)}"></label>
-          <label class="lf2-field"><span>Bitiş saati</span><input id="lesson-end" type="time" value="${esc(st.lessonEnd)}"></label>
-          <label class="lf2-field"><span>Soru sayısı <em>(isteğe bağlı)</em></span><input id="lesson-questions" type="number" min="1" max="1000" inputmode="numeric" placeholder="Örn: 40" value="${esc(st.lessonQuestions)}"></label>
-          <label class="lf2-field lf2-wide"><span>Not / açıklama <em>(isteğe bağlı)</em></span><input id="lesson-note" type="text" maxlength="500" placeholder="Örn: Önce konu özetini oku, sonra 40 soru çöz" value="${esc(st.lessonNote)}"></label>
-        </div>
-        <div class="lf2-foot"><span class="lf-msg ${st.lessonMsgErr ? 'err' : ''}">${esc(st.lessonMsg || '')}</span><button type="button" id="add-lesson" class="primary">＋ Derse ekle</button></div>
-        <div class="lf2-share"><div><b>Bu 7 günlük programı paylaş</b><span>Panele bildirim gönder; WhatsApp için görsel veya PDF olarak paylaş.</span></div><div class="lf2-share-actions"><label class="lf2-who"><span>Gönderilecek kişi</span><select id="week-recipient"><option value="guardian" ${(st.shareTo || 'guardian') === 'guardian' ? 'selected' : ''}>Veli</option><option value="student" ${st.shareTo === 'student' ? 'selected' : ''}>Öğrenci</option></select></label><button type="button" id="week-publish" class="lf-pub">📣 Öğrenci ve veliye bildir</button><button type="button" id="week-image" class="lf-wa">🖼️ Görsel olarak paylaş</button><button type="button" id="week-pdf" class="lf-pub">📄 PDF</button><button type="button" id="week-share" class="lf-pub">💬 Metin</button></div></div>
-      </div>`;
-      const bind = (id, fn) => document.getElementById(id)?.addEventListener('change', fn);
-      bind('lesson-exam', e => { st.lessonExamType = e.target.value; st.lessonSubject = ''; st.lessonTopic = ''; renderWeekForm(); });
-      bind('lesson-subject', e => { st.lessonSubject = e.target.value; st.lessonTopic = ''; renderWeekForm(); });
-      bind('lesson-topic', e => { st.lessonTopic = e.target.value; });
-      bind('lesson-date', e => { st.lessonDate = e.target.value; });
-      bind('lesson-start', e => { st.lessonStart = e.target.value; });
-      bind('lesson-end', e => { st.lessonEnd = e.target.value; });
-      bind('lesson-questions', e => { st.lessonQuestions = e.target.value; });
-      bind('lesson-note', e => { st.lessonNote = e.target.value; });
-      bind('week-recipient', e => { st.shareTo = e.target.value; });
-      setupDragDrop();
-    }
-    function setupDragDrop() {
-      const grid = document.getElementById('week-grid-root');
-      if (!grid || grid.dataset.dnd) return;
-      grid.dataset.dnd = '1';
-      const clear = () => grid.querySelectorAll('.week-col.drag-over').forEach(c => c.classList.remove('drag-over'));
-      grid.addEventListener('dragstart', e => { const chip = e.target.closest?.('.chip.lesson'); if (!chip) return; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('lessonId', chip.dataset.lessonId); chip.classList.add('dragging'); });
-      grid.addEventListener('dragend', () => { grid.querySelectorAll('.dragging').forEach(c => c.classList.remove('dragging')); clear(); });
-      grid.addEventListener('dragover', e => { const col = e.target.closest('.week-col'); if (!col) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (!col.classList.contains('drag-over')) { clear(); col.classList.add('drag-over'); } });
-      grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) clear(); });
-      grid.addEventListener('drop', async e => {
-        const col = e.target.closest('.week-col'); clear(); if (!col) return; e.preventDefault();
-        const lessonId = e.dataTransfer.getData('lessonId'); if (!lessonId) return;
-        const l = lessonStore().find(x => x.id === lessonId);
-        if (!l || l.date === col.dataset.dateKey) return;
-        const previous = l.date; l.date = col.dataset.dateKey; render();
-        const r = await api('PUT', '/lesson-slots/' + l.id, lessonBody(l));
-        if (!r.ok) { l.date = previous; st.lessonMsg = r.data?.error || 'Ders taşınamadı.'; st.lessonMsgErr = true; render(); }
-      });
-    }
-    function shareWeekSchedule() {
-      const m = weekShareModel();
-      if (!m.total) { st.lessonMsg = 'Bu 7 günde paylaşılacak program yok.'; st.lessonMsgErr = true; renderWeekForm(); return; }
-      const icon = kind => kind === 'task' ? '📌 ' : kind === 'session' ? '💬 ' : '🕐 ';
-      const blocks = m.days.filter(d => d.items.length).map(d => '*' + d.label + ', ' + d.date + '*\n' + d.items.map(i => icon(i.kind) + i.time + '  ' + i.title + (i.topic ? '\n     ▫️ ' + i.topic : '') + (i.meta ? '\n     ' + i.meta : '') + (i.note ? '\n     📝 ' + i.note : '')).join('\n'));
-      const sessions = m.sessions.length ? '\n\n*Koçluk görüşmeleri*\n' + m.sessions.map(s => '💬 ' + s.day + ' · ' + s.time + ' · ' + s.dur).join('\n') : '';
-      const body = '📚 *' + m.name + ' - Haftalık Ders Programı*\n' + m.range + '\n\n' + blocks.join('\n\n') + sessions + '\n\n_Alas Eğitim Koçluk panelinden gönderildi_';
-      const number = (window.KoclukShare && KoclukShare.normalizePhone(phoneFor(st.shareTo || 'guardian'))) || '';
-      window.open(window.KoclukShare ? KoclukShare.whatsappUrl(number, body) : 'https://web.whatsapp.com/send?text=' + encodeURIComponent(body), '_blank');
-    }
     function render() {
-      const views = { perf: viewPerf, topic: viewTopic, week: viewWeek, alarms: viewAlarms, report: viewReport };
+      const views = { perf: viewPerf, topic: viewTopic, week: () => '<div id="wb-host" class="wb-host"><p class="perf-muted">HaftalÄ±k program yÃ¼kleniyorâ¦</p></div>', alarms: viewAlarms, report: viewReport };
       root.innerHTML = `<div class="perf-bar"><label>Öğrenci<select id="perf-student">${st.students.map(s => `<option value="${s.id}" ${s.id === st.studentId ? 'selected' : ''}>${esc(s.firstName + ' ' + (s.lastName || ''))}</option>`).join('')}</select></label>${['perf', 'topic', 'report'].includes(st.tab) ? `<label>Dönem<select id="perf-range">${RANGES.map(r => `<option value="${r[0]}" ${r[0] === st.range ? 'selected' : ''}>${r[1]}</option>`).join('')}</select></label>` : ''}</div>
         <div class="perf-tabs">${TABS.map(([id, label]) => `<button type="button" class="${st.tab === id ? 'on' : ''}" data-tab="${id}">${label}</button>`).join('')}</div><div class="perf-body">${views[st.tab]()}</div>`;
-      if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0);
+      if (st.tab === 'week') mountBuilder();
+    }
+    function mountBuilder() {
+      const host = document.getElementById('wb-host');
+      if (!host || typeof window.mountWeekBuilder !== 'function') return;
+      window.mountWeekBuilder(host, { tenantId, authRequest, student: student(), escapeHtml: esc });
     }
     root.addEventListener('click', async event => {
-      const t = event.target.closest('[data-tab],[data-week],[data-alarm-filter],[data-alarm],[data-open-topic],#report-print,[data-del-lesson],#add-lesson,#week-share,#week-publish,[data-add-day],#report-image,#report-pdf,#week-image,#week-pdf'); if (!t) return;
-      if (t.dataset.addDay) { st.lessonDate = t.dataset.addDay; renderWeekForm(); document.getElementById('lesson-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-      else if (t.dataset.tab) { st.tab = t.dataset.tab; render(); if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0); }
-      else if (t.dataset.week !== undefined) { st.weekOffset = t.dataset.week === '0' ? 0 : st.weekOffset + Number(t.dataset.week); render(); if (st.tab === 'week') setTimeout(() => renderWeekForm(), 0); }
+      const t = event.target.closest('[data-tab],[data-alarm-filter],[data-alarm],[data-open-topic],#report-print,#report-image,#report-pdf'); if (!t) return;
+      if (t.dataset.tab) { st.tab = t.dataset.tab; render(); }
       else if (t.dataset.alarmFilter) { st.alarmFilter = t.dataset.alarmFilter; render(); }
       else if (t.dataset.openTopic) { st.topicKey = t.dataset.openTopic; st.tab = 'topic'; render(); }
       else if (t.dataset.alarm) { const store = alarmStore(), a = store[t.dataset.alarm] || { firstSeen: Date.now() }; if (t.dataset.act === 'resolve') a.status = 'resolved'; else if (t.dataset.act === 'snooze') { a.status = 'snoozed'; a.until = Date.now() + DAY; } else delete a.status; store[t.dataset.alarm] = a; saveAlarms(store); render(); }
       else if (t.id === 'report-image' || t.id === 'report-pdf') await shareReport(t.id === 'report-pdf');
-      else if (t.id === 'week-image' || t.id === 'week-pdf') await shareWeek(t.id === 'week-pdf');
       else if (t.id === 'report-print') window.print();
-      else if (t.dataset.delLesson) {
-        if (!confirm('Bu ders programdan silinsin mi?')) return;
-        const id = t.dataset.delLesson, r = await api('DELETE', '/lesson-slots/' + id);
-        if (r.ok) { st.data.lessons = st.data.lessons.filter(l => l.id !== id); st.lessonMsg = 'Ders silindi.'; st.lessonMsgErr = false; }
-        else { st.lessonMsg = 'Ders silinemedi.'; st.lessonMsgErr = true; }
-        render();
-      }
-      else if (t.id === 'week-publish') {
-        const r = await api('POST', '/students/' + st.studentId + '/lesson-slots/publish', { weekStart: key(windowStart(st.weekOffset)) });
-        st.lessonMsgErr = !r.ok;
-        st.lessonMsg = r.ok ? (r.data.notified ? r.data.notified + ' kişiye bildirim gönderildi.' : 'Program öğrencinin takviminde görünüyor; bağlı öğrenci/veli hesabı olmadığı için bildirim gitmedi.') : (r.data?.error || 'Program gönderilemedi.');
-        renderWeekForm();
-      }
-      else if (t.id === 'add-lesson') {
-        st.lessonDate = document.getElementById('lesson-date')?.value || st.lessonDate;
-        st.lessonStart = document.getElementById('lesson-start')?.value || '';
-        st.lessonEnd = document.getElementById('lesson-end')?.value || '';
-        st.lessonQuestions = document.getElementById('lesson-questions')?.value || '';
-        st.lessonNote = (document.getElementById('lesson-note')?.value || '').trim();
-        const questionCount = st.lessonQuestions ? Number(st.lessonQuestions) : null;
-        const subj = getSubjectsByExam(st.lessonExamType).find(s => s.code === st.lessonSubject);
-        const fail = msg => { st.lessonMsg = msg; st.lessonMsgErr = true; };
-        if (!subj) fail('Önce bir ders seç.');
-        else if (!st.lessonStart) fail('Başlangıç saatini gir.');
-        else if (st.lessonEnd && st.lessonEnd <= st.lessonStart) fail('Bitiş saati başlangıçtan sonra olmalı.');
-        else if (questionCount !== null && !(Number.isInteger(questionCount) && questionCount >= 1 && questionCount <= 1000)) fail('Soru sayısı 1 ile 1000 arasında bir sayı olmalı.');
-        else {
-          const r = await api('POST', '/students/' + st.studentId + '/lesson-slots', lessonBody({ date: st.lessonDate, examType: st.lessonExamType, subject: subj.name, topic: st.lessonTopic, startTime: st.lessonStart, endTime: st.lessonEnd, note: st.lessonNote, questionCount }));
-          if (r.ok) { st.data.lessons.push(r.data); st.lessonMsg = 'Ders eklendi.'; st.lessonMsgErr = false; st.lessonNote = ''; st.lessonQuestions = ''; }
-          else fail(r.data?.error || 'Ders kaydedilemedi.');
-        }
-        render();
-      }
-      else if (t.id === 'week-share') shareWeekSchedule();
     });
     root.addEventListener('change', async event => {
       if (event.target.id === 'perf-student') { st.studentId = event.target.value; root.querySelector('.perf-body').innerHTML = '<div class="perf-empty">Yükleniyor…</div>'; await loadData(); render(); }
