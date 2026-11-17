@@ -603,3 +603,7 @@ body.sb-collapsed .sidebar:hover .nav a:hover{transform:translateX(2px)}
 .wb-subject[open]>summary::after{color:#a16207}
 .wb-subject[open] .wb-topic{border-color:#fde68a}
 .wb-subject[open] .wb-topic:hover{border-color:#f59e0b;box-shadow:0 4px 12px rgba(245,158,11,.25)}
+
+/* Menü daraltma yalnızca tam sayfa program penceresi açıkken kullanılır */
+.sb-toggle{display:none!important}
+body.wb-open .sb-toggle{display:flex!important}

@@ -11,10 +11,11 @@
     const label = button.querySelector('.sb-txt'); if (label) label.textContent = collapsed ? 'Menüyü sabit aç' : 'Menüyü daralt';
   };
   window.isSidebarCollapsed = () => document.body.classList.contains('sb-collapsed');
-  window.setSidebarCollapsed = (collapsed, persist = true) => { apply(collapsed); if (persist) localStorage.setItem(KEY, collapsed ? '1' : '0'); };
+  window.setSidebarCollapsed = collapsed => apply(collapsed);
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.sidebar .nav a').forEach(a => { if (!a.title) a.title = a.textContent.replace(/^[^\p{L}]+/u, '').trim(); });
-    apply(localStorage.getItem(KEY) === '1');
+    localStorage.removeItem(KEY);
+    apply(false);
     document.getElementById('sidebar-collapse')?.addEventListener('click', () => window.setSidebarCollapsed(!window.isSidebarCollapsed()));
   });
 })();

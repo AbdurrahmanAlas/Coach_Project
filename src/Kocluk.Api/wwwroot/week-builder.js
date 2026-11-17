@@ -121,8 +121,7 @@
           <div class="wb-dfoot">${isNew ? '' : '<button type="button" class="wb-btn danger" data-delete>Dersi sil</button>'}<span></span><button type="button" class="wb-btn" data-close>İptal</button><button type="submit" class="wb-btn main">${isNew ? 'Ekle' : 'Kaydet'}</button></div></form></div>`;
       document.body.appendChild(overlay);
       const $ = id => overlay.querySelector('#' + id);
-      let closed = false;
-    const close = () => { if (closed) return; closed = true; overlay.remove(); document.removeEventListener('keydown', onKey); };
+      const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
       const onKey = e => { if (e.key === 'Escape') close(); };
       document.addEventListener('keydown', onKey);
       overlay.addEventListener('click', async e => {
@@ -260,9 +259,11 @@
     const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
     const sidebarWas = window.isSidebarCollapsed ? window.isSidebarCollapsed() : false;
     if (window.setSidebarCollapsed) window.setSidebarCollapsed(true, false);
+    document.body.classList.add('wb-open');
     const sidebarEl = document.querySelector('.sidebar');
     const onNav = e => { if (e.target.closest('.nav a, .brand')) close(); };
-    const close = () => { overlay.remove(); document.body.style.overflow = previousOverflow; if (sidebarEl) sidebarEl.removeEventListener('click', onNav, true); window.removeEventListener('hashchange', close); if (window.setSidebarCollapsed) window.setSidebarCollapsed(sidebarWas, false); document.removeEventListener('keydown', onKey); if (ctx.onClose) ctx.onClose(); };
+    let closed = false;
+    const close = () => { if (closed) return; closed = true; overlay.remove(); document.body.classList.remove('wb-open'); document.body.style.overflow = previousOverflow; if (sidebarEl) sidebarEl.removeEventListener('click', onNav, true); window.removeEventListener('hashchange', close); if (window.setSidebarCollapsed) window.setSidebarCollapsed(sidebarWas, false); document.removeEventListener('keydown', onKey); if (ctx.onClose) ctx.onClose(); };
     const onKey = e => { if (e.key === 'Escape' && !document.getElementById('wb-dialog')) close(); };
     document.addEventListener('keydown', onKey);
     overlay.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
