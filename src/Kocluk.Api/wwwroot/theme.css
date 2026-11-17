@@ -594,3 +594,12 @@ body.sb-collapsed .sidebar:hover .nav a{font-size:inherit;justify-content:flex-s
 body.sb-collapsed .sidebar:hover .nav a:hover{transform:translateX(2px)}
 .nav a{line-height:1.25}
 @media(max-width:650px){body.sb-collapsed .shell{padding-left:0}body.sb-collapsed .sidebar{position:fixed!important}}
+
+/* Açık ders grubu sarı vurgulu */
+.wb-subject[open]{background:#fffbeb!important;border:2px solid #f59e0b!important;box-shadow:0 4px 14px rgba(245,158,11,.22)}
+.wb-subject[open]>summary{background:linear-gradient(90deg,#fde047,#fef08a);color:#713f12;border-radius:10px 10px 0 0}
+.wb-subject[open]>summary strong{color:#713f12}
+.wb-subject[open]>summary em{background:#fff;color:#a16207}
+.wb-subject[open]>summary::after{color:#a16207}
+.wb-subject[open] .wb-topic{border-color:#fde68a}
+.wb-subject[open] .wb-topic:hover{border-color:#f59e0b;box-shadow:0 4px 12px rgba(245,158,11,.25)}
