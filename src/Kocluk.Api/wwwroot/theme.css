@@ -545,3 +545,36 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#818cf8!import
 .wb-big .wb-day{min-height:260px}
 @media(max-width:1500px){.wb-big .wb-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.wb-big .wb-summary{grid-column:span 2}}
 @media(max-width:1100px){.wb-big .wb-body{grid-template-columns:1fr}.wb-big .wb-lib{position:static;max-height:320px}.wb-big .wb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-big .wb-summary{grid-column:1/-1}}
+
+/* ---------- Daraltılabilir sol menü ---------- */
+:root{--sb-w:250px}
+body.sb-collapsed{--sb-w:78px}
+.sidebar{width:var(--sb-w)!important;flex:none;transition:width .25s ease,padding .25s ease;overflow-x:hidden}
+.sb-toggle{display:flex;align-items:center;gap:10px;width:100%;margin:-18px 0 18px;padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(255,255,255,.07);color:#c7cbf0;font:700 12.5px inherit;cursor:pointer;transition:background .15s}
+.sb-toggle:hover{background:rgba(255,255,255,.14);color:#fff}
+.sb-ico{font-size:18px;line-height:1;width:20px;text-align:center}
+body.sb-collapsed .sidebar{padding-left:10px;padding-right:10px}
+body.sb-collapsed .brand{justify-content:center;margin:0 0 30px}
+body.sb-collapsed .brand-text,body.sb-collapsed .nav-label,body.sb-collapsed .nav-sub,body.sb-collapsed .sidebar-bottom,body.sb-collapsed .sb-txt{display:none!important}
+body.sb-collapsed .sb-toggle{justify-content:center;padding:9px 0}
+body.sb-collapsed .nav a{font-size:0;justify-content:center;padding:12px 0;gap:0}
+body.sb-collapsed .nav a .icon{font-size:20px;width:auto}
+body.sb-collapsed .nav a:hover{transform:none}
+#student-detail-modal{left:var(--sb-w,250px)!important;transition:left .25s ease}
+@media(max-width:650px){.sb-toggle{display:none}.sidebar{width:250px!important}}
+
+/* ---------- Tam sayfa haftalık program penceresi ---------- */
+.wb-popup{inset:0 0 0 var(--sb-w,250px)!important;padding:0!important;background:#f4f5fb!important;backdrop-filter:none!important;transition:left .25s ease;display:block!important}
+.wb-popup-card{max-width:none!important;border-radius:0!important;box-shadow:none!important;height:100%}
+.wb-popup-head{padding:14px 28px}
+.wb-popup-body{padding:20px 28px 30px}
+@media(max-width:650px){.wb-popup{left:0!important}}
+
+/* ---------- Takvim günleri: belirgin yeşil çerçeve ---------- */
+.wb-day,.wo-day{border:2px solid #34d399!important;box-shadow:0 2px 10px rgba(16,185,129,.10)}
+.wb-day:hover,.wo-day:hover{border-color:#10b981!important;box-shadow:0 6px 18px rgba(16,185,129,.18)}
+.wb-day.today,.wo-day.today{border-color:#059669!important;background:linear-gradient(180deg,#ecfdf5,#fff 46%)!important;box-shadow:0 0 0 4px rgba(16,185,129,.16),0 8px 22px rgba(16,185,129,.18)}
+.wb-dayhead,.wo-dayhead{border-bottom:2px solid #d1fae5!important}
+.wb-day.over{border-color:#047857!important;background:#d1fae5!important;box-shadow:0 0 0 5px rgba(16,185,129,.28)!important}
+.wb-dayhead em,.wb-day.today .wb-dayhead em{background:#059669!important}
+.wb-total{background:#d1fae5!important;color:#047857!important}

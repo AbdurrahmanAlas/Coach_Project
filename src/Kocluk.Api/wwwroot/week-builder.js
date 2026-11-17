@@ -257,7 +257,9 @@
     overlay.innerHTML = `<div class="wb-popup-card" role="dialog" aria-modal="true" aria-label="Haftalık program"><div class="wb-popup-head"><div><b>🗓️ Haftalık program</b><span>Konuyu sürükleyip güne bırak · değişiklikler otomatik kaydedilir</span></div><button type="button" class="wb-popup-close" data-close aria-label="Kapat">✕ Kapat</button></div><div class="wb-popup-body"></div></div>`;
     document.body.appendChild(overlay);
     const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    const close = () => { overlay.remove(); document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKey); if (ctx.onClose) ctx.onClose(); };
+    const sidebarWas = window.isSidebarCollapsed ? window.isSidebarCollapsed() : false;
+    if (window.setSidebarCollapsed) window.setSidebarCollapsed(true, false);
+    const close = () => { overlay.remove(); document.body.style.overflow = previousOverflow; if (window.setSidebarCollapsed) window.setSidebarCollapsed(sidebarWas, false); document.removeEventListener('keydown', onKey); if (ctx.onClose) ctx.onClose(); };
     const onKey = e => { if (e.key === 'Escape' && !document.getElementById('wb-dialog')) close(); };
     document.addEventListener('keydown', onKey);
     overlay.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
