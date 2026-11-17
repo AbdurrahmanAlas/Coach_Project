@@ -24,7 +24,7 @@
     const { authRequest, escapeHtml: esc, tenantId } = ctx;
     const content = document.querySelector('.content');
     const st = { students: [], studentId: localStorage.getItem('perfStudent') || '', range: '30', tab: 'week', weekOffset: 0, topicKey: '', alarmFilter: 'active', data: null, lessonExamType: 'TYT', lessonSubject: '', lessonTopic: '', lessonDate: '', lessonStart: '', lessonEnd: '', lessonNote: '', lessonQuestions: '', lessonMsg: '', lessonMsgErr: false };
-    content.innerHTML = '<div class="welcome"><div><h1>Performans & analiz</h1><p>Öğrencinin çalışma, soru çözümü ve plan verilerini tek ekranda izle.</p></div></div><div id="perf-root" class="perf"><div class="perf-empty">Yükleniyor…</div></div>';
+    content.innerHTML = '<div class="welcome"><div><h1>Haftalık Program ve Performans</h1><p>Öğrencinin haftalık programını oluştur; çalışma, soru çözümü ve plan verilerini tek ekranda izle.</p></div></div><div id="perf-root" class="perf"><div class="perf-empty">Yükleniyor…</div></div>';
     const root = document.getElementById('perf-root');
 
     const get = async path => { try { const r = await authRequest('/api/tenants/' + tenantId + path); return r.ok ? await r.json() : []; } catch { return []; } };
