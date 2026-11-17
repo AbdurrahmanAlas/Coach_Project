@@ -179,8 +179,8 @@
     }
     function mountBuilder() {
       const host = document.getElementById('wb-host');
-      if (!host || typeof window.mountWeekBuilder !== 'function') return;
-      window.mountWeekBuilder(host, { tenantId, authRequest, student: student(), escapeHtml: esc });
+      if (!host || typeof window.mountWeekOverview !== 'function') return;
+      window.mountWeekOverview(host, { tenantId, authRequest, student: student(), escapeHtml: esc });
     }
     root.addEventListener('click', async event => {
       const t = event.target.closest('[data-tab],[data-alarm-filter],[data-alarm],[data-open-topic],#report-print,#report-image,#report-pdf'); if (!t) return;

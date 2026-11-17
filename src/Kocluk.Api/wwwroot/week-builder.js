@@ -1,6 +1,7 @@
 /* Sürükle & bırak haftalık program oluşturucu: bugünden başlayan 7 gün, konu kütüphanesi, ders kartları, haftalık özet ve paylaşım. */
 (() => {
   const DOWL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  const SHORT = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
   const key = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const windowDays = offset => { const s = new Date(); s.setHours(0, 0, 0, 0); s.setDate(s.getDate() + offset * 7); return [...Array(7)].map((_, i) => { const d = new Date(s); d.setDate(s.getDate() + i); return d; }); };
   const hm = t => String(t || '').slice(0, 5);
@@ -17,7 +18,7 @@
     const { tenantId, authRequest, student, escapeHtml: esc } = ctx;
     const st = { offset: 0, lessons: [], sessions: [], tasks: [], exam: 'TYT', q: '', open: new Set(), shareTo: 'guardian', msg: '', err: false, toast: '' };
     const base = '/api/tenants/' + tenantId + '/students/' + student.id;
-    const root = document.createElement('div'); root.className = 'wb'; host.replaceChildren(root);
+    const root = document.createElement('div'); root.className = 'wb' + (ctx.big ? ' wb-big' : ''); host.replaceChildren(root);
     root.innerHTML = '<p class="wb-loading">Haftalık program yükleniyor…</p>';
 
     const get = async path => { try { const r = await authRequest(base + path); return r.ok ? await r.json() : []; } catch { return []; } };
@@ -92,7 +93,7 @@
           <div class="wb-list">${ls.map(itemHtml).join('')}${ss.map(s => `<div class="wb-item session"><div class="wb-item-top"><span class="wb-pill" style="background:#7c3aed">Görüşme</span></div><strong>Koçluk görüşmesi</strong><div class="wb-item-meta"><span>🕐 ${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span><span>${s.durationMinutes} dk</span></div></div>`).join('')}${ts.map(t => `<div class="wb-item task ${t.isCompleted ? 'done' : ''}"><div class="wb-item-top"><span class="wb-pill" style="background:#d97706">Görev</span></div><strong>${esc(t.title)}</strong><div class="wb-item-meta"><span>${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</span></div></div>`).join('')}${!ls.length && !ss.length && !ts.length ? '<div class="wb-drop">Konu sürükleyip buraya bırak</div>' : ''}</div>
           <button type="button" class="wb-add" data-add-day="${k}">＋ Ders ekle</button></div>`;
       };
-      const bars = keys.map((k, i) => `<div class="wb-bar" title="${DOWL[days[i].getDay()]}: ${perDay[i] ? fmtDur(perDay[i]) : 'ders yok'}"><div class="wb-bar-col"><i style="height:${perDay[i] ? Math.max(10, Math.round(perDay[i] / maxMin * 100)) : 0}%"></i></div><span>${DOWL[days[i].getDay()].slice(0, 3)}</span></div>`).join('');
+      const bars = keys.map((k, i) => `<div class="wb-bar" title="${DOWL[days[i].getDay()]}: ${perDay[i] ? fmtDur(perDay[i]) : 'ders yok'}"><div class="wb-bar-col"><i style="height:${perDay[i] ? Math.max(10, Math.round(perDay[i] / maxMin * 100)) : 0}%"></i></div><span>${SHORT[days[i].getDay()]}</span></div>`).join('');
       root.innerHTML = `<div class="wb-top"><div><h3>Sürükle &amp; Bırak Program Oluşturucu</h3><p>${esc(student.firstName)} ${esc(student.lastName || '')} · değişiklikler otomatik kaydedilir</p></div>
           <div class="wb-share"><label>Gönderilecek kişi<select id="wb-to"><option value="guardian" ${st.shareTo !== 'student' ? 'selected' : ''}>Veli</option><option value="student" ${st.shareTo === 'student' ? 'selected' : ''}>Öğrenci</option></select></label><button type="button" class="wb-btn main" data-share="image">🖼️ Görsel</button><button type="button" class="wb-btn" data-share="pdf">📄 PDF</button><button type="button" class="wb-btn" data-share="text">💬 Metin</button><button type="button" class="wb-btn" data-share="publish">📣 Bildir</button></div></div>
         ${st.msg ? `<div class="wb-msg ${st.err ? 'err' : 'ok'}">${esc(st.msg)}</div>` : ''}
@@ -245,6 +246,55 @@
       }
     });
 
+    await load(); render();
+  };
+
+  /* ---------- Büyük pencere ve özet kartı ---------- */
+  window.openWeekBuilderPopup = function (ctx) {
+    document.getElementById('wb-popup')?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'wb-popup'; overlay.className = 'wb-popup';
+    overlay.innerHTML = `<div class="wb-popup-card" role="dialog" aria-modal="true" aria-label="Haftalık program"><div class="wb-popup-head"><div><b>🗓️ Haftalık program</b><span>Konuyu sürükleyip güne bırak · değişiklikler otomatik kaydedilir</span></div><button type="button" class="wb-popup-close" data-close aria-label="Kapat">✕ Kapat</button></div><div class="wb-popup-body"></div></div>`;
+    document.body.appendChild(overlay);
+    const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    const close = () => { overlay.remove(); document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKey); if (ctx.onClose) ctx.onClose(); };
+    const onKey = e => { if (e.key === 'Escape' && !document.getElementById('wb-dialog')) close(); };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
+    window.mountWeekBuilder(overlay.querySelector('.wb-popup-body'), { ...ctx, big: true });
+  };
+
+  window.mountWeekOverview = async function (host, ctx) {
+    const { tenantId, authRequest, student, escapeHtml: esc } = ctx;
+    const base = '/api/tenants/' + tenantId + '/students/' + student.id;
+    const root = document.createElement('div'); root.className = 'wo'; host.replaceChildren(root);
+    root.innerHTML = '<p class="wb-loading">Haftalık program yükleniyor…</p>';
+    const get = async path => { try { const r = await authRequest(base + path); return r.ok ? await r.json() : []; } catch { return []; } };
+    let data = { lessons: [], sessions: [], tasks: [] };
+    async function load() {
+      const [lessons, sessions, plans] = await Promise.all([get('/lesson-slots'), get('/sessions'), get('/plans')]);
+      data = { lessons: Array.isArray(lessons) ? lessons : [], sessions: Array.isArray(sessions) ? sessions : [], tasks: (Array.isArray(plans) ? plans : []).flatMap(p => p.tasks || []) };
+    }
+    function render() {
+      const days = windowDays(0), keys = days.map(key), todayKey = key(new Date());
+      const lessons = data.lessons.filter(l => keys.includes(l.date));
+      const sessions = data.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(new Date(s.startsAtUtc))));
+      const total = lessons.reduce((s, l) => s + dur(l), 0), filled = keys.filter(k => lessons.some(l => l.date === k)).length, questions = lessons.reduce((s, l) => s + (l.questionCount || 0), 0);
+      const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+      const dayHtml = (d, i) => {
+        const k = keys[i], ls = lessons.filter(l => l.date === k).sort((a, b) => hm(a.startTime).localeCompare(hm(b.startTime)));
+        const chips = ls.slice(0, 3).map(l => `<div class="wo-chip" style="--tone:${TONE[l.examType] || '#4f46e5'}"><b>${esc(hm(l.startTime))}</b><span>${esc(l.subject)}</span>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}</div>`).join('');
+        return `<div class="wo-day ${k === todayKey ? 'today' : ''}"><div class="wo-dayhead"><b>${SHORT[d.getDay()]}</b><span>${d.getDate()}</span></div>${chips || '<div class="wo-empty">Boş</div>'}${ls.length > 3 ? `<div class="wo-more">+${ls.length - 3} ders daha</div>` : ''}</div>`;
+      };
+      root.innerHTML = `<div class="wo-card" role="button" tabindex="0" aria-label="Haftalık programı aç">
+        <div class="wo-head"><div><h3>Haftalık program</h3><p>${esc(student.firstName)} ${esc(student.lastName || '')} · ${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</p></div><button type="button" class="wo-open" data-open>🗓️ Programı aç ve düzenle <b>→</b></button></div>
+        <div class="wo-stats"><div><small>Ders</small><b>${lessons.length}</b></div><div><small>Toplam süre</small><b>${total ? fmtDur(total) : '—'}</b></div><div><small>Dolu gün</small><b>${filled}/7</b></div><div><small>Koçluk görüşmesi</small><b>${sessions.length}</b></div><div><small>Soru hedefi</small><b>${questions || '—'}</b></div></div>
+        <div class="wo-grid">${days.map(dayHtml).join('')}</div>
+        <div class="wo-hint">Programı sürükle &amp; bırak ile oluşturmak, düzenlemek ve WhatsApp'tan paylaşmak için tıkla</div></div>`;
+    }
+    const open = () => window.openWeekBuilderPopup({ tenantId, authRequest, student, escapeHtml: esc, onClose: async () => { await load(); render(); } });
+    root.addEventListener('click', e => { if (e.target.closest('.wo-card')) open(); });
+    root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('wo-card')) { e.preventDefault(); open(); } });
     await load(); render();
   };
 })();
