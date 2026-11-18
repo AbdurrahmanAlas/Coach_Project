@@ -950,3 +950,34 @@ body.wb-open .sb-toggle{display:flex!important}
 .pl-plan-prog b{font-size:19px}
 .pl-tasks{padding:8px;gap:8px}
 .pl-task{padding:10px 14px}
+
+/* ===== Planlar: tek görevli plan = tek satır; çok görevli plan = sade tablo ===== */
+.pl-list{gap:10px}
+.pl-plan.pl-one{display:grid;grid-template-columns:44px minmax(150px,1.1fr) minmax(170px,1.3fr) minmax(150px,1fr) auto;align-items:center;gap:16px;padding:12px 18px 12px 22px;border:1.5px solid #d5dbf3;border-left:6px solid #94a3b8;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(30,27,75,.06);position:relative;overflow:hidden}
+.pl-plan.pl-one:hover{box-shadow:0 8px 20px rgba(30,27,75,.12)}
+.pl-plan.pl-one.done{border-left-color:#16a34a;background:linear-gradient(90deg,#f0fdf4,#fff 40%)}
+.pl-plan.pl-one.late{border-left-color:#e11d48;background:linear-gradient(90deg,#fff1f2,#fff 40%)}
+.pl-plan.pl-one.going{border-left-color:#4f46e5}
+.pl-plan.pl-one.wait{border-left-color:#f59e0b}
+.pl-one .pl-avatar{width:40px;height:40px}
+.pl-one-who h3{margin:0;font-size:15.5px;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-one-who p{margin:2px 0 0;font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-one-task{display:grid;gap:4px;min-width:0}
+.pl-one-task strong{font-size:14.5px;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-one-task>span{display:flex;align-items:center;gap:8px}
+.pl-one-task .pl-pill{padding:2px 9px;font-size:11px}
+.pl-one-task small,.pl-one-prog small{font-size:12px;color:#64748b}
+.pl-one-prog{display:grid;gap:5px}.pl-one-prog small b{color:#1e1b4b}
+.pl-one.done .pl-bar i{background:#16a34a}.pl-one.late .pl-bar i{background:#e11d48}
+.pl-btn.icon{width:32px;height:32px;padding:0;display:grid;place-items:center;font-size:14px;background:#f1f3fb;border-color:transparent;color:#475569}
+.pl-btn.icon.danger{background:#fff1f2;color:#be123c}
+.pl-plan.pl-one .pl-actions{flex-wrap:nowrap;align-items:center}
+@media(max-width:1100px){.pl-plan.pl-one{grid-template-columns:44px 1fr;row-gap:10px}.pl-plan.pl-one .pl-actions{grid-column:1/-1}}
+/* çok görevli planlar */
+.pl-plan:not(.pl-one){border-width:1px;border-radius:14px;box-shadow:0 2px 8px rgba(30,27,75,.06)}
+.pl-plan:not(.pl-one) .pl-plan-head{padding:10px 18px;gap:12px;background:#f5f6ff}
+.pl-plan:not(.pl-one) .pl-plan-prog{width:150px}.pl-plan:not(.pl-one) .pl-plan-prog b{font-size:16px}
+.pl-plan:not(.pl-one) .pl-tasks{padding:0;gap:0;background:#fff}
+.pl-plan:not(.pl-one) .pl-task{border:0;border-top:1px solid #eef0fa;border-left:5px solid #cbd5e1;border-radius:0;box-shadow:none;padding:9px 18px}
+.pl-plan:not(.pl-one) .pl-task.done{border-left-color:#16a34a}.pl-plan:not(.pl-one) .pl-task.late{border-left-color:#e11d48}.pl-plan:not(.pl-one) .pl-task.going{border-left-color:#4f46e5}.pl-plan:not(.pl-one) .pl-task.wait{border-left-color:#f59e0b}
+.pl-plan.hidden{display:none!important}

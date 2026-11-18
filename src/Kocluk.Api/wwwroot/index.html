@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119010000">
+  <link rel="stylesheet" href="/theme.css?v=20261119011000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -1638,6 +1638,10 @@
           const [state, label] = taskState(task);
           return `<div class="pl-task ${state}"><span class="pl-pill ${state}">${label}</span><div class="pl-task-main"><strong>${escapeHtml(task.title)}</strong><small>📅 ${fmtDay(task.dueDate)}</small></div><div class="pl-task-prog"><div class="pl-bar"><i style="width:${pct(task.completedQuestions, task.targetQuestions)}%"></i></div><small>${task.completedQuestions} / ${task.targetQuestions} soru</small></div><div class="pl-actions"><button type="button" class="pl-btn main plan-task-progress" data-plan-id="${plan.id}" data-task-id="${task.id}" data-completed="${task.completedQuestions}" data-target="${task.targetQuestions}">İlerleme gir</button><button type="button" class="pl-btn plan-task-edit" data-plan-id="${plan.id}" data-task-id="${task.id}">Düzenle</button><button type="button" class="pl-btn danger plan-task-delete" data-plan-id="${plan.id}" data-task-id="${task.id}">Sil</button></div></div>`;
         }).join('') || '<p class="pl-empty">Bu planda henüz görev yok.</p>';
+        if (tasks.length === 1) {
+          const task = tasks[0], [state, label] = taskState(task), tp = pct(task.completedQuestions, task.targetQuestions);
+          return `<article class="pl-plan pl-one ${state}" data-student="${plan.studentId}"><span class="pl-avatar">${escapeHtml(initials)}</span><div class="pl-one-who"><h3>${escapeHtml(name || plan.title)}</h3><p>${name ? escapeHtml(cleanTitle) + ' · ' : ''}🗓️ ${fmtWeek(plan.weekStart)}</p></div><div class="pl-one-task"><strong>${escapeHtml(task.title)}</strong><span><span class="pl-pill ${state}">${label}</span><small>📅 ${fmtDay(task.dueDate)}</small></span></div><div class="pl-one-prog"><div class="pl-bar"><i style="width:${tp}%"></i></div><small><b>%${tp}</b> · ${task.completedQuestions} / ${task.targetQuestions} soru</small></div><div class="pl-actions"><button type="button" class="pl-btn main plan-task-progress" data-plan-id="${plan.id}" data-task-id="${task.id}" data-completed="${task.completedQuestions}" data-target="${task.targetQuestions}">İlerleme gir</button><button type="button" class="pl-btn icon plan-task-edit" data-plan-id="${plan.id}" data-task-id="${task.id}" title="Görevi düzenle" aria-label="Görevi düzenle">✎</button><button type="button" class="pl-btn icon danger plan-delete" data-id="${plan.id}" title="Planı sil" aria-label="Planı sil">🗑</button></div></article>`;
+        }
         return `<article class="pl-plan" data-student="${plan.studentId}"><header class="pl-plan-head"><span class="pl-avatar">${escapeHtml(initials)}</span><div class="pl-plan-info"><h3>${escapeHtml(name || plan.title)}</h3><p>${name ? escapeHtml(cleanTitle) + ' · ' : ''}🗓️ ${fmtWeek(plan.weekStart)}</p></div><div class="pl-plan-prog"><b>%${percent}</b><div class="pl-bar"><i style="width:${percent}%"></i></div><small>${completed} / ${total} soru</small></div><div class="pl-actions"><button type="button" class="pl-btn plan-edit" data-id="${plan.id}">Planı düzenle</button><button type="button" class="pl-btn danger plan-delete" data-id="${plan.id}">Sil</button></div></header><div class="pl-tasks">${taskRows}</div></article>`;
       }).join('') : '<div class="pl-empty-state"><strong>Henüz çalışma planı yok</strong><p>Sağ üstteki "+ Plan oluştur" ile bir öğrenci seçip haftalık plan hazırlayabilirsin.</p></div>';
 
@@ -1658,7 +1662,8 @@
         const apply = () => {
           list.querySelectorAll('.pl-plan').forEach(card => {
             let shown = 0;
-            card.querySelectorAll('.pl-task').forEach(row => { const ok = fv.status === 'all' || row.classList.contains(fv.status); row.classList.toggle('hidden', !ok); if (ok) shown++; });
+            if (card.classList.contains('pl-one')) shown = (fv.status === 'all' || card.classList.contains(fv.status)) ? 1 : 0;
+            else card.querySelectorAll('.pl-task').forEach(row => { const ok = fv.status === 'all' || row.classList.contains(fv.status); row.classList.toggle('hidden', !ok); if (ok) shown++; });
             card.classList.toggle('hidden', (!!fv.student && card.dataset.student !== fv.student) || (fv.status !== 'all' && !shown));
           });
           filterBox.querySelectorAll('.pl-chip').forEach(c => c.classList.toggle('on', c.dataset.status === fv.status));
