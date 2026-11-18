@@ -915,3 +915,18 @@ body.wb-open .sb-toggle{display:flex!important}
 #student-detail-modal .wo-stats div{padding:6px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 #student-detail-modal .wo-stats b{font-size:17px}
 #student-detail-modal .wo-day{min-height:120px}
+
+/* ===== Deneme / Plan / Genel bakış sayfaları: küçük istatistik kartları, içerik daha yukarıdan başlar ===== */
+.content:has(.ex-stats) .welcome,.content:has(.pl-stats) .welcome,.content:has(#dash-focus) .welcome{padding:16px 26px!important;margin-bottom:14px!important;min-height:0!important}
+.content:has(.ex-stats) .welcome h1,.content:has(.pl-stats) .welcome h1,.content:has(#dash-focus) .welcome h1{font-size:24px!important;margin:0 0 2px!important}
+.content:has(.ex-stats) .welcome p,.content:has(.pl-stats) .welcome p,.content:has(#dash-focus) .welcome p{font-size:13px!important;margin:0!important}
+.content:has(.ex-stats) .welcome .primary,.content:has(.pl-stats) .welcome .primary{padding:10px 18px!important}
+.ex-stats,.pl-stats,.content:has(#dash-focus)>.grid{gap:12px!important;margin-bottom:14px!important}
+.ex-stats .card.stat,.pl-stats .card.stat,.content:has(#dash-focus)>.grid .card.stat{min-height:0!important;height:auto!important;padding:14px 18px!important;border-radius:16px!important}
+.ex-stats .stat-head,.pl-stats .stat-head,.content:has(#dash-focus)>.grid .stat-head{margin-bottom:4px!important}
+.ex-stats .stat-head span:first-child,.pl-stats .stat-head span:first-child{font-size:12px!important}
+.ex-stats .stat-icon,.pl-stats .stat-icon,.content:has(#dash-focus)>.grid .stat-icon{width:34px!important;height:34px!important;border-radius:10px!important;font-size:15px!important}
+.ex-stats .stat-value,.pl-stats .stat-value,.content:has(#dash-focus)>.grid .stat-value{font-size:26px!important;margin:2px 0 2px!important;line-height:1.15!important}
+.ex-stats .stat-foot,.pl-stats .stat-foot,.content:has(#dash-focus)>.grid .stat-foot{font-size:12px!important;margin:0!important}
+.content:has(.ex-stats) .card.section{padding:16px 20px!important}
+.ex-toolbar{margin-bottom:10px!important}
