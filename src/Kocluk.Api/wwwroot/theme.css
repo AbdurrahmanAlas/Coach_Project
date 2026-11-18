@@ -902,3 +902,16 @@ body.wb-open .sb-toggle{display:flex!important}
 .sk-info{border-radius:10px}.sk-info>div{padding:6px 10px}
 .sk-info dt{font-size:10.5px}.sk-info dd{font-size:12.5px}
 .sk-card footer{font-size:12px}
+
+/* ===== Öğrenci dosyası: pencere üstteki boşluğu azaltır, haftalık takvim daha yukarıda görünür ===== */
+#student-detail-modal{padding:8px 14px!important}
+#student-detail-modal #sd-share>div>span{display:none}
+#student-detail-modal #sd-share{padding:8px 14px}
+#student-detail-modal .wo-card{padding:14px 16px;border-radius:16px}
+#student-detail-modal .wo-head{margin-bottom:10px}
+#student-detail-modal .wo-head h3{font-size:17px;margin:0 0 2px}
+#student-detail-modal .wo-open{padding:9px 16px;font-size:13.5px;border-radius:12px}
+#student-detail-modal .wo-stats{gap:8px;margin-bottom:10px}
+#student-detail-modal .wo-stats div{padding:6px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#student-detail-modal .wo-stats b{font-size:17px}
+#student-detail-modal .wo-day{min-height:120px}
