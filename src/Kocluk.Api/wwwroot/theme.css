@@ -1055,3 +1055,26 @@ body.wb-open .sb-toggle{display:flex!important}
 #detail-subjects{background:#f6f4ff!important}
 #student-detail-modal .calendar-form{gap:10px}
 @media(max-width:1100px){#student-detail-modal .detail-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+
+/* ===== Öğrenci dosyası: tek renk ailesi (indigo), sade beyaz kartlar, tek satırlık listeler ===== */
+#student-detail-modal .detail-summary{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important}
+#student-detail-modal .detail-stat,#student-detail-modal .detail-stat:nth-child(n){background:#fff!important;border:1px solid #dfe3f7!important;border-left:4px solid #6366f1!important;border-radius:12px!important;min-height:0!important;height:auto!important;padding:9px 14px!important;justify-content:center;gap:0!important;box-shadow:0 1px 3px rgba(30,27,75,.05)}
+#student-detail-modal .detail-stat::before{display:none!important}
+#student-detail-modal .detail-stat strong{font-size:21px!important;color:#312e81!important;line-height:1.1}
+#student-detail-modal .detail-stat span{font-size:10.5px!important;color:#64748b!important}
+#detail-calendar-section,#detail-question-summary,#detail-insights,#detail-subjects{background:#fff!important}
+#student-detail-modal #student-detail-body>.form-section{border:1px solid #dfe3f7!important;box-shadow:0 2px 8px rgba(30,27,75,.05)}
+#student-detail-modal .sd-kpi,#student-detail-modal .sd-kpi.indigo,#student-detail-modal .sd-kpi.teal,#student-detail-modal .sd-kpi.amber,#student-detail-modal .sd-kpi.violet,#student-detail-modal .sd-kpi.green,#student-detail-modal .sd-kpi.rose{background:#fff}
+#student-detail-modal .sd-kpi{border-left-color:#6366f1}
+#student-detail-modal .sd-kpi.rose{border-left-color:#e11d48}#student-detail-modal .sd-kpi.green{border-left-color:#16a34a}
+#student-detail-modal .sd-kpi-ico{background:#eef0ff}
+/* koçluk takvimi formu ve etkinlik satırları */
+#detail-calendar-section .calendar-box>p{margin:0 0 12px;font-size:13px}
+#detail-calendar-section .calendar-form{padding:12px 14px;border-radius:14px;background:#f8f9ff;border:1px solid #e3e6f7}
+#detail-calendar-section .calendar-form input{padding:9px 12px}
+.student-sessions-heading{margin:16px 0 6px;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b}
+#detail-calendar-section .session-item{padding:8px 14px!important;margin-top:6px;border:1px solid #e3e6f7!important;border-left:4px solid #6366f1!important;background:#fff!important;border-radius:12px!important}
+#detail-calendar-section .session-item>div:first-child{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+#detail-calendar-section .session-item small{display:inline!important;margin:0!important;font-size:12.5px!important;color:#64748b}
+#detail-calendar-section .session-actions{display:flex;align-items:center;gap:6px;flex:none}
+#detail-calendar-section .session-actions .tag{padding:4px 10px;font-size:12px}
