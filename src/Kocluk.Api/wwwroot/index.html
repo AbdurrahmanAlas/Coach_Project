@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119021000">
+  <link rel="stylesheet" href="/theme.css?v=20261119022000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -2035,7 +2035,7 @@
             const overviewResponse = await authRequest(`/api/student/me/overview?tenantId=${encodeURIComponent(item.id)}`);
             if (!overviewResponse.ok) return null;
             const overview = await overviewResponse.json();
-            return { item, pending: (overview.sessions || []).filter(session => session.status === 'PendingStudent').length };
+            return { item, pending: (overview.sessions || []).filter(session => session.status === 'PendingStudent' && parseServerDate(session.startsAtUtc) >= new Date()).length };
           })).then(results => {
             const waiting = results.filter(result => result && result.pending > 0);
             waiting.forEach(({ item, pending }) => { const option = [...switcher.options].find(o => o.value === item.id); if (option) option.textContent = `${item.name} · ${pending} bekleyen talep`; });
@@ -2043,8 +2043,8 @@
             const pill = document.createElement('button');
             pill.type = 'button';
             pill.className = 'ts-pill';
-            pill.textContent = `⏳ ${waiting.reduce((sum, w) => sum + w.pending, 0)} randevu talebi onayını bekliyor (${waiting[0].item.name}${waiting.length > 1 ? ' +' + (waiting.length - 1) : ''})`;
-            pill.title = 'Bekleyen talebi görmek için o koça geç';
+            pill.textContent = `⏳ ${waiting[0].item.name} sana ${waiting.reduce((sum, w) => sum + w.pending, 0)} randevu önerdi · incele${waiting.length > 1 ? ' (+' + (waiting.length - 1) + ' koç daha)' : ''}`;
+            pill.title = 'Onayını bekleyen randevuyu görmek için o koçun paneline geç';
             pill.addEventListener('click', () => switchTo(waiting[0].item.id));
             switcherHost.appendChild(pill);
           }).catch(() => {});
