@@ -132,10 +132,11 @@
       document.getElementById('wb-dialog')?.remove();
       const keys = windowDays(st.offset).map(key);
       const dayOpts = keys.map(k => { const d = new Date(k + 'T00:00:00'); return `<option value="${k}" ${k === dateKey ? 'selected' : ''}>${DOWL[d.getDay()]} · ${d.getDate()} ${d.toLocaleDateString('tr-TR', { month: 'long' })}</option>`; }).join('');
+      const nowD = new Date(), later = new Date(nowD.getTime() + 3600000), defTime = dateKey === key(nowD) && nowD.getHours() >= 18 ? String(Math.min(later.getHours(), 23)).padStart(2, '0') + ':00' : '19:00';
       const overlay = document.createElement('div'); overlay.id = 'wb-dialog'; overlay.className = 'wb-backdrop';
       overlay.innerHTML = `<div class="wb-dialog" role="dialog" aria-modal="true"><div class="wb-dhead"><h4>💬 Koçluk görüşmesi ekle</h4><button type="button" class="wb-dx" data-close aria-label="Kapat">✕</button></div>
         <form class="wb-dform" novalidate><div class="wb-dsum"><b>${esc(student.firstName)} ${esc(student.lastName || '')}</b><small>Görüşme öğrenciye onay için gönderilir; öğrenci takviminden onaylar, reddeder ya da yeni saat önerir.</small></div>
-          <div class="wb-dgrid"><label>Gün<select id="wbs-date">${dayOpts}</select></label><label>Saat<input type="time" id="wbs-time" value="19:00"></label><label>Süre<select id="wbs-dur">${[30, 45, 60, 90].map(m => `<option value="${m}" ${m === 45 ? 'selected' : ''}>${m} dakika</option>`).join('')}</select></label><label class="full2">Not <em>(isteğe bağlı)</em><input type="text" id="wbs-note" maxlength="300" placeholder="Örn: Haftalık değerlendirme"></label></div>
+          <div class="wb-dgrid"><label>Gün<select id="wbs-date">${dayOpts}</select></label><label>Saat<input type="time" id="wbs-time" value="${defTime}"></label><label>Süre<select id="wbs-dur">${[30, 45, 60, 90].map(m => `<option value="${m}" ${m === 45 ? 'selected' : ''}>${m} dakika</option>`).join('')}</select></label><label class="full2">Not <em>(isteğe bağlı)</em><input type="text" id="wbs-note" maxlength="300" placeholder="Örn: Haftalık değerlendirme"></label></div>
           <div class="wb-dmsg" id="wbs-msg"></div><div class="wb-dfoot"><span></span><button type="button" class="wb-btn" data-close>İptal</button><button type="submit" class="wb-btn main">Görüşme ekle</button></div></form></div>`;
       document.body.appendChild(overlay);
       const $ = id => overlay.querySelector('#' + id), close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); }, onKey = e => { if (e.key === 'Escape') close(); };

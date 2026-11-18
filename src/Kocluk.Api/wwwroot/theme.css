@@ -811,3 +811,10 @@ body.wb-open .sb-toggle{display:flex!important}
 .dash-bar{height:9px;border-radius:9px;background:#e8ebf7;overflow:hidden}.dash-bar i{display:block;height:100%;border-radius:9px;background:#4f46e5}
 .dash-bar.ok i{background:#16a34a}.dash-bar.mid i{background:#f59e0b}.dash-bar.low i{background:#e11d48}
 @media(max-width:1100px){.dash-actions{grid-template-columns:repeat(2,1fr)}.dash-cols,.dash-progs{grid-template-columns:1fr}}
+
+/* Ders / görüşme pencereleri tam sayfa program penceresinin (z-index 1500) önünde açılmalı */
+.wb-backdrop{z-index:1700!important}
+.wb-adds .wb-add{border:0;color:#fff;font-weight:800;font-size:13px;padding:10px 8px;border-radius:11px;box-shadow:0 3px 8px rgba(15,23,42,.14);transition:transform .15s,box-shadow .15s,filter .15s}
+.wb-adds .wb-add:not(.sess){background:linear-gradient(135deg,#10b981,#059669)}
+.wb-adds .wb-add.sess{background:linear-gradient(135deg,#fb923c,#f97316)}
+.wb-adds .wb-add:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 8px 16px rgba(15,23,42,.2)}
