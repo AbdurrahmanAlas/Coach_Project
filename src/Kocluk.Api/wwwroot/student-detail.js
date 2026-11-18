@@ -81,7 +81,7 @@
   const TITLES = { overview: 'Genel bakış raporu', plans: 'Çalışma planı raporu', exams: 'Deneme sonuç raporu', week: 'Haftalık program' };
   const longDate = () => new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   const coachName = () => document.getElementById('profile-name')?.textContent?.trim() || '';
-  const getList = async (ctx, path) => { try { const r = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/students/${ctx.student.id}${path}`); return r.ok ? await r.json() : null; } catch { return null; } };
+  const getList = async (ctx, path) => { if (ctx.preload && ctx.preload[path] !== undefined) return ctx.preload[path]; try { const r = await ctx.authRequest(`/api/tenants/${ctx.tenantId}/students/${ctx.student.id}${path}`); return r.ok ? await r.json() : null; } catch { return null; } };
   const planState = (t, today) => t.isCompleted ? ['done', 'Tamamlandı'] : String(t.dueDate).slice(0, 10) < today ? ['late', 'Gecikti'] : t.completedQuestions > 0 ? ['going', 'Devam ediyor'] : ['wait', 'Bekliyor'];
   async function buildPack(kind, ctx) {
     const st = ctx.student, name = `${st.firstName} ${st.lastName || ''}`.trim(), base = { name, dateLabel: longDate(), coach: coachName() }, today = todayKey();
@@ -158,7 +158,7 @@
     const items = (ctx.exams || []).map(e => ({ ...e, net: Number(e.net ?? (Number(e.correct || 0) - Number(e.wrong || 0) / 4)), scoreN: Number(e.score || 0), total: Number(e.correct || 0) + Number(e.wrong || 0) + Number(e.blank || 0) }));
     const sorted = [...items].sort((a, b) => String(b.examDate).localeCompare(String(a.examDate)));
     const state = { limit: 8, shareTo: 'guardian', msg: '', err: false };
-    const root = document.createElement('div'); root.className = 'sd-exams'; host.replaceChildren(root);
+    const root = document.createElement('div'); root.className = 'sd-exams' + (ctx.readOnly ? ' ro' : ''); host.replaceChildren(root);
     const trendSvg = pts => {
       const W = 640, H = 190, padX = 44, top = 34, bottom = 52, base = H - bottom, values = pts.map(p => p.net), max = Math.max(...values), min = Math.min(0, ...values);
       const x = i => padX + (pts.length === 1 ? (W - padX * 2) / 2 : i * (W - padX * 2) / (pts.length - 1)), y = v => top + (1 - (v - min) / ((max - min) || 1)) * (base - top);
@@ -194,5 +194,5 @@
     render();
   }
 
-  window.StudentDetailUI = { shareBar, plans, questionSummary, insights, subjects, mountExams };
+  window.StudentDetailUI = { setContext: c => { lastCtx = c; }, shareBar, plans, questionSummary, insights, subjects, mountExams };
 })();

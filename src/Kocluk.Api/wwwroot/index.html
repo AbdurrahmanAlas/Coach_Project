@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119022000">
+  <link rel="stylesheet" href="/theme.css?v=20261119033000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -362,9 +362,10 @@
   <script src="/question-pool.js?v=20261116180000"></script>
   <script src="/sidebar-collapse.js?v=20261117170000"></script>
   <script src="/coach-ui.js?v=20261119012000"></script>
+  <script src="/student-pages.js?v=20261119030000"></script>
   <script src="/coach-pages.js?v=20261119012000"></script>
   <script src="/week-builder.js?v=20261119002000"></script>
-  <script src="/student-detail.js?v=20261119014000"></script>
+  <script src="/student-detail.js?v=20261119030000"></script>
 </head>
 <body>
   <!-- Professional Question Modal -->
@@ -1862,14 +1863,11 @@
     }
     async function loadStudentPlansPage() {
       const response = await authRequest('/api/student/me/overview'); if (!response.ok) { await loadStudentDashboard(); return; }
-      const detail = await response.json(); const plans = detail.plans || []; const tasks = plans.flatMap(plan => plan.tasks || []);
-      content.innerHTML = `<div class="welcome"><div><h1>Çalışma Planlarım</h1><p>Koçunun verdiği görevleri takip et ve tamamladıklarını işaretle.</p></div><a class="primary" href="#schedule">Randevularım →</a></div><div class="card section"><div class="section-title"><h2>Planlarım</h2><span class="tag blue">${tasks.filter(task => task.isCompleted).length}/${tasks.length} tamamlandı</span></div>${plans.length ? plans.map(plan => `<div class="task" style="display:block;margin-bottom:10px"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${(plan.tasks || []).length} görev</small></div>${(plan.tasks || []).map(task => `<label class="task" style="cursor:pointer;margin-top:8px"><input type="checkbox" data-plan="${plan.id}" data-task="${task.id}" ${task.isCompleted ? 'checked' : ''} style="width:18px;height:18px;margin-right:12px"><div class="task-text"><strong>${task.title}</strong><small>${task.dueDate} · ${task.completedQuestions}/${task.targetQuestions} soru</small></div></label>`).join('')}</div>`).join('') : '<p style="color:var(--muted)">Henüz çalışma planı atanmadı.</p>'}</div>`;
-      content.querySelectorAll('input[data-task]').forEach(input => input.addEventListener('change', async () => { const plan = plans.find(item => item.id === input.dataset.plan); const task = plan?.tasks.find(item => item.id === input.dataset.task); if (!plan || !task) return; const result = await authRequest(`/api/tenants/${detail.student.tenantId}/plans/${plan.id}/tasks/${task.id}/progress`, { method: 'PUT', body: JSON.stringify({ completedQuestions: input.checked ? Math.max(task.completedQuestions, task.targetQuestions) : 0, isCompleted: input.checked }) }); if (!result.ok) input.checked = !input.checked; }));
+      window.StudentPages.plans(content, await response.json(), { authRequest, reload: loadStudentPlansPage });
     }
     async function loadStudentExamsPage() {
       const response = await authRequest('/api/student/me/overview'); if (!response.ok) { await loadStudentDashboard(); return; }
-      const detail = await response.json(); const exams = detail.exams || []; const average = exams.length ? (exams.reduce((sum, exam) => sum + Number(exam.score || 0), 0) / exams.length).toFixed(1) : '—'; const averageNet = exams.length ? (exams.reduce((sum, exam) => sum + Number(exam.net || 0), 0) / exams.length).toFixed(2) : '—';
-      content.innerHTML = `<div class="welcome"><div><h1>Deneme &amp; Sınavlarım</h1><p>Sonuçlarını ve gelişimini takip et.</p></div></div><div class="grid"><div class="card stat"><div class="stat-head"><span>Toplam deneme</span><span class="stat-icon">◒</span></div><div class="stat-value">${exams.length}</div><div class="stat-foot">Kayıtlı sonuç</div></div><div class="card stat"><div class="stat-head"><span>Ortalama puan</span><span class="stat-icon">★</span></div><div class="stat-value">${average}</div><div class="stat-foot">Tüm denemelerin ortalaması</div></div><div class="card stat"><div class="stat-head"><span>Ortalama net</span><span class="stat-icon">✓</span></div><div class="stat-value">${averageNet}</div><div class="stat-foot">Doğru − yanlış / 4</div></div></div><div class="card section"><div class="section-title"><h2>Sonuçlarım</h2><span class="tag blue">Net hesabı aktif</span></div>${exams.length ? exams.map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş · Net: ${exam.net}</small></div><span class="tag blue">${exam.score} puan · Net ${exam.net}</span></div>`).join('') : '<p style="color:var(--muted)">Henüz deneme sonucu eklenmedi.</p>'}</div>`;
+      window.StudentPages.exams(content, await response.json(), { authRequest, reload: loadStudentExamsPage });
     }
     async function loadStudentSchedulePage() { await loadStudentDashboard(); const calendar = content.querySelector('#student-coach-calendar')?.closest('.card.section'); const request = content.querySelector('#student-session-request-form')?.closest('.card.section'); const modal = content.querySelector('#student-request-modal'); if (!calendar || !request) return; [...content.children].forEach(child => { if (child !== calendar && child !== request && child !== modal) child.remove(); }); }
     async function renderAdminPeople(box, tenantId) {
