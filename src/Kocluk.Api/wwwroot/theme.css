@@ -1078,3 +1078,31 @@ body.wb-open .sb-toggle{display:flex!important}
 #detail-calendar-section .session-item small{display:inline!important;margin:0!important;font-size:12.5px!important;color:#64748b}
 #detail-calendar-section .session-actions{display:flex;align-items:center;gap:6px;flex:none}
 #detail-calendar-section .session-actions .tag{padding:4px 10px;font-size:12px}
+
+/* ===== Öğrenci dosyası: hafif renk vurguları, düzenli düğmeler ===== */
+#student-detail-modal .detail-hero{background:linear-gradient(135deg,#f1f2ff,#eafaf6)!important;border-color:#d5dafa!important}
+#student-detail-modal .detail-stat{position:relative}
+#student-detail-modal .detail-stat::after{display:grid!important;place-items:center;position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:9px;font-size:15px;background:rgba(255,255,255,.75)}
+#student-detail-modal .detail-stat:nth-child(1){background:linear-gradient(135deg,#f0f1ff,#fff)!important;border-left-color:#6366f1!important}
+#student-detail-modal .detail-stat:nth-child(2){background:linear-gradient(135deg,#f5f0ff,#fff)!important;border-left-color:#8b5cf6!important}
+#student-detail-modal .detail-stat:nth-child(3){background:linear-gradient(135deg,#fff6e8,#fff)!important;border-left-color:#f59e0b!important}
+#student-detail-modal .detail-stat:nth-child(4){background:linear-gradient(135deg,#eafaf6,#fff)!important;border-left-color:#14b8a6!important}
+#student-detail-modal .detail-stat:nth-child(5){background:linear-gradient(135deg,#fff0f2,#fff)!important;border-left-color:#f43f5e!important}
+#student-detail-modal .detail-stat:nth-child(6){background:linear-gradient(135deg,#eaf6ff,#fff)!important;border-left-color:#0ea5e9!important}
+#student-detail-modal .detail-stat strong{padding-right:34px}
+#student-detail-modal #student-detail-body>.form-section{background:linear-gradient(180deg,#fbfbff,#fff 120px)!important;border-color:#dde1f7!important}
+#detail-calendar-section .calendar-form{background:#f3f4ff;border-color:#dcdffa}
+#detail-calendar-section .calendar-form .primary{background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 6px 14px rgba(79,70,229,.28)}
+#student-detail-modal .sd-share{background:linear-gradient(135deg,#f6f7ff,#f0fbf8)!important;border-color:#d9def8!important}
+.student-sessions-heading{color:#4338ca}
+/* etkinlik satırı durumları */
+#detail-calendar-section .session-item.ss-ok{border-left-color:#16a34a!important;background:linear-gradient(90deg,#f0fdf4,#fff 40%)!important}
+#detail-calendar-section .session-item.ss-wait{border-left-color:#f59e0b!important;background:linear-gradient(90deg,#fff8ec,#fff 40%)!important}
+#detail-calendar-section .session-item.ss-bad{border-left-color:#f43f5e!important;background:linear-gradient(90deg,#fff1f3,#fff 40%)!important}
+#detail-calendar-section .session-item .tag.ok{background:#dcfce7!important;color:#166534!important;border-color:#bbf7d0!important}
+#detail-calendar-section .session-item .tag.wait{background:#fef3c7!important;color:#92400e!important;border-color:#fde68a!important}
+#detail-calendar-section .session-item .tag.bad{background:#ffe4e6!important;color:#be123c!important;border-color:#fecdd3!important}
+#detail-calendar-section .session-item .session-delete{background:#fff1f2!important;color:#be123c!important;border-color:#fecdd3!important}
+#detail-calendar-section .session-item .session-edit{background:#eef2ff!important;color:#4338ca!important}
+/* planlar ve denemeler sekmesi özet kutuları */
+#student-detail-modal .sd-kpi.indigo{background:linear-gradient(135deg,#f0f1ff,#fff)}#student-detail-modal .sd-kpi.teal{background:linear-gradient(135deg,#eafaf6,#fff);border-left-color:#14b8a6}#student-detail-modal .sd-kpi.amber{background:linear-gradient(135deg,#fff6e8,#fff);border-left-color:#f59e0b}#student-detail-modal .sd-kpi.violet{background:linear-gradient(135deg,#f5f0ff,#fff);border-left-color:#8b5cf6}#student-detail-modal .sd-kpi.green{background:linear-gradient(135deg,#f0fdf4,#fff);border-left-color:#16a34a}#student-detail-modal .sd-kpi.rose{background:linear-gradient(135deg,#fff0f2,#fff);border-left-color:#f43f5e}
