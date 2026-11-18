@@ -1106,3 +1106,28 @@ body.wb-open .sb-toggle{display:flex!important}
 #detail-calendar-section .session-item .session-edit{background:#eef2ff!important;color:#4338ca!important}
 /* planlar ve denemeler sekmesi özet kutuları */
 #student-detail-modal .sd-kpi.indigo{background:linear-gradient(135deg,#f0f1ff,#fff)}#student-detail-modal .sd-kpi.teal{background:linear-gradient(135deg,#eafaf6,#fff);border-left-color:#14b8a6}#student-detail-modal .sd-kpi.amber{background:linear-gradient(135deg,#fff6e8,#fff);border-left-color:#f59e0b}#student-detail-modal .sd-kpi.violet{background:linear-gradient(135deg,#f5f0ff,#fff);border-left-color:#8b5cf6}#student-detail-modal .sd-kpi.green{background:linear-gradient(135deg,#f0fdf4,#fff);border-left-color:#16a34a}#student-detail-modal .sd-kpi.rose{background:linear-gradient(135deg,#fff0f2,#fff);border-left-color:#f43f5e}
+
+/* ===== Koç seçici (öğrenci / çok koçluk alanlı hesaplar) ===== */
+#tenant-switcher{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ts-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.3px;color:#475569;white-space:nowrap}
+.ts-select{max-width:260px;padding:9px 34px 9px 14px;border:1.5px solid #c7d2fe;border-radius:12px;background:linear-gradient(135deg,#f5f6ff,#fff);color:#3730a3;font:800 13.5px inherit;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.1);transition:border-color .15s,box-shadow .15s}
+.ts-select:hover,.ts-select:focus{border-color:#6366f1;box-shadow:0 0 0 4px rgba(99,102,241,.12);outline:none}
+.ts-pill{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid #fcd34d;border-radius:999px;background:linear-gradient(135deg,#fffbeb,#fff7d6);color:#92400e;font:800 12.5px inherit;cursor:pointer;box-shadow:0 2px 8px rgba(245,158,11,.18);transition:transform .15s}
+.ts-pill:hover{transform:translateY(-1px)}
+
+/* ===== Öğrenci paneli: sıkı üst bölüm, küçük kartlar, hafif renkli liste ===== */
+.content:has([data-dashboard-link]) .welcome{padding:16px 26px!important;margin-bottom:14px!important;min-height:0!important}
+.content:has([data-dashboard-link]) .welcome h1{font-size:24px!important;margin:0 0 2px!important}
+.content:has([data-dashboard-link]) .welcome p{font-size:13px!important;margin:0!important}
+.content:has([data-dashboard-link]) .grid{gap:12px!important;margin-bottom:14px!important}
+.content:has([data-dashboard-link]) .card.stat{min-height:0!important;height:auto!important;padding:14px 18px!important;border-radius:16px!important}
+.content:has([data-dashboard-link]) .stat-head{margin-bottom:4px!important}
+.content:has([data-dashboard-link]) .stat-head span:first-child{font-size:12px!important}
+.content:has([data-dashboard-link]) .stat-icon{width:34px!important;height:34px!important;border-radius:10px!important;font-size:15px!important}
+.content:has([data-dashboard-link]) .stat-value{font-size:26px!important;margin:2px 0!important;line-height:1.15!important}
+.content:has([data-dashboard-link]) .stat-foot{font-size:12px!important;margin:0!important}
+.content:has([data-dashboard-link]) .card.section{padding:16px 20px!important;border-radius:18px}
+.content:has([data-dashboard-link]) .section-title{margin-bottom:10px!important}
+.content:has([data-dashboard-link]) .section-title h2{font-size:17px!important}
+.content:has([data-dashboard-link]) .task{padding:10px 14px!important;border-radius:12px!important;border:1px solid #dfe3f7!important;border-left:4px solid #6366f1!important;background:linear-gradient(90deg,#f5f6ff,#fff 50%)!important;box-shadow:none!important}
+.content:has([data-dashboard-link]) .task strong{font-size:14px}

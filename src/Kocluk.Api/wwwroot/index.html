@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119020000">
+  <link rel="stylesheet" href="/theme.css?v=20261119021000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -1981,7 +1981,7 @@
       }
       // Tenant ve bildirim istekleri panelin ilk görünümünü bloke etmemeli.
       // Dashboard yüklemesi doğrudan başlar; tamamlandığında mevcut shell'i günceller.
-      await loadTenants().catch(error => console.warn('Koçluk alanları yüklenemedi', error));
+      for (let attempt = 0; attempt < 3; attempt++) { try { await loadTenants(); break; } catch (error) { console.warn('Koçluk alanları yüklenemedi', error); if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1))); } }
       loadNotifications().catch(error => console.warn('Bildirimler yüklenemedi', error));
       if (role === 'Parent') loadParentDashboard().catch(error => console.warn('Veli paneli yüklenemedi', error)); else if (role === 'Student') loadStudentDashboard().catch(error => { console.warn('Öğrenci paneli yüklenemedi', error); content.innerHTML = `<div class="welcome"><div><h1>Merhaba, ${escapeHtml(name)} 👋</h1><p>Öğrenci verileri alınamadı.</p></div><div class="date">Öğrenci paneli</div></div><div class="card section"><div class="section-title"><h2>Panel verileri yüklenemedi</h2><button type="button" class="tag blue" onclick="location.reload()">Yenile</button></div><p style="color:var(--muted);margin:0">Sayfayı yenileyerek tekrar deneyebilirsin.</p></div>`; }); else { loadDashboardData().catch(error => console.warn('Koç paneli yüklenemedi', error)); if (role === 'Admin') loadAdminDashboard().catch(error => console.warn('Yönetim paneli yüklenemedi', error)); }
       // Koç ve admin hesapları her girişte Genel Bakış ile başlamalıdır.
@@ -2000,8 +2000,8 @@
       if (role === 'Coach' || role === 'Admin') await loadDashboardData().catch(error => console.warn('Koç paneli yenilenemedi', error));
     }
     async function loadTenants() {
-      const response = await authRequest('/api/tenants');
-      if (!response.ok) return;
+      const response = await authRequest('/api/tenants', { timeoutMs: 25000 });
+      if (!response.ok) throw new Error('tenants:' + response.status);
       const tenants = await response.json();
       const createButton = document.getElementById('create-tenant-button');
       if (tenants.length === 0) {
@@ -2021,10 +2021,10 @@
         tenantLabel.textContent = '';
         const label = document.createElement('span');
         label.textContent = isStudentUser ? '👤 Koçum:' : '🏢 Koçluk alanı:';
-        label.style.cssText = 'font-size:12px;font-weight:700;color:#52627a';
+        label.className = 'ts-label';
         const switcher = document.createElement('select');
         switcher.id = 'tenant-switch'; switcher.title = isStudentUser ? 'Hangi koçunun verisini görmek istediğini seç' : 'Koçluk alanını değiştir';
-        switcher.style.cssText = 'border:1px solid #c7cbe6;border-radius:10px;padding:7px 10px;background:#fff;color:#3730a3;font:inherit;font-weight:700;max-width:220px';
+        switcher.className = 'ts-select';
         tenants.forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.selected = item.id === selected.id; switcher.appendChild(option); });
         const switchTo = id => { localStorage.setItem('tenantId', id); location.reload(); };
         switcher.addEventListener('change', () => switchTo(switcher.value));
@@ -2042,7 +2042,7 @@
             if (!waiting.length) return;
             const pill = document.createElement('button');
             pill.type = 'button';
-            pill.style.cssText = 'border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer';
+            pill.className = 'ts-pill';
             pill.textContent = `⏳ ${waiting.reduce((sum, w) => sum + w.pending, 0)} randevu talebi onayını bekliyor (${waiting[0].item.name}${waiting.length > 1 ? ' +' + (waiting.length - 1) : ''})`;
             pill.title = 'Bekleyen talebi görmek için o koça geç';
             pill.addEventListener('click', () => switchTo(waiting[0].item.id));
