@@ -1020,3 +1020,38 @@ body.wb-open .sb-toggle{display:flex!important}
 .sk-actions{position:absolute;right:14px;bottom:12px;z-index:2}
 .sk-card footer{position:absolute;left:14px;bottom:0;height:50px;display:flex;align-items:center;padding:0}
 .sk-card footer i{display:none}
+
+/* ===== Öğrenci dosyası: planlar tek satır, kartlar hafif renkli ===== */
+.sd-plans.compact{gap:8px}
+.sd-one{display:grid;grid-template-columns:minmax(150px,.9fr) minmax(0,1.4fr) minmax(160px,1fr);gap:16px;align-items:center;padding:10px 16px;border:1px solid #e0e4f7;border-left:5px solid #94a3b8;border-radius:12px;background:#fff}
+.sd-one.done{border-left-color:#16a34a;background:linear-gradient(90deg,#f0fdf4,#fff 45%)}
+.sd-one.late{border-left-color:#e11d48;background:linear-gradient(90deg,#fff1f2,#fff 45%)}
+.sd-one.going{border-left-color:#4f46e5;background:linear-gradient(90deg,#f3f4ff,#fff 45%)}
+.sd-one.wait{border-left-color:#f59e0b;background:linear-gradient(90deg,#fff8ec,#fff 45%)}
+.sd-one-plan b{display:block;font-size:13.5px;color:#1e1b4b}.sd-one-plan small{display:block;font-size:11.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sd-one-task{display:grid;gap:3px;min-width:0}.sd-one-task strong{font-size:14px;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sd-one-task>span{display:flex;align-items:center;gap:8px}.sd-one-task .sd-pill{padding:2px 9px;font-size:11px}
+.sd-one-task small,.sd-one-prog small{font-size:12px;color:#64748b}
+.sd-one-prog{display:grid;gap:4px}.sd-one-prog small b{color:#1e1b4b}
+.sd-one.done .sd-bar i{background:#16a34a}.sd-one.late .sd-bar i{background:#e11d48}
+@media(max-width:900px){.sd-one{grid-template-columns:1fr}}
+/* özet kutuları tek şerit, renkli zemin */
+#student-detail-modal .sd-kpis{gap:10px;margin-bottom:12px}
+#student-detail-modal .sd-kpi{padding:10px 14px;border-radius:14px}
+#student-detail-modal .sd-kpi-ico{width:34px;height:34px;font-size:16px;border-radius:10px}
+#student-detail-modal .sd-kpi b{font-size:20px}
+#student-detail-modal .sd-kpi.indigo{background:#f3f4ff}#student-detail-modal .sd-kpi.teal{background:#effaf8}#student-detail-modal .sd-kpi.amber{background:#fff8ec}#student-detail-modal .sd-kpi.violet{background:#f6f2ff}#student-detail-modal .sd-kpi.green{background:#f0fdf4}#student-detail-modal .sd-kpi.rose{background:#fff1f3}
+#student-detail-modal #detail-plans-section .section-title{margin-bottom:10px}
+/* genel bakış */
+#student-detail-modal .detail-summary{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important}
+#student-detail-modal .detail-stat{padding:10px 12px 10px 16px!important;border-radius:14px!important}
+#student-detail-modal .detail-stat::after{display:none!important}
+#student-detail-modal .detail-stat strong{font-size:22px!important}
+#student-detail-modal .detail-stat span{font-size:10.5px!important}
+#student-detail-modal .detail-stat:nth-child(1){background:#f3f4ff!important}#student-detail-modal .detail-stat:nth-child(2){background:#f6f2ff!important}#student-detail-modal .detail-stat:nth-child(3){background:#fff8ec!important}#student-detail-modal .detail-stat:nth-child(4){background:#effaf8!important}#student-detail-modal .detail-stat:nth-child(5){background:#fff1f3!important}#student-detail-modal .detail-stat:nth-child(6){background:#eff8ff!important}
+#detail-calendar-section{background:#f8f9ff!important}
+#detail-question-summary{background:#f6fbfa!important}
+#detail-insights{background:#fffaf0!important}
+#detail-subjects{background:#f6f4ff!important}
+#student-detail-modal .calendar-form{gap:10px}
+@media(max-width:1100px){#student-detail-modal .detail-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}}

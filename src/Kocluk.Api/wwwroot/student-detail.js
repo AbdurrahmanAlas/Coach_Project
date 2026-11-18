@@ -23,10 +23,14 @@
       const tasks = [...(plan.tasks || [])].sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
       const tg = tasks.reduce((s, t) => s + Number(t.targetQuestions || 0), 0), sv = tasks.reduce((s, t) => s + Number(t.completedQuestions || 0), 0), p = pct(sv, tg);
       const end = new Date(day(plan.weekStart)); end.setDate(end.getDate() + 6);
+      if (tasks.length === 1) {
+        const t = tasks[0], [k, label] = state(t), tp = pct(t.completedQuestions, t.targetQuestions);
+        return `<article class="sd-one ${k}"><div class="sd-one-plan"><b>${fmtShort(plan.weekStart)} – ${end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</b><small>${esc(String(plan.title).replace(/^.*?\s[-–]\s/, ''))}</small></div><div class="sd-one-task"><strong>${esc(t.title)}</strong><span><span class="sd-pill ${k}">${label}</span><small>📅 ${fmtDay(t.dueDate)}</small></span></div><div class="sd-one-prog"><div class="sd-bar"><i style="width:${tp}%"></i></div><small><b>%${tp}</b> · ${t.completedQuestions || 0} / ${t.targetQuestions || 0} soru</small></div></article>`;
+      }
       const rows = tasks.map(t => { const [k, label] = state(t); return `<div class="sd-task ${k}"><span class="sd-pill ${k}">${label}</span><div class="sd-task-main"><strong>${esc(t.title)}</strong><small>📅 ${fmtDay(t.dueDate)}</small></div><div class="sd-task-prog"><div class="sd-bar"><i style="width:${pct(t.completedQuestions, t.targetQuestions)}%"></i></div><small>${t.completedQuestions || 0} / ${t.targetQuestions || 0} soru</small></div></div>`; }).join('') || '<p class="sd-muted">Bu planda görev yok.</p>';
       return `<article class="sd-plan"><header><div><h4>${esc(plan.title)}</h4><p>🗓️ ${fmtShort(plan.weekStart)} – ${end.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })} · ${tasks.length} görev</p></div><div class="sd-plan-prog"><b>%${p}</b><div class="sd-bar"><i style="width:${p}%"></i></div><small>${sv} / ${tg} soru</small></div></header><div class="sd-tasks">${rows}</div></article>`;
     }).join('');
-    return head + `<div class="sd-plans">${cards}</div>`;
+    return head + `<div class="sd-plans compact">${cards}</div>`;
   }
 
   /* ---------- Soru performansı, analiz, konu ilerlemesi ---------- */
