@@ -1010,3 +1010,13 @@ body.wb-open .sb-toggle{display:flex!important}
 .cu-bar{height:10px;border-radius:10px;background:#e8ebf7;overflow:hidden}.cu-bar i{display:block;height:100%;width:0;border-radius:10px;background:linear-gradient(90deg,#4f46e5,#14b8a6);transition:width .15s}
 .cu-quick{display:flex;gap:8px;flex-wrap:wrap}
 .cu-quick button{padding:7px 14px;border:1px solid #d4d8f5;border-radius:999px;background:#f5f6ff;color:#3730a3;font:800 13px inherit;cursor:pointer}.cu-quick button:hover{background:#e0e7ff}
+
+/* ===== Öğrenci kartları: ad tam satırda, düğmeler altta, hafif renkli zemin ===== */
+.sk-card{padding-bottom:54px;background:linear-gradient(180deg,var(--bg,#f3f4ff),#fff 70%)}
+.sk-card.tone-1{--bg:#eefaf7}.sk-card.tone-2{--bg:#fff8ec}.sk-card.tone-3{--bg:#fff1f3}.sk-card.tone-4{--bg:#f6f2ff}.sk-card.tone-5{--bg:#eff8ff}
+.sk-card .sk-info{background:#fff}
+.sk-id h3{word-break:normal;overflow-wrap:normal;hyphens:none}
+.sk-card header{align-items:center}
+.sk-actions{position:absolute;right:14px;bottom:12px;z-index:2}
+.sk-card footer{position:absolute;left:14px;bottom:0;height:50px;display:flex;align-items:center;padding:0}
+.sk-card footer i{display:none}
