@@ -142,6 +142,7 @@
   }
 
   /* ---------- Haftalık program ---------- */
+  const STATE = { done: { fill: "#ecfdf5", stroke: "#86efac", bar: "#16a34a", ink: "#166534" }, late: { fill: "#fef2f2", stroke: "#fca5a5", bar: "#e11d48", ink: "#9f1239" } };
   const KIND = { lesson: { fill: '#eff6ff', stroke: '#bfdbfe', bar: '#3b82f6', ink: '#1d4ed8' }, session: { fill: '#f5f3ff', stroke: '#ddd6fe', bar: '#7c3aed', ink: '#5b21b6' }, task: { fill: '#fffbeb', stroke: '#fde68a', bar: '#f59e0b', ink: '#92400e' } };
   function measureItem(ctx, it, w) {
     const tw = w - 222 - 24;
@@ -178,7 +179,7 @@
       if (!blocks.length) text(ctx, 'Boş gün', itemX + 10, y + h / 2 + 8, { font: f(24), color: '#94a3b8' });
       let iy = y + 18;
       blocks.forEach(b => {
-        const k = KIND[b.it.kind] || KIND.lesson;
+        const k = STATE[b.it.status] || KIND[b.it.kind] || KIND.lesson;
         card(ctx, itemX, iy, itemW, b.h, { fill: k.fill, stroke: k.stroke, r: 18 });
         ctx.fillStyle = k.bar; roundRect(ctx, itemX + 14, iy + 14, 7, b.h - 28, 3.5); ctx.fill();
         text(ctx, b.it.time, itemX + 38, iy + 44, { font: f(22, 850), color: k.ink });
@@ -188,6 +189,8 @@
         if (b.it.topic) { text(ctx, b.it.topic, itemX + 222, ty + 6, { font: f(22), color: COL.muted }); ty += 30; }
         if (b.it.meta) { text(ctx, b.it.meta, itemX + 222, ty + 6, { font: f(22, 800), color: k.ink }); ty += 30; }
         b.note.forEach(l => { text(ctx, l, itemX + 222, ty + 6, { font: f(22), color: '#475569' }); ty += 30; });
+        if (b.it.status === "done") { ctx.beginPath(); ctx.arc(itemX + itemW - 42, iy + 38, 22, 0, Math.PI * 2); ctx.fillStyle = "#16a34a"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(itemX + itemW - 52, iy + 38); ctx.lineTo(itemX + itemW - 44, iy + 46); ctx.lineTo(itemX + itemW - 31, iy + 30); ctx.stroke(); }
+        else if (b.it.status === "late") text(ctx, "Yapılmadı", itemX + itemW - 28, iy + 44, { font: f(20, 850), color: "#e11d48", align: "right" });
         iy += b.h + 14;
       });
       y += h + 18;
@@ -248,6 +251,21 @@
       drawTrend(ctx, pad, y + 40, W - pad * 2, ch - 40, d.points);
       y += ch + 36;
     }
+    if (d.analysis && d.analysis.length) {
+      const inner = W - pad * 2 - 100, blocks = d.analysis.map(a => { ctx.font = f(25); const lines = wrap(ctx, a.text, inner); return { a, lines, h: 44 + lines.length * 34 + 22 }; });
+      const ah = 96 + blocks.reduce((s, b) => s + b.h, 0);
+      card(ctx, pad, y, W - pad * 2, ah, { fill: '#faf8ff', stroke: '#ddd6fe' });
+      text(ctx, 'Deneme analizi', pad + 32, y + 58, { font: f(28, 850), color: COL.violet });
+      let ay = y + 92;
+      blocks.forEach(b => {
+        const tone = b.a.tone === 'up' ? COL.green : b.a.tone === 'down' ? COL.rose : COL.indigo;
+        ctx.fillStyle = tone; roundRect(ctx, pad + 32, ay + 4, 8, b.h - 18, 4); ctx.fill();
+        text(ctx, b.a.title, pad + 60, ay + 30, { font: f(26, 850), color: tone });
+        b.lines.forEach((l, i) => text(ctx, l, pad + 60, ay + 66 + i * 34, { font: f(25), color: COL.ink }));
+        ay += b.h;
+      });
+      y += ah + 36;
+    }
     const rowH = 62, tableH = 150 + d.rows.length * rowH;
     card(ctx, pad, y, W - pad * 2, tableH);
     text(ctx, 'Deneme sonuçları', pad + 32, y + 56, { font: f(28, 850), color: COL.ink });
@@ -274,6 +292,56 @@
     const c = makeCanvas(W, H), ctx = c.getContext('2d');
     ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H);
     paintExamReport(ctx, W, d); footer(ctx, W, H, (d.coach ? d.coach + ' · ' : '') + d.dateLabel);
+    return c;
+  }
+
+  /* ---------- Genel özet raporu (genel bakış / çalışma planları) ---------- */
+  function paintSummary(ctx, W, d) {
+    const pad = 64, gap = 26;
+    header(ctx, W, 270, d.kicker, d.name, d.sub);
+    let y = 270 + 46;
+    const n = Math.max(1, d.stats.length), cw = (W - pad * 2 - gap * (n - 1)) / n, tones = [COL.indigo, COL.violet, COL.teal, COL.amber];
+    d.stats.forEach((s, i) => {
+      const x = pad + i * (cw + gap);
+      card(ctx, x, y, cw, 150);
+      ctx.fillStyle = tones[i % 4]; roundRect(ctx, x + 22, y + 30, 8, 90, 4); ctx.fill();
+      text(ctx, s.value, x + 48, y + 84, { font: f(46, 850), color: COL.ink });
+      text(ctx, s.label, x + 48, y + 122, { font: f(20), color: COL.muted });
+    });
+    y += 150 + 40;
+    (d.sections || []).forEach(sec => {
+      const inner = W - pad * 2 - 56, rows = sec.rows.map(r => { ctx.font = f(26, 750); const lines = wrap(ctx, r.title, inner - 260); return { r, lines, h: lines.length * 34 + (r.sub ? 32 : 0) + 30 }; });
+      const h = 90 + (rows.length ? rows.reduce((s, r) => s + r.h, 0) : 60) + 16;
+      card(ctx, pad, y, W - pad * 2, h);
+      text(ctx, sec.title, pad + 28, y + 56, { font: f(28, 850), color: COL.ink });
+      let cy = y + 86;
+      if (!rows.length) text(ctx, sec.empty || 'Kayıt yok', pad + 28, cy + 40, { font: f(24), color: COL.muted });
+      rows.forEach(r => {
+        const tone = ({ done: COL.green, late: COL.rose, going: COL.amber, wait: '#94a3b8', up: COL.green, down: COL.rose })[r.r.tone] || COL.indigo;
+        if (r.r.tone === 'done') { roundRect(ctx, pad + 20, cy + 2, W - pad * 2 - 40, r.h - 6, 14); ctx.fillStyle = '#ecfdf5'; ctx.fill(); }
+        else if (r.r.tone === 'late') { roundRect(ctx, pad + 20, cy + 2, W - pad * 2 - 40, r.h - 6, 14); ctx.fillStyle = '#fef2f2'; ctx.fill(); }
+        ctx.fillStyle = tone; roundRect(ctx, pad + 28, cy + 10, 8, r.h - 22, 4); ctx.fill();
+        r.lines.forEach((l, i) => text(ctx, l, pad + 54, cy + 34 + i * 34, { font: f(26, 750), color: COL.ink }));
+        if (r.r.sub) text(ctx, r.r.sub, pad + 54, cy + 34 + r.lines.length * 34, { font: f(21), color: COL.muted });
+        text(ctx, r.r.value, W - pad - 30, cy + 38, { font: f(26, 850), color: tone, align: 'right' });
+        cy += r.h;
+      });
+      y += h + 28;
+    });
+    if (d.note) {
+      ctx.font = f(26); const lines = wrap(ctx, d.note, W - pad * 2 - 80), h = 80 + lines.length * 38;
+      card(ctx, pad, y, W - pad * 2, h, { fill: '#faf8ff', stroke: '#ddd6fe' });
+      ctx.fillStyle = COL.violet; roundRect(ctx, pad + 24, y + 26, 8, h - 52, 4); ctx.fill();
+      lines.forEach((l, i) => text(ctx, l, pad + 56, y + 52 + i * 38, { font: f(26), color: COL.ink }));
+      y += h + gap;
+    }
+    return y;
+  }
+  function summaryCanvas(d) {
+    const W = 1240, bottom = paintSummary(makeCanvas(W, 10).getContext('2d'), W, d), H = Math.max(1754, Math.round(bottom + 150));
+    const c = makeCanvas(W, H), ctx = c.getContext('2d');
+    ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H);
+    paintSummary(ctx, W, d); footer(ctx, W, H, (d.coach ? d.coach + ' · ' : '') + d.dateLabel);
     return c;
   }
 
@@ -340,5 +408,5 @@
     return how + (res.hasNumber ? '' : ' Kayıtlı telefon numarası yok, sohbeti kendiniz seçin.');
   }
 
-  window.KoclukShare = { reportCanvas, scheduleCanvas, examReportCanvas, describe, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
+  window.KoclukShare = { summaryCanvas, reportCanvas, scheduleCanvas, examReportCanvas, describe, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
 })();

@@ -11,6 +11,29 @@
   const dur = l => (l.endTime ? Math.max(0, toMin(l.endTime) - toMin(l.startTime)) : 0);
   const fmtDur = m => m >= 60 ? Math.floor(m / 60) + ' sa' + (m % 60 ? ' ' + (m % 60) + ' dk' : '') : m + ' dk';
   const lessonLabel = l => (l.examType ? (l.examType === 'YÖS' ? 'TR-YÖS' : l.examType) + ' · ' : '') + l.subject;
+  /* Ders durumu: öğrenci işaretlediyse 'done', günü geçtiyse 'late', aksi halde 'todo'. */
+  const lessonState = l => l.isCompleted ? 'done' : (l.date < key(new Date()) ? 'late' : 'todo');
+  window.lessonState = lessonState;
+  function buildModel({ student, lessons, sessions: sessions0, tasks, offset }) {
+  const days = windowDays(offset), keys = days.map(key), todayKey = key(new Date());
+  const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const sessions = sessions0.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected');
+  let total = 0;
+  const out = days.map((d, i) => {
+    const k = keys[i];
+    const items = [
+      ...lessons.filter(l => l.date === k).sort((a, b) => hm(a.startTime).localeCompare(hm(b.startTime))).map(l => ({ kind: 'lesson', status: lessonState(l), time: hm(l.startTime) + (l.endTime ? ' – ' + hm(l.endTime) : ''), title: lessonLabel(l), topic: l.topic ? String(l.topic).replace(/^.* - /, '') : '', meta: l.questionCount ? '✏️ ' + l.questionCount + ' soru' : '', note: l.note || '' })),
+      ...sessions.filter(s => key(new Date(s.startsAtUtc)) === k).map(s => ({ kind: 'session', time: clock(s.startsAtUtc), title: 'Koçluk görüşmesi', topic: s.durationMinutes + ' dk', meta: '', note: '' })),
+      ...tasks.filter(t => String(t.dueDate).slice(0, 10) === k).map(t => ({ kind: 'task', status: t.isCompleted ? 'done' : (k < todayKey ? 'late' : 'todo'), time: 'Görev', title: t.title, topic: '', meta: t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru', note: '' }))
+    ];
+    total += items.length;
+    return { label: DOWL[d.getDay()], date: d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }), today: k === todayKey, items };
+  });
+  const sessionList = sessions.filter(s => keys.includes(key(new Date(s.startsAtUtc)))).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(s => ({ day: new Date(s.startsAtUtc).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }), time: clock(s.startsAtUtc) + (s.status === 'Confirmed' || s.status === 'Completed' ? '' : ' (onay bekliyor)'), dur: s.durationMinutes + ' dk' }));
+  const range = days[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' – ' + days[6].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return { name: `${student.firstName} ${student.lastName || ''}`.trim(), range, coach: document.getElementById('profile-name')?.textContent?.trim() || '', days: out, total, sessions: sessionList };
+  }
+  window.KoclukWeek = { buildModel, lessonState };
   const TONE = { LGS: '#16a34a', TYT: '#2563eb', AYT: '#7c3aed', KPSS: '#d97706', DGS: '#0d9488', 'YÖS': '#e11d48' };
   const slug = s => String(s || '').toLocaleLowerCase('tr-TR').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ogrenci';
 
@@ -71,8 +94,8 @@
         <div class="wb-lib-list">${groups.length ? groups.map((g, i) => `<details class="wb-subject" data-sub="${esc(g.s.code)}" ${(term || st.open.has(g.s.code) || (!st.open.size && i === 0)) ? 'open' : ''}><summary><span class="wb-dot" style="background:${TONE[st.exam] || '#4f46e5'}"></span><strong>${esc(g.s.name)}</strong><em>${g.topics.length}</em></summary>${g.topics.map(t => `<div class="wb-topic" draggable="true" data-kind="topic" data-sub-code="${esc(g.s.code)}" data-topic="${esc(t)}" title="Güne sürükle"><span class="wb-grip">⠿</span><span class="wb-tname">${esc(t)}</span>${used.has(g.s.name + '||' + t) ? '<span class="wb-added">Eklendi ✓</span>' : ''}</div>`).join('')}</details>`).join('') : '<p class="wb-none">Aramaya uyan konu yok.</p>'}</div>`;
     }
     function itemHtml(l) {
-      const tone = TONE[l.examType] || '#4f46e5', d = dur(l);
-      return `<div class="wb-item" draggable="true" data-kind="lesson" data-id="${esc(l.id)}" style="--tone:${tone}" title="Taşımak için sürükle · düzenlemek için tıkla"><div class="wb-item-top"><span class="wb-pill" style="background:${tone}">${esc(l.examType === 'YÖS' ? 'TR-YÖS' : l.examType)}</span>${d ? `<span class="wb-dur">⏱ ${fmtDur(d)}</span>` : ''}<button type="button" class="wb-x" data-del="${esc(l.id)}" aria-label="Dersi sil" title="Sil">✕</button></div><strong>${esc(l.subject)}</strong>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}<div class="wb-item-meta"><span>🕐 ${esc(hm(l.startTime))}${l.endTime ? ' – ' + esc(hm(l.endTime)) : ''}</span>${l.questionCount ? `<span>✏️ ${l.questionCount} soru</span>` : ''}</div>${l.note ? `<div class="wb-inote">📝 ${esc(l.note)}</div>` : ''}</div>`;
+      const tone = TONE[l.examType] || '#4f46e5', d = dur(l), ls = lessonState(l);
+      return `<div class="wb-item st-${ls}" draggable="true" data-kind="lesson" data-id="${esc(l.id)}" style="--tone:${tone}" title="Taşımak için sürükle · düzenlemek için tıkla"><div class="wb-item-top"><span class="wb-pill" style="background:${tone}">${esc(l.examType === 'YÖS' ? 'TR-YÖS' : l.examType)}</span>${d ? `<span class="wb-dur">⏱ ${fmtDur(d)}</span>` : ''}${ls === 'done' ? '<span class="st-badge done">✓ Çözüldü</span>' : ls === 'late' ? '<span class="st-badge late">Yapılmadı</span>' : ''}<button type="button" class="wb-x" data-del="${esc(l.id)}" aria-label="Dersi sil" title="Sil">✕</button></div><strong>${esc(l.subject)}</strong>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}<div class="wb-item-meta"><span>🕐 ${esc(hm(l.startTime))}${l.endTime ? ' – ' + esc(hm(l.endTime)) : ''}</span>${l.questionCount ? `<span>✏️ ${l.questionCount} soru</span>` : ''}</div>${l.note ? `<div class="wb-inote">📝 ${esc(l.note)}</div>` : ''}</div>`;
     }
     function render() {
       if (typeof getExamTypes !== 'function') { root.innerHTML = '<p class="wb-loading">Müfredat verisi yüklenemedi. Sayfayı yenileyin.</p>'; return; }
@@ -155,25 +178,7 @@
     }
 
     /* ---------- Paylaşım ---------- */
-    function model() {
-      const days = windowDays(st.offset), keys = days.map(key), todayKey = key(new Date());
-      const clock = iso => new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-      const sessions = st.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected');
-      let total = 0;
-      const out = days.map((d, i) => {
-        const k = keys[i];
-        const items = [
-          ...st.lessons.filter(l => l.date === k).sort((a, b) => hm(a.startTime).localeCompare(hm(b.startTime))).map(l => ({ kind: 'lesson', time: hm(l.startTime) + (l.endTime ? ' – ' + hm(l.endTime) : ''), title: lessonLabel(l), topic: l.topic ? String(l.topic).replace(/^.* - /, '') : '', meta: l.questionCount ? '✏️ ' + l.questionCount + ' soru' : '', note: l.note || '' })),
-          ...sessions.filter(s => key(new Date(s.startsAtUtc)) === k).map(s => ({ kind: 'session', time: clock(s.startsAtUtc), title: 'Koçluk görüşmesi', topic: s.durationMinutes + ' dk', meta: '', note: '' })),
-          ...st.tasks.filter(t => String(t.dueDate).slice(0, 10) === k).map(t => ({ kind: 'task', time: 'Görev', title: t.title, topic: '', meta: t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru', note: '' }))
-        ];
-        total += items.length;
-        return { label: DOWL[d.getDay()], date: d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }), today: k === todayKey, items };
-      });
-      const sessionList = sessions.filter(s => keys.includes(key(new Date(s.startsAtUtc)))).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(s => ({ day: new Date(s.startsAtUtc).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }), time: clock(s.startsAtUtc) + (s.status === 'Confirmed' || s.status === 'Completed' ? '' : ' (onay bekliyor)'), dur: s.durationMinutes + ' dk' }));
-      const range = days[0].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) + ' – ' + days[6].toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-      return { name: `${student.firstName} ${student.lastName || ''}`.trim(), range, coach: document.getElementById('profile-name')?.textContent?.trim() || '', days: out, total, sessions: sessionList };
-    }
+    const model = () => buildModel({ student, lessons: st.lessons, sessions: st.sessions, tasks: st.tasks, offset: st.offset });
     const phoneFor = () => { const g = student.guardian || {}; return st.shareTo === 'student' ? (student.phoneNumber || g.phoneNumber || '') : (g.phoneNumber || student.phoneNumber || ''); };
     async function share(kind) {
       if (kind === 'publish') {
@@ -291,7 +296,7 @@
       const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
       const dayHtml = (d, i) => {
         const k = keys[i], ls = lessons.filter(l => l.date === k).sort((a, b) => hm(a.startTime).localeCompare(hm(b.startTime)));
-        const chips = ls.slice(0, 3).map(l => `<div class="wo-chip" style="--tone:${TONE[l.examType] || '#4f46e5'}"><b>${esc(hm(l.startTime))}</b><span>${esc(l.subject)}</span>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}</div>`).join('');
+        const chips = ls.slice(0, 3).map(l => `<div class="wo-chip st-${lessonState(l)}" style="--tone:${TONE[l.examType] || '#4f46e5'}"><b>${lessonState(l) === 'done' ? '✓ ' : ''}${esc(hm(l.startTime))}</b><span>${esc(l.subject)}</span>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}</div>`).join('');
         return `<div class="wo-day ${k === todayKey ? 'today' : ''}"><div class="wo-dayhead"><b>${SHORT[d.getDay()]}</b><span>${d.getDate()}</span></div>${chips || '<div class="wo-empty">Boş</div>'}${ls.length > 3 ? `<div class="wo-more">+${ls.length - 3} ders daha</div>` : ''}</div>`;
       };
       root.innerHTML = `<div class="wo-card" role="button" tabindex="0" aria-label="Haftalık programı aç">

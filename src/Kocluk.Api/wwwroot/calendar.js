@@ -42,7 +42,8 @@
         ? `<div class="perf-bar"><label>Öğrenci<select id="cal-kid">${st.kids.map(k => `<option value="${esc(k.id)}" ${k.id === st.kidId ? 'selected' : ''}>${esc(k.firstName + ' ' + (k.lastName || ''))}</option>`).join('')}</select></label></div>`
         : '';
       const who = o.student ? esc((o.student.firstName + ' ' + (o.student.lastName || '')).trim()) : '';
-      const lessonChip = l => `<div class="chip lesson" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + (l.note ? ' · ' + l.note : ''))}"><b class="chip-time">${hhmm(l.startTime)}${l.endTime ? ' – ' + hhmm(l.endTime) : ''}</b><strong>${esc(lessonLabel(l))}</strong>${l.topic ? '<small class="chip-topic">' + esc(l.topic.replace(/^.* - /, '')) + '</small>' : ''}${l.questionCount ? '<small class="chip-meta">✏️ ' + l.questionCount + ' soru</small>' : ''}${l.note ? '<small class="chip-note">📝 ' + esc(l.note) + '</small>' : ''}</div>`;
+      const lstate = l => l.isCompleted ? 'done' : (l.date < todayKey ? 'late' : 'todo');
+      const lessonChip = l => `<div class="chip lesson st-${lstate(l)}" title="${esc(lessonLabel(l) + (l.topic ? ' · ' + l.topic : '') + (l.note ? ' · ' + l.note : ''))}"><b class="chip-time">${hhmm(l.startTime)}${l.endTime ? ' – ' + hhmm(l.endTime) : ''}</b><strong>${lstate(l) === 'done' ? '<span class="chip-tick">✓</span> ' : ''}${esc(lessonLabel(l))}</strong>${l.topic ? '<small class="chip-topic">' + esc(l.topic.replace(/^.* - /, '')) + '</small>' : ''}${l.questionCount ? '<small class="chip-meta">✏️ ' + l.questionCount + ' soru</small>' : ''}${l.note ? '<small class="chip-note">📝 ' + esc(l.note) + '</small>' : ''}${kind === 'student' ? `<button type="button" class="chip-done" data-lesson-done="${esc(l.id)}" data-done="${l.isCompleted ? '0' : '1'}">${l.isCompleted ? '↩ Geri al' : '✓ Çözdüm'}</button>` : (lstate(l) === 'late' ? '<small class="chip-late">Yapılmadı</small>' : '')}</div>`;
       const sessionChip = s => `<div class="chip session"><b class="chip-time">${clock(s.startsAtUtc)}</b><strong>Koçluk görüşmesi</strong><small class="chip-topic">${s.durationMinutes} dk</small></div>`;
       const taskChip = (t, k) => `<div class="chip ${t.isCompleted ? 'done' : (k < todayKey ? 'late' : 'todo')}"><strong>${esc(t.title)}</strong><small class="chip-topic">${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</small></div>`;
       const column = (d, i) => {
@@ -57,7 +58,7 @@
       <div class="perf-stats compact">${stat('📚', 'Bu 7 günde ders', lessons.length, 'indigo')}${stat('🗒️', 'Görev (biten / toplam)', doneTasks + ' / ' + tasks.length, 'teal')}${stat('💬', 'Koçluk görüşmesi', sessions.length, 'violet')}${stat('🎯', 'Genel soru başarısı', '%' + Math.round(rate), 'amber')}</div>
       <div class="week-nav"><button type="button" data-cal-week="-1" aria-label="Önceki 7 gün">‹</button><span>${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</span><button type="button" data-cal-week="1" aria-label="Sonraki 7 gün">›</button>${st.weekOffset ? '<button type="button" data-cal-week="0" class="today">Bugüne dön</button>' : '<em class="week-note">Bugünden itibaren 7 gün</em>'}</div>
       <div class="week-grid">${days.map(column).join('')}</div>
-      <div class="week-legend"><span class="d lesson"></span>Ders<span class="d done"></span>Tamamlandı<span class="d todo"></span>Bekliyor<span class="d late"></span>Geciken<span class="d session"></span>Görüşme</div>
+      <div class="week-legend"><span class="d lesson"></span>Ders<span class="d done"></span>Çözüldü / tamamlandı<span class="d todo"></span>Bekliyor<span class="d late"></span>Günü geçti, yapılmadı<span class="d session"></span>Görüşme</div>
       <h3 class="perf-h">Konu bazlı başarı ${who ? '<span class="tag">' + who + '</span>' : ''}</h3>
       ${topics.length ? `<div class="perf-topics">${topics.map(t => `<div class="topic-card ${tone(t.rate)}"><div class="topic-top"><div><strong>${esc(t.subject)}</strong><small>${esc(t.topic)}</small></div><span class="topic-rate">%${Math.round(t.rate)}</span></div><div class="topic-bar"><span style="width:${Math.min(100, t.rate)}%"></span></div><small>${t.correct} doğru / ${t.total} soru</small></div>`).join('')}</div>` : empty('Henüz çözülmüş soru yok', 'Koçun atadığı soruları çözdükçe konu bazlı başarı burada görünür.')}`;
     }
@@ -67,7 +68,14 @@
       root.innerHTML = view();
     }
 
-    root.addEventListener('click', event => {
+    root.addEventListener('click', async event => {
+      const done = event.target.closest('[data-lesson-done]');
+      if (done) {
+        done.disabled = true;
+        const r = await authRequest('/api/student/me/lesson-slots/' + done.dataset.lessonDone + '/complete', { method: 'POST', body: JSON.stringify({ done: done.dataset.done === '1' }) });
+        if (r.ok) { const l = (st.overview.lessonSlots || []).find(x => x.id === done.dataset.lessonDone); if (l) l.isCompleted = done.dataset.done === '1'; render(); } else { done.disabled = false; alert('İşaretlenemedi. Tekrar deneyin.'); }
+        return;
+      }
       const b = event.target.closest('[data-cal-week]');
       if (!b) return;
       st.weekOffset = b.dataset.calWeek === '0' ? 0 : st.weekOffset + Number(b.dataset.calWeek);

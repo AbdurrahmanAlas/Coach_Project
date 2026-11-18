@@ -216,6 +216,8 @@ if (app.Environment.IsDevelopment())
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ResourceAssignments_TenantId_StudentId_Status_AssignedAtUtc ON ResourceAssignments (TenantId, StudentId, Status, AssignedAtUtc);");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS LessonSlots (Id TEXT NOT NULL CONSTRAINT PK_LessonSlots PRIMARY KEY, TenantId TEXT NOT NULL, StudentId TEXT NOT NULL, CreatedByUserId TEXT NULL, Date TEXT NOT NULL, StartTime TEXT NOT NULL, EndTime TEXT NULL, ExamType TEXT NOT NULL, Subject TEXT NOT NULL, Topic TEXT NULL, Note TEXT NULL, CreatedAtUtc TEXT NOT NULL);");
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE LessonSlots ADD COLUMN QuestionCount INTEGER NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE LessonSlots ADD COLUMN IsCompleted INTEGER NOT NULL DEFAULT 0;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE LessonSlots ADD COLUMN CompletedAtUtc TEXT NULL;"); } catch (Microsoft.Data.Sqlite.SqliteException) { }
         await db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_LessonSlots_TenantId_StudentId_Date ON LessonSlots (TenantId, StudentId, Date);");
     }
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
@@ -621,6 +623,17 @@ app.MapPost("/api/student/me/session-requests/{sessionId:guid}/cancel", async (G
     var session = await db.CoachingSessions.SingleOrDefaultAsync(x => x.Id == sessionId && x.StudentId == student.Id && x.TenantId == student.TenantId && x.Status == "Pending", ct);
     if (session is null) return Results.NotFound(new { error = "Bekleyen görüşme talebi bulunamadı." });
     session.Cancel(); await db.SaveChangesAsync(ct); await WriteAuditAsync(db, principal, student.TenantId, "Cancelled", "CoachingSession", session.Id, "StudentRequest", ct); return Results.Ok(ToSessionResponse(session));
+}).RequireAuthorization();
+
+app.MapPost("/api/student/me/lesson-slots/{slotId:guid}/complete", async (Guid slotId, LessonCompleteRequest request, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
+{
+    var user = await users.GetUserAsync(principal); if (user?.Email is null) return Results.Unauthorized();
+    var student = await db.Students.AsNoTracking().Where(x => (tenantId == null || x.TenantId == tenantId) && (x.ApplicationUserId == user.Id || (x.ApplicationUserId == null && x.Email == user.Email))).OrderBy(x => x.ApplicationUserId == null).ThenBy(x => x.Id).FirstOrDefaultAsync(ct); if (student is null) return Results.NotFound();
+    var slot = await db.LessonSlots.SingleOrDefaultAsync(x => x.Id == slotId && x.StudentId == student.Id && x.TenantId == student.TenantId, ct);
+    if (slot is null) return Results.NotFound();
+    slot.SetCompleted(request.Done);
+    await db.SaveChangesAsync(ct);
+    return Results.Ok(ToLessonSlotResponse(slot));
 }).RequireAuthorization();
 
 app.MapPost("/api/student/me/session-requests/{sessionId:guid}/confirm", async (Guid sessionId, ClaimsPrincipal principal, UserManager<ApplicationUser> users, KoclukDbContext db, CancellationToken ct, Guid? tenantId) =>
@@ -2025,7 +2038,7 @@ static StudentResponse ToStudentResponse(Student student, StudentGuardian? guard
     AccountLinked = accountLinked ?? student.ApplicationUserId.HasValue
 };
 static CoachingSessionResponse ToSessionResponse(CoachingSession session) => new(session.Id, session.StudentId, session.StartsAtUtc, session.DurationMinutes, session.Note, session.Status);
-static LessonSlotResponse ToLessonSlotResponse(LessonSlot slot) => new(slot.Id, slot.StudentId, slot.Date, slot.StartTime, slot.EndTime, slot.ExamType, slot.Subject, slot.Topic, slot.Note, slot.QuestionCount);
+static LessonSlotResponse ToLessonSlotResponse(LessonSlot slot) => new(slot.Id, slot.StudentId, slot.Date, slot.StartTime, slot.EndTime, slot.ExamType, slot.Subject, slot.Topic, slot.Note, slot.QuestionCount, slot.IsCompleted);
 static ExamResponse ToExamResponse(ExamAttempt exam) => new(exam.Id, exam.StudentId, exam.Title, exam.ExamDate, exam.Correct, exam.Wrong, exam.Blank, exam.Score);
 static StudyPlanResponse ToPlanResponse(StudyPlan plan) => new(
     plan.Id, plan.TenantId, plan.StudentId, plan.Title, plan.WeekStart,
@@ -2081,7 +2094,8 @@ public sealed record ResourceAssignmentRequest(Guid ResourceId, Guid StudentId, 
 public sealed record CreateAvailabilityRequest(int DayOfWeek, TimeOnly StartTime, TimeOnly EndTime);
 public sealed record LessonSlotRequest(DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note, int? QuestionCount = null);
 public sealed record PublishLessonScheduleRequest(DateOnly WeekStart);
-public sealed record LessonSlotResponse(Guid Id, Guid StudentId, DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note, int? QuestionCount);
+public sealed record LessonSlotResponse(Guid Id, Guid StudentId, DateOnly Date, TimeOnly StartTime, TimeOnly? EndTime, string ExamType, string Subject, string? Topic, string? Note, int? QuestionCount, bool IsCompleted = false);
+public sealed record LessonCompleteRequest(bool Done);
 public sealed record StudyTaskResponse(Guid Id, string Title, DateOnly DueDate, int TargetQuestions, int CompletedQuestions, bool IsCompleted);
 
 

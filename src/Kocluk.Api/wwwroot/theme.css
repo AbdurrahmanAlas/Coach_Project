@@ -717,3 +717,21 @@ body.wb-open .sb-toggle{display:flex!important}
 @media(max-width:1000px){#detail-calendar-section .calendar-form{grid-template-columns:1fr 1fr}}
 
 #student-detail-modal #student-detail-body>.form-section{margin:0!important}
+
+/* ---- Ders durumu: çözüldü (yeşil + tik) · günü geçti (kırmızı) · bekliyor (beyaz) ---- */
+.wb-item.st-done,.wo-chip.st-done,.chip.lesson.st-done{background:#ecfdf5;border-color:#86efac;border-left-color:#16a34a}
+.wb-item.st-late,.wo-chip.st-late,.chip.lesson.st-late{background:#fef2f2;border-color:#fca5a5;border-left-color:#e11d48}
+.wb-item.st-todo,.wo-chip.st-todo,.chip.lesson.st-todo{background:#fff}
+.st-badge{margin-left:auto;margin-right:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:850;letter-spacing:.2px}
+.st-badge.done{background:#16a34a;color:#fff}.st-badge.late{background:#e11d48;color:#fff}
+.wb-item.st-done strong::before,.chip-tick{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-right:5px;border-radius:50%;background:#16a34a;color:#fff;font-size:10px;font-weight:900;vertical-align:1px}
+.wb-item.st-done strong::before{content:"✓"}
+.chip-done{margin-top:6px;width:100%;padding:5px 8px;border:1px solid #86efac;border-radius:8px;background:#fff;color:#166534;font:800 12px inherit;cursor:pointer}
+.chip.lesson.st-done .chip-done{border-color:#d1d5db;color:#64748b}
+.chip-done:hover{background:#dcfce7}.chip-done:disabled{opacity:.6;cursor:wait}
+.chip-late{color:#be123c;font-weight:850}
+.chip.lesson.st-late .chip-done{border-color:#fca5a5;color:#9f1239}
+#student-detail-body>#sd-share{grid-column:1/-1;margin:0}
+.sd-share .sd-msg{flex-basis:100%}
+.sd-insight.up{border-color:#bbf7d0;border-left-color:#16a34a;background:#f0fdf4}
+.sd-insight.down{border-color:#fecdd3;border-left-color:#e11d48;background:#fff1f2}

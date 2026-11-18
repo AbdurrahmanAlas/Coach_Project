@@ -24,6 +24,10 @@ public sealed class LessonSlot
     public string? Note { get; private set; }
     public int? QuestionCount { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+    public bool IsCompleted { get; private set; }
+    public DateTime? CompletedAtUtc { get; private set; }
+
+    public void SetCompleted(bool done) { IsCompleted = done; CompletedAtUtc = done ? DateTime.UtcNow : null; }
 
     public void Update(DateOnly date, TimeOnly startTime, TimeOnly? endTime, string examType, string subject, string? topic, string? note, int? questionCount = null)
     {
