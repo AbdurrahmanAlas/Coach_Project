@@ -113,8 +113,8 @@
         const ss = sessions.filter(s => key(new Date(s.startsAtUtc)) === k).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc));
         const ts = tasks.filter(t => String(t.dueDate).slice(0, 10) === k);
         return `<div class="wb-day ${isToday ? 'today' : ''}" data-date="${k}"><div class="wb-dayhead"><div><b>${DOWL[d.getDay()]}</b><small>${fmt(d)}</small></div>${isToday ? '<em>Bugün</em>' : ''}${perDay[i] ? `<span class="wb-total">⏱ ${fmtDur(perDay[i])}</span>` : ''}</div>
-          <div class="wb-list">${ls.map(itemHtml).join('')}${ss.map(s => `<div class="wb-item session"><div class="wb-item-top"><span class="wb-pill" style="background:#7c3aed">Görüşme</span></div><strong>Koçluk görüşmesi</strong><div class="wb-item-meta"><span>🕐 ${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span><span>${s.durationMinutes} dk</span></div></div>`).join('')}${ts.map(t => `<div class="wb-item task ${t.isCompleted ? 'done' : ''}"><div class="wb-item-top"><span class="wb-pill" style="background:#d97706">Görev</span></div><strong>${esc(t.title)}</strong><div class="wb-item-meta"><span>${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</span></div></div>`).join('')}${!ls.length && !ss.length && !ts.length ? '<div class="wb-drop">Konu sürükleyip buraya bırak</div>' : ''}</div>
-          <button type="button" class="wb-add" data-add-day="${k}">＋ Ders ekle</button></div>`;
+          <div class="wb-list">${ls.map(itemHtml).join('')}${ss.map(s => `<div class="wb-item session"><div class="wb-item-top"><span class="wb-pill" style="background:#7c3aed">Görüşme</span><span class="st-badge ${s.status === 'Confirmed' || s.status === 'Completed' || s.status === 'Scheduled' ? 'done' : 'wait'}">${s.status === 'Confirmed' || s.status === 'Completed' || s.status === 'Scheduled' ? 'Onaylı' : 'Onay bekliyor'}</span><button type="button" class="wb-x" data-del-session="${esc(s.id)}" aria-label="Görüşmeyi sil" title="Sil">✕</button></div><strong>Koçluk görüşmesi</strong><div class="wb-item-meta"><span>🕐 ${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span><span>${s.durationMinutes} dk</span></div></div>`).join('')}${ts.map(t => `<div class="wb-item task ${t.isCompleted ? 'done' : ''}"><div class="wb-item-top"><span class="wb-pill" style="background:#d97706">Görev</span></div><strong>${esc(t.title)}</strong><div class="wb-item-meta"><span>${t.isCompleted ? '✓ Tamamlandı' : t.completedQuestions + ' / ' + t.targetQuestions + ' soru'}</span></div></div>`).join('')}${!ls.length && !ss.length && !ts.length ? '<div class="wb-drop">Konu sürükleyip buraya bırak</div>' : ''}</div>
+          <div class="wb-adds"><button type="button" class="wb-add" data-add-day="${k}">＋ Ders</button><button type="button" class="wb-add sess" data-add-session="${k}">＋ Görüşme</button></div></div>`;
       };
       const bars = keys.map((k, i) => `<div class="wb-bar" title="${DOWL[days[i].getDay()]}: ${perDay[i] ? fmtDur(perDay[i]) : 'ders yok'}"><div class="wb-bar-col"><i style="height:${perDay[i] ? Math.max(10, Math.round(perDay[i] / maxMin * 100)) : 0}%"></i></div><span>${SHORT[days[i].getDay()]}</span></div>`).join('');
       root.innerHTML = `<div class="wb-top"><div><h3>Sürükle &amp; Bırak Program Oluşturucu</h3><p>${esc(student.firstName)} ${esc(student.lastName || '')} · değişiklikler otomatik kaydedilir</p></div>
@@ -125,6 +125,31 @@
             <div class="wb-grid">${days.map(dayCard).join('')}
               <div class="wb-summary"><div class="wb-sum-title">📊 Haftalık özet</div><div class="wb-stats"><div><small>Ders</small><b>${lessons.length}</b></div><div><small>Toplam süre</small><b>${totalMin ? fmtDur(totalMin) : '—'}</b></div><div><small>Dolu gün</small><b>${filled}/7</b></div><div><small>Soru hedefi</small><b>${totalQ || '—'}</b></div></div><div class="wb-bars">${bars}</div></div>
             </div></section></div>`;
+    }
+
+    /* ---------- Koçluk görüşmesi (randevu) penceresi ---------- */
+    function openSessionDialog(dateKey) {
+      document.getElementById('wb-dialog')?.remove();
+      const keys = windowDays(st.offset).map(key);
+      const dayOpts = keys.map(k => { const d = new Date(k + 'T00:00:00'); return `<option value="${k}" ${k === dateKey ? 'selected' : ''}>${DOWL[d.getDay()]} · ${d.getDate()} ${d.toLocaleDateString('tr-TR', { month: 'long' })}</option>`; }).join('');
+      const overlay = document.createElement('div'); overlay.id = 'wb-dialog'; overlay.className = 'wb-backdrop';
+      overlay.innerHTML = `<div class="wb-dialog" role="dialog" aria-modal="true"><div class="wb-dhead"><h4>💬 Koçluk görüşmesi ekle</h4><button type="button" class="wb-dx" data-close aria-label="Kapat">✕</button></div>
+        <form class="wb-dform" novalidate><div class="wb-dsum"><b>${esc(student.firstName)} ${esc(student.lastName || '')}</b><small>Görüşme öğrenciye onay için gönderilir; öğrenci takviminden onaylar, reddeder ya da yeni saat önerir.</small></div>
+          <div class="wb-dgrid"><label>Gün<select id="wbs-date">${dayOpts}</select></label><label>Saat<input type="time" id="wbs-time" value="19:00"></label><label>Süre<select id="wbs-dur">${[30, 45, 60, 90].map(m => `<option value="${m}" ${m === 45 ? 'selected' : ''}>${m} dakika</option>`).join('')}</select></label><label class="full2">Not <em>(isteğe bağlı)</em><input type="text" id="wbs-note" maxlength="300" placeholder="Örn: Haftalık değerlendirme"></label></div>
+          <div class="wb-dmsg" id="wbs-msg"></div><div class="wb-dfoot"><span></span><button type="button" class="wb-btn" data-close>İptal</button><button type="submit" class="wb-btn main">Görüşme ekle</button></div></form></div>`;
+      document.body.appendChild(overlay);
+      const $ = id => overlay.querySelector('#' + id), close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); }, onKey = e => { if (e.key === 'Escape') close(); };
+      document.addEventListener('keydown', onKey);
+      overlay.addEventListener('click', e => { if (e.target === overlay || e.target.closest('[data-close]')) close(); });
+      overlay.querySelector('form').addEventListener('submit', async e => {
+        e.preventDefault(); const msg = $('wbs-msg'), start = new Date($('wbs-date').value + 'T' + $('wbs-time').value);
+        if (!$('wbs-time').value || Number.isNaN(start.getTime()) || start <= new Date()) { msg.textContent = 'Görüşme tarihi ve saati gelecekte olmalıdır.'; return; }
+        const btn = overlay.querySelector('[type=submit]'); btn.disabled = true;
+        const r = await authRequest(base + '/sessions', { method: 'POST', body: JSON.stringify({ startsAtUtc: start.toISOString(), durationMinutes: Number($('wbs-dur').value), note: $('wbs-note').value.trim() || null }) });
+        const res = await r.json().catch(() => null);
+        if (r.ok && res) { st.sessions.push(res); say('Koçluk görüşmesi eklendi; öğrenciye onay için gönderildi.'); close(); render(); }
+        else { btn.disabled = false; msg.textContent = (res && res.error) || 'Görüşme eklenemedi.'; }
+      });
     }
 
     /* ---------- Ders penceresi (yeni / düzenle) ---------- */
@@ -224,6 +249,8 @@
       const t = e.target.closest('button, .wb-item[data-kind="lesson"]'); if (!t || !root.contains(t)) return;
       if (t.dataset.w !== undefined) { st.offset = t.dataset.w === '0' ? 0 : st.offset + Number(t.dataset.w); st.msg = ''; render(); }
       else if (t.dataset.addDay) openDialog(null, t.dataset.addDay);
+      else if (t.dataset.addSession) openSessionDialog(t.dataset.addSession);
+      else if (t.dataset.delSession) { e.stopPropagation(); if (confirm('Bu koçluk görüşmesi silinsin mi?')) { const r = await authRequest(base + '/sessions/' + t.dataset.delSession, { method: 'DELETE' }); if (r.ok) { st.sessions = st.sessions.filter(x => x.id !== t.dataset.delSession); say('Görüşme silindi.'); } else say('Görüşme silinemedi.', true); render(); } }
       else if (t.dataset.del) { e.stopPropagation(); if (confirm('Bu ders programdan silinsin mi?')) { if (await removeLesson(t.dataset.del)) say('Ders silindi.'); render(); } }
       else if (t.dataset.share) share(t.dataset.share);
       else if (t.classList.contains('wb-item')) { const l = st.lessons.find(x => x.id === t.dataset.id); if (l) openDialog(l); }
@@ -294,10 +321,11 @@
       const sessions = data.sessions.filter(s => s.status !== 'Cancelled' && s.status !== 'Rejected' && keys.includes(key(new Date(s.startsAtUtc))));
       const total = lessons.reduce((s, l) => s + dur(l), 0), filled = keys.filter(k => lessons.some(l => l.date === k)).length, questions = lessons.reduce((s, l) => s + (l.questionCount || 0), 0);
       const fmt = d => d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+      const sessChips = k => sessions.filter(s => key(new Date(s.startsAtUtc)) === k).sort((a, b) => new Date(a.startsAtUtc) - new Date(b.startsAtUtc)).map(s => `<div class="wo-chip sess"><b>${new Date(s.startsAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</b><span>💬 Koçluk görüşmesi</span><small>${s.durationMinutes} dk</small></div>`).join('');
       const dayHtml = (d, i) => {
         const k = keys[i], ls = lessons.filter(l => l.date === k).sort((a, b) => hm(a.startTime).localeCompare(hm(b.startTime)));
         const chips = ls.slice(0, 3).map(l => `<div class="wo-chip st-${lessonState(l)}" style="--tone:${TONE[l.examType] || '#4f46e5'}"><b>${lessonState(l) === 'done' ? '✓ ' : ''}${esc(hm(l.startTime))}</b><span>${esc(l.subject)}</span>${l.topic ? `<small>${esc(String(l.topic).replace(/^.* - /, ''))}</small>` : ''}</div>`).join('');
-        return `<div class="wo-day ${k === todayKey ? 'today' : ''}"><div class="wo-dayhead"><b>${SHORT[d.getDay()]}</b><span>${d.getDate()}</span></div>${chips || '<div class="wo-empty">Boş</div>'}${ls.length > 3 ? `<div class="wo-more">+${ls.length - 3} ders daha</div>` : ''}</div>`;
+        return `<div class="wo-day ${k === todayKey ? 'today' : ''}"><div class="wo-dayhead"><b>${SHORT[d.getDay()]}</b><span>${d.getDate()}</span></div>${sessChips(k)}${chips || (sessChips(k) ? '' : '<div class="wo-empty">Boş</div>')}${ls.length > 3 ? `<div class="wo-more">+${ls.length - 3} ders daha</div>` : ''}</div>`;
       };
       root.innerHTML = `<div class="wo-card" role="button" tabindex="0" aria-label="Haftalık programı aç">
         <div class="wo-head"><div><h3>Haftalık program</h3><p>${esc(student.firstName)} ${esc(student.lastName || '')} · ${fmt(days[0])} – ${fmt(days[6])} ${days[6].getFullYear()}</p></div><button type="button" class="wo-open" data-open>🗓️ Programı aç ve düzenle <b>→</b></button></div>

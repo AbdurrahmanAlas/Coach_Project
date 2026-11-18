@@ -408,5 +408,5 @@
     return how + (res.hasNumber ? '' : ' Kayıtlı telefon numarası yok, sohbeti kendiniz seçin.');
   }
 
-  window.KoclukShare = { summaryCanvas, reportCanvas, scheduleCanvas, examReportCanvas, describe, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
+  window.KoclukShare = { download, summaryCanvas, reportCanvas, scheduleCanvas, examReportCanvas, describe, toBlob, toPdf, deliver, normalizePhone, whatsappUrl };
 })();

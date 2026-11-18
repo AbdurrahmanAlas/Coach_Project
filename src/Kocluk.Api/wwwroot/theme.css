@@ -735,3 +735,79 @@ body.wb-open .sb-toggle{display:flex!important}
 .sd-share .sd-msg{flex-basis:100%}
 .sd-insight.up{border-color:#bbf7d0;border-left-color:#16a34a;background:#f0fdf4}
 .sd-insight.down{border-color:#fecdd3;border-left-color:#e11d48;background:#fff1f2}
+
+/* ---- Programda ders / görüşme ekleme düğmeleri: her zaman görünür, iki eşit düğme ---- */
+.wb-adds{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.wb-adds .wb-add{opacity:1;padding:8px 6px;font-size:12px;border-style:solid;border-width:1px;background:#f5f6ff;border-color:#c7d2fe;color:#4338ca}
+.wb-adds .wb-add.sess{background:#f5f3ff;border-color:#ddd6fe;color:#6d28d9}
+.wb-adds .wb-add:hover{filter:brightness(.96)}
+.st-badge.wait{background:#fef3c7;color:#92400e}
+.wo-chip.sess{background:#f5f3ff;border-color:#ddd6fe;border-left-color:#7c3aed}
+
+/* ===== Çalışma planları sayfası: belirgin kartlar, filtre çubuğu ===== */
+.pl-head-actions{display:flex;align-items:center;gap:12px}
+.pl-filter{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 18px;padding:12px 14px;border:1px solid #e0e4f7;border-radius:14px;background:#f8f9ff}
+.pl-filter-student{display:grid;gap:5px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64748b}
+.pl-filter-student select{min-width:210px;padding:9px 11px;border:1px solid #d4d8f5;border-radius:10px;background:#fff;font:700 13px inherit;color:#1e1b4b;text-transform:none;letter-spacing:0}
+.pl-chips{display:flex;gap:8px;flex-wrap:wrap}
+.pl-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid #d4d8f5;border-radius:999px;background:#fff;color:#475569;font:750 13px inherit;cursor:pointer;transition:all .15s}
+.pl-chip b{min-width:20px;padding:1px 6px;border-radius:999px;background:#eef0fa;color:#475569;font-size:11.5px;text-align:center}
+.pl-chip:hover{border-color:#a5b4fc}
+.pl-chip.on{background:#4f46e5;border-color:#4f46e5;color:#fff}.pl-chip.on b{background:#ffffff33;color:#fff}
+.pl-chip.late:not(.on) b{background:#ffe4e6;color:#be123c}
+.pl-list{gap:26px}
+.pl-plan{border:1.5px solid #c9cff0;border-radius:20px;box-shadow:0 8px 24px rgba(79,70,229,.09)}
+.pl-plan-head{padding:20px 24px;background:linear-gradient(135deg,#eef0ff,#e8faf6);border-bottom:1.5px solid #c9cff0;position:relative}
+.pl-plan-head::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,#4f46e5,#14b8a6)}
+.pl-plan-info h3{font-size:19px}
+.pl-plan-prog{width:200px}.pl-plan-prog b{font-size:22px;color:#4338ca}
+.pl-plan-head .pl-actions .pl-btn{background:#fff}
+.pl-tasks{padding:12px;display:grid;gap:10px;background:#fafbff}
+.pl-task{border:1px solid #e3e6f7;border-left:5px solid #cbd5e1;border-radius:14px;background:#fff;padding:14px 16px;box-shadow:0 1px 3px rgba(30,27,75,.05)}
+.pl-task:first-child{border-top:1px solid #e3e6f7}
+.pl-task.done{border-left-color:#16a34a;background:#f3fcf6}
+.pl-task.late{border-left-color:#e11d48;background:#fff5f6}
+.pl-task.going{border-left-color:#4f46e5}
+.pl-task.wait{border-left-color:#f59e0b}
+.pl-task-main strong{font-size:15px}
+.pl-task .pl-actions .pl-btn:not(.main){border-color:transparent;background:#f1f3fb;color:#475569}
+.pl-task .pl-actions .pl-btn.danger{background:#fff1f2;color:#be123c}
+.pl-task .pl-actions .pl-btn:not(.main):hover{background:#e4e8fa}
+.pl-task.hidden,.pl-plan.hidden{display:none!important}
+
+/* ===== Genel bakış panosu ===== */
+#dash-focus{display:grid;gap:22px;margin:22px 0}
+.dash-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.dash-tile{display:flex;align-items:center;gap:14px;padding:16px 18px;border:1px solid #e0e4f7;border-radius:16px;background:#fff;text-align:left;cursor:pointer;box-shadow:0 2px 10px rgba(30,27,75,.05);transition:transform .15s,box-shadow .15s}
+.dash-tile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(30,27,75,.12)}
+.dash-tile-ico{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;font-size:22px;flex:none}
+.dash-tile.indigo .dash-tile-ico{background:#e0e7ff}.dash-tile.teal .dash-tile-ico{background:#ccfbf1}.dash-tile.violet .dash-tile-ico{background:#ede9fe}.dash-tile.amber .dash-tile-ico{background:#fef3c7}
+.dash-tile b{display:block;font-size:15px;color:#1e1b4b}.dash-tile small{display:block;margin-top:2px;font-size:12.5px;color:#64748b}
+.dash-tile i{margin-left:auto;font-style:normal;color:#6366f1;font-weight:800}
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.dash-card{border:1px solid #e0e4f7;border-radius:20px;background:#fff;padding:22px;box-shadow:0 4px 18px rgba(30,27,75,.06);display:grid;gap:12px;align-content:start}
+.dash-card header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid #eef0fa}
+.dash-card h2{margin:0;font-size:18px;color:#1e1b4b}.dash-card header p{margin:4px 0 0;font-size:13px;color:#64748b}
+.dash-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dash-row{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid #eef0fa;border-radius:14px;background:#fafbff}
+.dash-row-main{flex:1;min-width:0}.dash-row-main strong{display:block;font-size:14.5px;color:#1e1b4b}.dash-row-main small{display:block;margin-top:2px;font-size:12.5px;color:#64748b}
+.dash-date{display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:#eef2ff;color:#4338ca;flex:none;line-height:1}
+.dash-date b{font-size:20px}.dash-date small{font-size:11px;font-weight:800;text-transform:uppercase;margin-top:2px}
+.dash-date.soon{background:#4f46e5;color:#fff}
+.dash-avatar{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#14b8a6);color:#fff;font-weight:800;font-size:14px;flex:none}
+.dash-avatar.bad{background:linear-gradient(135deg,#e11d48,#f97316)}.dash-avatar.warn{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.dash-chip{padding:5px 11px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}
+.dash-chip.ok{background:#dcfce7;color:#166534}.dash-chip.wait{background:#fef3c7;color:#92400e}.dash-chip.bad{background:#ffe4e6;color:#be123c}
+.dash-link{border:0;background:none;color:#4f46e5;font:800 13px inherit;cursor:pointer;padding:6px 4px;white-space:nowrap}.dash-link:hover{text-decoration:underline}
+.dash-btn{border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;border-radius:10px;padding:8px 14px;font:800 13px inherit;cursor:pointer}.dash-btn:hover{background:#e0e7ff}
+.dash-empty{padding:26px 16px;text-align:center;border:1px dashed #c7cbe6;border-radius:14px;color:#64748b}
+.dash-empty b{display:block;color:#1e1b4b;font-size:15px;margin-bottom:4px}.dash-empty small{font-size:13px}
+.dash-empty.ok{border-color:#86efac;background:#f0fdf4}.dash-empty.ok b{color:#166534}
+.dash-progs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.dash-prog{display:flex;gap:14px;align-items:center;padding:14px;border:1px solid #eef0fa;border-radius:14px;background:#fafbff}
+.dash-prog-main{flex:1;min-width:0;display:grid;gap:6px}.dash-prog-top{display:flex;justify-content:space-between;gap:10px}
+.dash-prog-top strong{font-size:14.5px;color:#1e1b4b}.dash-prog-top span{font-weight:850;color:#4338ca}
+.dash-prog small{font-size:12.5px;color:#64748b}
+.dash-bar{height:9px;border-radius:9px;background:#e8ebf7;overflow:hidden}.dash-bar i{display:block;height:100%;border-radius:9px;background:#4f46e5}
+.dash-bar.ok i{background:#16a34a}.dash-bar.mid i{background:#f59e0b}.dash-bar.low i{background:#e11d48}
+@media(max-width:1100px){.dash-actions{grid-template-columns:repeat(2,1fr)}.dash-cols,.dash-progs{grid-template-columns:1fr}}
