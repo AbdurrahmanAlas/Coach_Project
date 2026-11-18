@@ -354,14 +354,15 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119011000">
+  <link rel="stylesheet" href="/theme.css?v=20261119012000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
   <script src="/calendar.js?v=20261118220000"></script>
   <script src="/question-pool.js?v=20261116180000"></script>
   <script src="/sidebar-collapse.js?v=20261117170000"></script>
-  <script src="/coach-pages.js?v=20261118220000"></script>
+  <script src="/coach-ui.js?v=20261119012000"></script>
+  <script src="/coach-pages.js?v=20261119012000"></script>
   <script src="/week-builder.js?v=20261119002000"></script>
   <script src="/student-detail.js?v=20261118220000"></script>
 </head>
@@ -1673,21 +1674,44 @@
         apply();
       }
       (list.closest('.section') || list.parentElement)?.after(draft); draft.querySelector('#next-week-draft-action')?.addEventListener('click', () => createButton?.click());
+      const apiBase = `/api/tenants/${tenantId}/plans`;
+      const failMsg = async (response, fallback) => { const body = await response.json().catch(() => ({})); alert(body.error || fallback); };
       list.querySelectorAll('.plan-task-progress').forEach(button => button.addEventListener('click', async () => {
         const target = Number(button.dataset.target || 0);
-        const current = Number(button.dataset.completed || 0);
-        const value = prompt(`Tamamlanan soru sayısı (0-${target}):`, String(current));
-        if (value === null) return;
-        const completedQuestions = Number(value);
-        if (!Number.isInteger(completedQuestions) || completedQuestions < 0 || completedQuestions > target) { alert(`0 ile ${target} arasında bir tam sayı girin.`); return; }
-        const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.planId}/tasks/${button.dataset.taskId}/progress`, { method: 'PUT', body: JSON.stringify({ completedQuestions, isCompleted: completedQuestions >= target && target > 0 }) });
-        if (!response.ok) { alert('Görev ilerlemesi kaydedilemedi.'); return; }
+        const plan = plans.find(item => item.id === button.dataset.planId), task = plan?.tasks.find(item => item.id === button.dataset.taskId);
+        const completedQuestions = await CoachUI.progress({ title: 'İlerlemeyi gir', subtitle: `${studentName(plan?.studentId) || ''}${task ? ' · ' + task.title : ''}`.replace(/^ · /, ''), current: Number(button.dataset.completed || 0), target });
+        if (completedQuestions === null) return;
+        const response = await authRequest(`${apiBase}/${button.dataset.planId}/tasks/${button.dataset.taskId}/progress`, { method: 'PUT', body: JSON.stringify({ completedQuestions, isCompleted: completedQuestions >= target && target > 0 }) });
+        if (!response.ok) { await failMsg(response, 'Görev ilerlemesi kaydedilemedi.'); return; }
         await loadPlansPage();
       }));
-      list.querySelectorAll('.plan-task-edit').forEach(button => button.addEventListener('click', async () => { const plan = plans.find(item => item.id === button.dataset.planId); const task = plan?.tasks.find(item => item.id === button.dataset.taskId); if (!task) return; const title = prompt('Görev adı:', task.title); if (title === null) return; const dueDate = prompt('Görev tarihi (YYYY-AA-GG):', task.dueDate); if (dueDate === null) return; const targetQuestions = Number(prompt('Soru hedefi:', String(task.targetQuestions))); if (!Number.isInteger(targetQuestions) || targetQuestions < 0) { alert('Soru hedefi 0 veya daha büyük bir tam sayı olmalıdır.'); return; } const response = await authRequest(`/api/tenants/${tenantId}/plans/${plan.id}/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify({ title, dueDate, targetQuestions }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); alert(body.error || 'Görev güncellenemedi.'); return; } await loadPlansPage(); }));
-      list.querySelectorAll('.plan-task-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu görevi silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.planId}/tasks/${button.dataset.taskId}`, { method: 'DELETE' }); if (!response.ok) { alert('Görev silinemedi.'); return; } await loadPlansPage(); }));
-      list.querySelectorAll('.plan-edit').forEach(button => button.addEventListener('click', async () => { const plan = plans.find(item => item.id === button.dataset.id); if (!plan) return; const title = prompt('Plan adı:', plan.title); if (title === null) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${plan.id}`, { method: 'PUT', body: JSON.stringify({ title }) }); if (!response.ok) { const body = await response.json().catch(() => ({})); alert(body.error || 'Plan güncellenemedi.'); return; } await loadPlansPage(); }));
-      list.querySelectorAll('.plan-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu çalışma planını ve görevlerini silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${tenantId}/plans/${button.dataset.id}`, { method: 'DELETE' }); if (!response.ok) { alert('Plan silinemedi.'); return; } await loadPlansPage(); }));
+      list.querySelectorAll('.plan-task-edit').forEach(button => button.addEventListener('click', async () => {
+        const plan = plans.find(item => item.id === button.dataset.planId), task = plan?.tasks.find(item => item.id === button.dataset.taskId); if (!task) return;
+        const values = await CoachUI.task({ title: task.title, dueDate: task.dueDate, target: task.targetQuestions });
+        if (!values) return;
+        const response = await authRequest(`${apiBase}/${plan.id}/tasks/${task.id}`, { method: 'PUT', body: JSON.stringify(values) });
+        if (!response.ok) { await failMsg(response, 'Görev güncellenemedi.'); return; }
+        await loadPlansPage();
+      }));
+      list.querySelectorAll('.plan-task-delete').forEach(button => button.addEventListener('click', async () => {
+        if (!await CoachUI.confirm({ title: 'Görevi sil', text: 'Bu görev plandan silinecek. Devam edilsin mi?', confirm: 'Görevi sil' })) return;
+        const response = await authRequest(`${apiBase}/${button.dataset.planId}/tasks/${button.dataset.taskId}`, { method: 'DELETE' });
+        if (!response.ok) { alert('Görev silinemedi.'); return; }
+        await loadPlansPage();
+      }));
+      list.querySelectorAll('.plan-edit').forEach(button => button.addEventListener('click', async () => {
+        const plan = plans.find(item => item.id === button.dataset.id); if (!plan) return;
+        const title = await CoachUI.plan({ title: plan.title }); if (title === null) return;
+        const response = await authRequest(`${apiBase}/${plan.id}`, { method: 'PUT', body: JSON.stringify({ title }) });
+        if (!response.ok) { await failMsg(response, 'Plan güncellenemedi.'); return; }
+        await loadPlansPage();
+      }));
+      list.querySelectorAll('.plan-delete').forEach(button => button.addEventListener('click', async () => {
+        if (!await CoachUI.confirm({ title: 'Planı sil', text: 'Bu çalışma planı ve içindeki tüm görevler silinecek. Bu işlem geri alınamaz.', confirm: 'Planı sil' })) return;
+        const response = await authRequest(`${apiBase}/${button.dataset.id}`, { method: 'DELETE' });
+        if (!response.ok) { alert('Plan silinemedi.'); return; }
+        await loadPlansPage();
+      }));
     }
     function bindDashboardActions() {
       document.querySelectorAll('.dashboard-action').forEach(action => {

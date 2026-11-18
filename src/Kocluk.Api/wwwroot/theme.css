@@ -981,3 +981,32 @@ body.wb-open .sb-toggle{display:flex!important}
 .pl-plan:not(.pl-one) .pl-task{border:0;border-top:1px solid #eef0fa;border-left:5px solid #cbd5e1;border-radius:0;box-shadow:none;padding:9px 18px}
 .pl-plan:not(.pl-one) .pl-task.done{border-left-color:#16a34a}.pl-plan:not(.pl-one) .pl-task.late{border-left-color:#e11d48}.pl-plan:not(.pl-one) .pl-task.going{border-left-color:#4f46e5}.pl-plan:not(.pl-one) .pl-task.wait{border-left-color:#f59e0b}
 .pl-plan.hidden{display:none!important}
+
+/* ===== Ortak pencereler (CoachUI) ===== */
+.cu-backdrop{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);animation:fadeIn .15s ease}
+.cu-card{width:min(480px,100%);background:#fff;border-radius:22px;box-shadow:0 30px 80px rgba(15,23,42,.35);overflow:hidden;animation:cuPop .18s ease}
+@keyframes cuPop{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.cu-card header{display:flex;align-items:center;gap:14px;padding:20px 22px;border-bottom:1px solid #eef0fa;background:linear-gradient(135deg,#f5f6ff,#effaf8)}
+.cu-ico{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:20px;flex:none}
+.cu-ico.danger{background:linear-gradient(135deg,#e11d48,#f97316)}
+.cu-card h3{margin:0;font-size:18px;color:#1e1b4b}.cu-card header p{margin:3px 0 0;font-size:13px;color:#64748b}
+.cu-x{margin-left:auto;width:32px;height:32px;border:0;border-radius:10px;background:#fff;color:#64748b;font-size:14px;cursor:pointer;flex:none}.cu-x:hover{background:#eef2ff;color:#4338ca}
+.cu-body{padding:20px 22px;display:grid;gap:14px}
+.cu-field{display:grid;gap:6px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#64748b}
+.cu-field input,.cu-num input{padding:11px 13px;border:1.5px solid #d4d8f5;border-radius:12px;background:#fafaff;font:650 15px inherit;color:#1e1b4b;text-transform:none;letter-spacing:0;outline:none;width:100%;box-sizing:border-box}
+.cu-field input:focus,.cu-num input:focus{border-color:#6366f1;box-shadow:0 0 0 4px rgba(99,102,241,.12);background:#fff}
+.cu-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cu-text{margin:0;font-size:14.5px;line-height:1.6;color:#334155}
+.cu-error{min-height:0;padding:0 22px;color:#be123c;font-size:13px;font-weight:700}.cu-error:empty{display:none}
+.cu-card footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px 20px}
+.cu-btn{padding:11px 20px;border:1px solid #d4d8f5;border-radius:12px;background:#fff;color:#334155;font:800 14px inherit;cursor:pointer}.cu-btn:hover{background:#f1f3fb}
+.cu-btn.main{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(79,70,229,.3)}.cu-btn.main:hover{filter:brightness(1.07)}
+.cu-btn.danger{background:linear-gradient(135deg,#e11d48,#f43f5e);border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(225,29,72,.28)}.cu-btn.danger:hover{filter:brightness(1.07)}
+.cu-prog{display:grid;gap:14px}
+.cu-prog-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cu-prog-top label{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#64748b}
+.cu-num{display:flex;align-items:center;gap:8px;font-weight:800;color:#64748b}.cu-num input{width:92px;text-align:center;font-size:20px;padding:8px 10px}
+.cu-prog input[type=range]{width:100%;accent-color:#4f46e5}
+.cu-bar{height:10px;border-radius:10px;background:#e8ebf7;overflow:hidden}.cu-bar i{display:block;height:100%;width:0;border-radius:10px;background:linear-gradient(90deg,#4f46e5,#14b8a6);transition:width .15s}
+.cu-quick{display:flex;gap:8px;flex-wrap:wrap}
+.cu-quick button{padding:7px 14px;border:1px solid #d4d8f5;border-radius:999px;background:#f5f6ff;color:#3730a3;font:800 13px inherit;cursor:pointer}.cu-quick button:hover{background:#e0e7ff}
