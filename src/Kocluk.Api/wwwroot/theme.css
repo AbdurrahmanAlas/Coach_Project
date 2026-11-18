@@ -930,3 +930,23 @@ body.wb-open .sb-toggle{display:flex!important}
 .ex-stats .stat-foot,.pl-stats .stat-foot,.content:has(#dash-focus)>.grid .stat-foot{font-size:12px!important;margin:0!important}
 .content:has(.ex-stats) .card.section{padding:16px 20px!important}
 .ex-toolbar{margin-bottom:10px!important}
+
+/* ===== Çalışma planları: liste daha yukarıdan başlasın ===== */
+.content:has(.pl-stats) .card.section{padding:14px 18px!important}
+.content:has(.pl-stats) .section-title{margin-bottom:6px!important}
+.content:has(.pl-stats) .section-title h2{font-size:17px!important}
+.content:has(.pl-stats) .pl-sub{display:none}
+.pl-stats .stat-foot{display:block;line-height:1.2}
+.pl-stats .card.stat{padding:10px 16px!important}
+.pl-stats .pl-mini-bar{margin:2px 0 4px!important}
+.pl-filter{padding:6px 10px;margin:0 0 12px;gap:10px;align-items:center}
+.pl-filter-student{display:flex;align-items:center;gap:8px}
+.pl-filter-student select{min-width:180px;padding:7px 10px}
+.pl-chip{padding:6px 11px;font-size:12.5px}
+.pl-list{gap:16px}
+.pl-plan-head{padding:12px 18px}
+.pl-avatar{width:38px;height:38px;border-radius:12px;font-size:14px}
+.pl-plan-info h3{font-size:17px}
+.pl-plan-prog b{font-size:19px}
+.pl-tasks{padding:8px;gap:8px}
+.pl-task{padding:10px 14px}
