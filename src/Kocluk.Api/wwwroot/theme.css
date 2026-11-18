@@ -607,3 +607,113 @@ body.sb-collapsed .sidebar:hover .nav a:hover{transform:translateX(2px)}
 /* Menü daraltma yalnızca tam sayfa program penceresi açıkken kullanılır */
 .sb-toggle{display:none!important}
 body.wb-open .sb-toggle{display:flex!important}
+
+/* ---------- Öğrenci penceresi: sekme içerikleri ---------- */
+#exam-modal{z-index:1100}
+#student-detail-body{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+#student-detail-body>*{grid-column:1/-1;margin:0!important}
+#student-detail-body>.hidden{display:none!important}
+#detail-calendar-section{order:1}#detail-question-summary{order:2;grid-column:auto!important}#detail-insights{order:3;grid-column:auto!important}#detail-subjects{order:4}
+#student-detail-modal .detail-summary{order:0}
+@media(max-width:1100px){#detail-question-summary,#detail-insights{grid-column:1/-1!important}}
+.sd-host{display:block}
+.sd-muted{margin:0;color:#64748b;font-size:13.5px;line-height:1.5}
+.sd-card,#detail-question-summary,#detail-insights,#detail-subjects{background:#fff;border:1px solid #e6e8f5!important;border-radius:20px;padding:22px 24px!important;box-shadow:0 4px 14px rgba(30,27,75,.04)}
+.sd-card{margin-bottom:18px}
+.sd-card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.sd-card-head h3{display:flex;align-items:center;gap:10px;margin:0;font-size:17px;color:#1e1b4b}
+.sd-card-head h3::before{content:"";width:5px;height:20px;border-radius:3px;background:linear-gradient(180deg,#4f46e5,#14b8a6)}
+.sd-note{display:block;margin-top:3px;color:#64748b;font-size:12.5px;font-weight:600}
+.sd-chip{padding:5px 12px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12.5px;font-weight:800}
+.sd-actions{display:flex;gap:8px;flex-wrap:wrap}
+.sd-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #d7dcf3;background:#fff;color:#3730a3;border-radius:10px;font-size:12.5px;font-weight:800;cursor:pointer;transition:background .15s,transform .15s;width:auto;text-decoration:none}
+.sd-btn:hover{background:#eef2ff;transform:translateY(-1px)}
+.sd-btn.main{background:#4f46e5;border-color:#4f46e5;color:#fff}.sd-btn.main:hover{background:#4338ca}
+.sd-btn.wa{background:#0f766e;border-color:#0f766e;color:#fff}.sd-btn.wa:hover{background:#0b5f58}
+.sd-btn.danger{color:#be123c;border-color:#fecdd3}.sd-btn.danger:hover{background:#fff1f2}
+.sd-bar{height:8px;border-radius:8px;background:#e8ebf7;overflow:hidden}
+.sd-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#4f46e5,#14b8a6)}
+.sd-bar.low i{background:linear-gradient(90deg,#f97316,#ef4444)}.sd-bar.mid i{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.sd-bar.ok i{background:linear-gradient(90deg,#10b981,#34d399)}
+.sd-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.sd-kpi{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#fff;border:1px solid #e6e8f5;border-radius:18px;border-left:5px solid var(--k,#4f46e5);box-shadow:0 4px 14px rgba(30,27,75,.04)}
+.sd-kpi.indigo{--k:#4f46e5}.sd-kpi.teal{--k:#0d9488}.sd-kpi.amber{--k:#d97706}.sd-kpi.violet{--k:#7c3aed}.sd-kpi.green{--k:#10b981}.sd-kpi.rose{--k:#e11d48}
+.sd-kpi-ico{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#f3f4ff;font-size:20px;flex:none}
+.sd-kpi small{display:block;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b}
+.sd-kpi b{display:block;font-size:24px;line-height:1.15;color:#1e1b4b}
+.sd-kpi em{display:block;margin-top:2px;font-style:normal;font-size:12px;font-weight:650;color:#64748b;overflow-wrap:anywhere}
+@media(max-width:1200px){.sd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sd-empty{padding:44px 20px;text-align:center;border:2px dashed #c7cbe6;border-radius:20px;background:#fafaff;color:#64748b}
+.sd-empty strong{display:block;color:#1e1b4b;font-size:17px;margin-bottom:6px}.sd-empty p{margin:0 0 16px;font-size:13.5px}
+
+/* planlar */
+.sd-plans{display:grid;gap:16px}
+.sd-plan{background:#fff;border:2px solid #34d399;border-radius:20px;overflow:hidden;box-shadow:0 4px 14px rgba(16,185,129,.10)}
+.sd-plan>header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 20px;background:linear-gradient(135deg,#ecfdf5,#f5f6ff);border-bottom:2px solid #d1fae5}
+.sd-plan h4{margin:0 0 4px;font-size:17px;color:#1e1b4b}.sd-plan header p{margin:0;font-size:13px;color:#64748b}
+.sd-plan-prog{width:190px;display:grid;gap:5px}.sd-plan-prog b{font-size:20px;color:#047857}.sd-plan-prog small{font-size:12px;color:#64748b}
+.sd-task{display:grid;grid-template-columns:120px minmax(0,1.5fr) minmax(160px,1fr);gap:14px;align-items:center;padding:13px 20px;border-top:1px solid #eef0fa}
+.sd-task:first-child{border-top:0}.sd-task.late{background:#fffafa}
+.sd-task-main strong{display:block;font-size:14px;color:#1e1b4b;margin-bottom:3px}.sd-task-main small,.sd-task-prog small{font-size:12px;color:#64748b}
+.sd-task-prog{display:grid;gap:5px}.sd-task.done .sd-bar i{background:#16a34a}.sd-task.late .sd-bar i{background:#e11d48}
+.sd-pill{padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;text-align:center}
+.sd-pill.done{background:#dcfce7;color:#166534}.sd-pill.late{background:#ffe4e6;color:#be123c}.sd-pill.going{background:#e0e7ff;color:#3730a3}.sd-pill.wait{background:#fef3c7;color:#92400e}
+@media(max-width:800px){.sd-task{grid-template-columns:1fr}}
+
+/* soru performansı, analiz, konu ilerlemesi */
+.sd-qs{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:16px}
+.sd-donut-svg{width:130px;height:130px;flex:none}
+.sd-qs-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;flex:1;min-width:220px}
+.sd-qs-stats div{padding:10px 12px;border-radius:14px;background:#f8f9ff;border:1px solid #e6e8f5}
+.sd-qs-stats b{display:block;font-size:22px;color:#1e1b4b}.sd-qs-stats small{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#64748b}
+.sd-qs-stats .ok b{color:#047857}.sd-qs-stats .bad b{color:#be123c}
+.sd-barrows{display:grid;gap:12px}
+.sd-barrow-top{display:flex;justify-content:space-between;margin-bottom:5px;font-size:13.5px}.sd-barrow-top strong{color:#1e1b4b}
+.sd-barrow-top span{font-weight:850}.sd-barrow-top .ok{color:#047857}.sd-barrow-top .mid{color:#b45309}.sd-barrow-top .low{color:#be123c}
+.sd-barrow small{display:block;margin-top:4px;font-size:12px;color:#64748b}
+.sd-insights{display:grid;gap:10px}
+.sd-insight{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:14px;background:#fffbeb}
+.sd-insight>span{font-size:20px}.sd-insight strong{display:block;color:#1e1b4b;font-size:14px;margin-bottom:3px}.sd-insight small{display:block;color:#64748b;font-size:13px;line-height:1.45}
+.sd-subjects{display:grid;gap:10px}
+.sd-subj{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:12px;align-items:center;padding:12px 14px;border:1px solid #e6e8f5;border-radius:14px;background:#fafaff}
+.sd-subj-main strong{display:block;margin-bottom:7px;font-size:14px;color:#1e1b4b}.sd-subj-main strong span{font-weight:600;color:#64748b}
+.sd-pct{padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:850}.sd-pct.ok{background:#dcfce7;color:#166534}.sd-pct.low{background:#ffe4e6;color:#be123c}
+@media(max-width:800px){.sd-subj{grid-template-columns:1fr auto}}
+
+/* denemeler */
+.sd-exam-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;padding:18px 22px;border-radius:20px;background:linear-gradient(120deg,#1e1b4b,#3730a3 60%,#0f766e);color:#fff}
+.sd-exam-head h3{margin:0 0 3px;font-size:20px;color:#fff!important}.sd-exam-head p{margin:0;font-size:13px;color:rgba(255,255,255,.82)}
+.sd-exam-head .sd-btn{border-color:rgba(255,255,255,.4)}
+.sd-trend-svg{width:100%;max-height:200px}
+.sd-share{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding:14px 18px;border:1px solid #e6e8f5;border-radius:16px;background:#fff}
+.sd-share b{display:block;font-size:14px;color:#1e1b4b}.sd-share>div>span{font-size:12.5px;color:#64748b}
+.sd-share-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.sd-share-actions label{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64748b}
+.sd-share-actions select{padding:8px 10px;border:1px solid #d4d8f5;border-radius:10px;background:#fafaff;font:700 13px inherit;color:#1e1b4b}
+.sd-msg{flex-basis:100%;font-size:12.5px;font-weight:700}.sd-msg.ok{color:#0f766e}.sd-msg.err{color:#e11d48}
+.sd-table{border:1px solid #e6e8f5;border-radius:18px;overflow:hidden;background:#fff}
+.sd-thead,.sd-trow{display:grid;grid-template-columns:120px minmax(160px,1.4fr) 190px 130px 80px 150px;gap:14px;align-items:center;padding:13px 20px}
+.sd-thead{background:#f6f7ff;border-bottom:1px solid #e6e8f5;font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#64748b}
+.sd-trow{border-top:1px solid #eef0fa}.sd-thead+.sd-trow{border-top:0}.sd-trow:hover{background:#fafaff}
+.sd-trow strong{font-size:14px;color:#1e1b4b;overflow-wrap:anywhere}.sd-date{font-size:13px;color:#64748b;font-weight:600}
+.sd-dyb{display:flex;gap:6px;flex-wrap:wrap}.sd-dyb i{font-style:normal;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800}
+.sd-dyb .ok{background:#dcfce7;color:#166534}.sd-dyb .bad{background:#ffe4e6;color:#be123c}.sd-dyb .blank{background:#f1f5f9;color:#475569}
+.sd-net b,.sd-score{font-size:16px;font-weight:850;color:#1e1b4b}.sd-net .sd-bar{margin-top:6px}
+.sd-row-actions{display:flex;gap:6px;justify-content:flex-end}
+.sd-more{display:flex;justify-content:center;margin-top:14px}
+@media(max-width:1100px){.sd-thead{display:none}.sd-trow{grid-template-columns:1fr 1fr}.sd-row-actions{justify-content:flex-start}}
+
+/* koçluk takvimi (genel bakış) */
+#detail-calendar-section{background:#fff!important;border:1px solid #e6e8f5!important;border-radius:20px;padding:22px 24px!important;box-shadow:0 4px 14px rgba(30,27,75,.04)}
+#detail-calendar-section .calendar-box h3{display:flex;align-items:center;gap:10px;margin:0 0 6px;font-size:17px;color:#1e1b4b}
+#detail-calendar-section .calendar-box h3::before{content:"";width:5px;height:20px;border-radius:3px;background:linear-gradient(180deg,#4f46e5,#14b8a6)}
+#detail-calendar-section .calendar-box>p{margin:0 0 16px;color:#64748b;font-size:13.5px}
+#detail-calendar-section .calendar-form{padding:16px;border:1px solid #e6e8f5;border-radius:16px;background:#f8f9ff;display:grid;grid-template-columns:1.2fr 1fr .8fr 1.6fr auto;gap:12px;align-items:end}
+#detail-calendar-section .calendar-form label{font-size:11px!important;font-weight:800!important;letter-spacing:.6px;text-transform:uppercase;color:#64748b!important;margin-bottom:5px!important}
+#detail-calendar-section .calendar-form input{width:100%;padding:10px 12px!important;border:1px solid #d4d8f5!important;border-radius:12px!important;background:#fff!important;font:600 13.5px inherit;color:#1e1b4b}
+#detail-calendar-section .calendar-form .primary{padding:11px 20px;border-radius:12px;white-space:nowrap}
+#detail-calendar-section .student-sessions-heading{margin:20px 0 10px!important;font-size:14px;color:#1e1b4b}
+#detail-calendar-section .session-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px!important;border:1px solid #e6e8f5!important;border-left:4px solid #7c3aed!important;border-radius:14px!important;background:#faf8ff!important;margin-top:8px}
+#detail-calendar-section .session-item strong{font-size:14px;color:#1e1b4b}
+@media(max-width:1000px){#detail-calendar-section .calendar-form{grid-template-columns:1fr 1fr}}
+
+#student-detail-modal #student-detail-body>.form-section{margin:0!important}

@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261117170000">
+  <link rel="stylesheet" href="/theme.css?v=20261118100000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261116141000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -362,6 +362,7 @@
   <script src="/question-pool.js?v=20261116180000"></script>
   <script src="/sidebar-collapse.js?v=20261117170000"></script>
   <script src="/week-builder.js?v=20261117171000"></script>
+  <script src="/student-detail.js?v=20261118100000"></script>
 </head>
 <body>
   <!-- Professional Question Modal -->
@@ -439,8 +440,8 @@
       <div class="modal-head"><div><h2>Öğrenci gelişim dosyası</h2><p>Dersler, çalışma planları ve sınav ilerlemesi</p></div><button type="button" class="modal-close" id="student-detail-close">×</button></div>
       <div class="detail-hero"><div id="detail-avatar" class="detail-avatar">Ö</div><div><h3 id="detail-name">Öğrenci</h3><p id="detail-contact">İletişim bilgileri</p></div><button type="button" class="detail-week-link" id="detail-open-week"><span>🗓️</span> Haftalık programı yönet <b>→</b></button></div>
       <div class="detail-tabs" role="tablist" aria-label="Öğrenci gelişim sekmeleri"><button type="button" class="detail-tab active" role="tab" aria-selected="true" data-detail-tab="overview">Genel bakış</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="plans">Çalışma planları</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="exams">Denemeler</button><button type="button" class="detail-tab" role="tab" aria-selected="false" data-detail-tab="week">Haftalık program</button></div>
-      <div id="student-detail-body" class="detail-body"><div class="detail-summary"><div class="detail-stat"><strong id="detail-plan-count">0</strong><span>Aktif plan</span></div><div class="detail-stat"><strong id="detail-task-count">0</strong><span>Toplam görev</span></div><div class="detail-stat"><strong id="detail-question-count">0</strong><span>Hedef soru</span></div><div class="detail-stat"><strong id="detail-solved-question-count">0</strong><span>Çözülen soru</span></div><div class="detail-stat"><strong id="detail-missing-topic-count">0</strong><span>Eksik konu</span></div><div class="detail-stat"><strong id="detail-session-count">0</strong><span>Takvim etkinliği</span></div></div><div class="form-section"><div class="section-title"><h3>Çalışma planları</h3><button type="button" class="tag blue" id="export-detail-plans">CSV indir</button></div><div id="detail-plans" class="tasks"><div class="task"><div class="task-text"><strong>Yükleniyor...</strong></div></div></div></div><div class="form-section"><div class="calendar-box"><h3>Koçluk takvimi</h3><p>Bu öğrenciyle yapılacak görüşmeleri planlayın. Takvimdeki tüm planlanan görüşmeler bu bölümle eşleşir.</p><form id="session-form" class="calendar-form"><div><label for="session-date">Tarih</label><input id="session-date" type="date" required></div><div><label for="session-time">Saat</label><input id="session-time" type="time" required></div><div><label for="session-duration">Süre</label><input id="session-duration" type="number" min="15" max="240" step="15" value="45" required></div><div><label for="session-note">Not</label><input id="session-note" placeholder="Haftalık değerlendirme"></div><button class="primary" type="submit">Takvime ekle</button></form><div id="detail-sessions"></div></div></div></div>
-      <div class="form-section"><h3>Deneme sonuçları</h3><div id="detail-exams" class="tasks"><p style="font-size:12px;color:var(--muted)">Yükleniyor...</p></div></div>
+      <div id="student-detail-body" class="detail-body"><div class="detail-summary"><div class="detail-stat"><strong id="detail-plan-count">0</strong><span>Aktif plan</span></div><div class="detail-stat"><strong id="detail-task-count">0</strong><span>Toplam görev</span></div><div class="detail-stat"><strong id="detail-question-count">0</strong><span>Hedef soru</span></div><div class="detail-stat"><strong id="detail-solved-question-count">0</strong><span>Çözülen soru</span></div><div class="detail-stat"><strong id="detail-missing-topic-count">0</strong><span>Eksik konu</span></div><div class="detail-stat"><strong id="detail-session-count">0</strong><span>Takvim etkinliği</span></div></div><div class="form-section" id="detail-plans-section"><div class="section-title"><h3>Çalışma planları</h3><button type="button" class="tag blue" id="export-detail-plans">CSV indir</button></div><div id="detail-plans" class="sd-host"><div class="task"><div class="task-text"><strong>Yükleniyor...</strong></div></div></div></div><div class="form-section" id="detail-calendar-section"><div class="calendar-box"><h3>Koçluk takvimi</h3><p>Bu öğrenciyle yapılacak görüşmeleri planlayın. Takvimdeki tüm planlanan görüşmeler bu bölümle eşleşir.</p><form id="session-form" class="calendar-form"><div><label for="session-date">Tarih</label><input id="session-date" type="date" required></div><div><label for="session-time">Saat</label><input id="session-time" type="time" required></div><div><label for="session-duration">Süre</label><input id="session-duration" type="number" min="15" max="240" step="15" value="45" required></div><div><label for="session-note">Not</label><input id="session-note" placeholder="Haftalık değerlendirme"></div><button class="primary" type="submit">Takvime ekle</button></form><div id="detail-sessions"></div></div></div></div>
+      <div class="form-section hidden" id="detail-exams-section"><div id="detail-exams" class="sd-host"><p class="sd-muted">Yükleniyor...</p></div></div>
     </div>
   </div>
   <div id="tenant-modal" class="modal-backdrop hidden">
@@ -1160,18 +1161,9 @@
       });
       const body = document.getElementById('student-detail-body');
       if (!body) return;
-      const sections = [...body.querySelectorAll('.form-section')];
-      const summary = body.querySelector('.detail-summary');
-      sections.forEach(section => {
-        const title = section.querySelector('h3')?.textContent?.trim().toLowerCase() || '';
-        const isPlans = title.includes('çalışma plan');
-        const isCalendar = title.includes('koçluk takvimi');
-        const isExams = title.includes('deneme sonuç');
-        const isSubjects = section.id === 'detail-subjects' || title.includes('ders ve konu');
-        const isWeek = section.id === 'detail-week-section';
-        section.classList.toggle('hidden', isWeek ? name !== 'week' : (name === 'week' || (name === 'overview' && (isPlans || isExams || isSubjects)) || (name === 'plans' && (isCalendar || isExams || isSubjects)) || (name === 'exams' && (isPlans || isCalendar))));
-      });
-      if (summary) summary.classList.toggle('hidden', name === 'week');
+      const visible = { overview: ['detail-calendar-section', 'detail-question-summary', 'detail-insights', 'detail-subjects'], plans: ['detail-plans-section'], exams: ['detail-exams-section'], week: ['detail-week-section'] }[name] || [];
+      ['detail-calendar-section', 'detail-plans-section', 'detail-exams-section', 'detail-week-section', 'detail-subjects', 'detail-insights', 'detail-question-summary'].forEach(id => document.getElementById(id)?.classList.toggle('hidden', !visible.includes(id)));
+      body.querySelector('.detail-summary')?.classList.toggle('hidden', name !== 'overview');
       if (name === 'week') {
         const weekHost = document.getElementById('detail-week-section');
         if (weekHost && currentDetailStudentObj && weekHost.dataset.mounted !== currentDetailStudentObj.id) { weekHost.dataset.mounted = currentDetailStudentObj.id; window.mountWeekOverview?.(weekHost, { tenantId: localStorage.getItem('tenantId'), authRequest, student: currentDetailStudentObj, escapeHtml }); }
@@ -1212,7 +1204,8 @@
       document.getElementById('detail-plan-count').textContent = items.length;
       document.getElementById('detail-task-count').textContent = taskCount;
       document.getElementById('detail-question-count').textContent = questionCount;
-      plans.innerHTML = items.length ? items.map(plan => `<div class="task"><div class="task-text"><strong>${plan.title}</strong><small>${plan.weekStart} · ${plan.tasks.length} görev</small></div><span class="tag blue">${plan.tasks.filter(task => task.isCompleted).length}/${plan.tasks.length}</span></div>`).join('') : '<div class="task"><div class="task-text"><strong>Henüz çalışma planı yok.</strong><small>Bu öğrenci için plan oluşturabilirsiniz.</small></div></div>';
+      plans.innerHTML = window.StudentDetailUI.plans(items);
+      plans.querySelector('[data-go-plans]')?.addEventListener('click', () => { closeStudentDetail(); document.querySelector('[data-page="plans"]')?.click(); });
       const plansExport = document.getElementById('export-detail-plans'); if (plansExport) plansExport.onclick = async () => { const exportResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/plans/export`); if (!exportResponse.ok) return; const url = URL.createObjectURL(await exportResponse.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-calisma-planlari.csv`; link.click(); URL.revokeObjectURL(url); };
       const sessionsResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/sessions`);
       const sessions = sessionsResponse.ok ? await sessionsResponse.json() : [];
@@ -1229,27 +1222,28 @@
       const exams = examsResponse.ok ? await examsResponse.json() : [];
       const examsExport = document.getElementById('export-detail-exams'); if (examsExport) examsExport.onclick = async () => { const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/exams/export`); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-denemeler.csv`; link.click(); URL.revokeObjectURL(url); };
       const examsBox = document.getElementById('detail-exams');
-      if (examsBox) examsBox.innerHTML = exams.length ? exams.slice(0, 5).map(exam => `<div class="task"><div class="task-text"><strong>${exam.title}</strong><small>${exam.examDate} · ${exam.correct} doğru, ${exam.wrong} yanlış, ${exam.blank} boş · Net: ${exam.net}</small></div><span class="tag blue">${exam.score} puan · Net ${exam.net}</span></div>`).join('') : '<p style="font-size:12px;color:var(--muted)">Henüz deneme sonucu yok.</p>';
+      if (examsBox) window.StudentDetailUI.mountExams(examsBox, { student, exams, tenantId: localStorage.getItem('tenantId'), authRequest, refresh: () => window.__studentDetailRefresh('exams') });
       const subjectsResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects`);
       const subjects = subjectsResponse.ok ? await subjectsResponse.json() : [];
       const missingTopics = subjects.filter(item => Number(item.completionPercent || 0) < 70).length;
       document.getElementById('detail-missing-topic-count').textContent = missingTopics;
       document.getElementById('detail-subjects')?.remove();
-      const subjectSection = document.createElement('div'); subjectSection.id = 'detail-subjects'; subjectSection.className = 'form-section'; subjectSection.innerHTML = `<div class="section-title"><div><h3>Ders ve konu ilerlemesi</h3><span class="detail-section-note">${missingTopics ? `${missingTopics} konu takip gerektiriyor` : 'Tüm konular güncel görünüyor'}</span></div><div style="display:flex;gap:6px"><button type="button" class="tag blue" id="export-subject-progress">CSV indir</button><button type="button" class="tag blue" id="add-subject-progress">+ Konu ekle</button></div></div><div class="tasks">${subjects.length ? subjects.map(item => `<div class="task"><div class="task-text"><strong>${item.subject} · ${item.topic}</strong><small>İlerleme: %${item.completionPercent}</small></div><span class="tag ${Number(item.completionPercent || 0) < 70 ? '' : 'blue'}">%${item.completionPercent}</span><button type="button" class="tag blue subject-edit" data-id="${item.id}">Düzenle</button><button type="button" class="tag subject-delete" data-id="${item.id}">Sil</button></div>`).join('') : '<p style="font-size:12px;color:var(--muted)">Henüz konu ilerlemesi girilmedi.</p>'}</div>`;
-      const insightResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${currentDetailStudentId}/insights`); if (insightResponse.ok) { const insightData = await insightResponse.json(); const insightSection = document.createElement('div'); insightSection.id = 'detail-insights'; insightSection.className = 'form-section'; insightSection.innerHTML = `<div class="section-title"><h3>Akıllı gelişim analizi</h3><span class="tag blue">Otomatik</span></div><div class="tasks">${(insightData.insights || []).map(item => `<div class="task"><div class="task-text"><strong>${item.title}</strong><small>${item.detail}</small></div></div>`).join('')}</div>`; document.getElementById('student-detail-body').appendChild(insightSection); }
+      const subjectSection = document.createElement('div'); subjectSection.id = 'detail-subjects'; subjectSection.className = 'form-section'; subjectSection.innerHTML = window.StudentDetailUI.subjects(subjects, missingTopics);
+      const insightResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${currentDetailStudentId}/insights`); if (insightResponse.ok) { const insightData = await insightResponse.json(); const insightSection = document.createElement('div'); insightSection.id = 'detail-insights'; insightSection.className = 'form-section'; insightSection.innerHTML = window.StudentDetailUI.insights(insightData); document.getElementById('student-detail-body').appendChild(insightSection); }
       document.getElementById('student-detail-body')?.appendChild(subjectSection);
       const questionSummaryResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/question-summary`);
       const summary = questionSummaryResponse.ok ? await questionSummaryResponse.json() : { total: 0, correct: 0, wrong: 0, rate: 0, bySubject: [] };
       document.getElementById('detail-solved-question-count').textContent = summary.total || 0;
       document.getElementById('detail-question-summary')?.remove();
-      const questionSummarySection = document.createElement('div'); questionSummarySection.id = 'detail-question-summary'; questionSummarySection.className = 'form-section'; questionSummarySection.innerHTML = `<div class="section-title"><h3>Soru performansı</h3><span class="tag blue">%${summary.rate} başarı</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px"><div class="task"><div class="task-text"><strong>${summary.total}</strong><small>Toplam soru</small></div></div><div class="task"><div class="task-text"><strong>${summary.correct}</strong><small>Doğru</small></div></div><div class="task"><div class="task-text"><strong>${summary.wrong}</strong><small>Yanlış</small></div></div></div><div class="tasks" style="margin-top:10px">${(summary.bySubject || []).map(item => `<div class="task"><div class="task-text"><strong>${item.subject}</strong><small>${item.correct}/${item.total} doğru</small></div><span class="tag ${item.rate >= 70 ? 'blue' : ''}">%${item.rate}</span></div>`).join('') || '<p style="color:var(--muted)">Henüz soru çözümü yok.</p>'}</div>`;
+      const questionSummarySection = document.createElement('div'); questionSummarySection.id = 'detail-question-summary'; questionSummarySection.className = 'form-section'; questionSummarySection.innerHTML = window.StudentDetailUI.questionSummary(summary);
       document.getElementById('student-detail-body')?.appendChild(questionSummarySection);
       document.getElementById('add-subject-progress')?.addEventListener('click', async () => { const subject = prompt('Ders adı:'); if (!subject) return; const topic = prompt('Konu adı:'); if (!topic) return; const completionPercent = Number(prompt('İlerleme yüzdesi (0-100):', '0')); if (!Number.isInteger(completionPercent) || completionPercent < 0 || completionPercent > 100) { alert('0 ile 100 arasında bir tam sayı girin.'); return; } const saveResponse = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects`, { method: 'POST', body: JSON.stringify({ subject, topic, completionPercent }) }); if (!saveResponse.ok) { alert('Konu ilerlemesi kaydedilemedi.'); return; } await openStudentDetail(student); });
       document.getElementById('export-subject-progress')?.addEventListener('click', async () => { const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/export`); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `${student.firstName}-${student.lastName}-konu-ilerlemesi.csv`; link.click(); URL.revokeObjectURL(url); });
       subjectSection.querySelectorAll('.subject-edit').forEach(button => button.addEventListener('click', async () => { const item = subjects.find(subject => subject.id === button.dataset.id); if (!item) return; const subject = prompt('Ders adı:', item.subject); if (subject === null) return; const topic = prompt('Konu adı:', item.topic); if (topic === null) return; const completionPercent = Number(prompt('İlerleme yüzdesi (0-100):', String(item.completionPercent))); if (!Number.isInteger(completionPercent) || completionPercent < 0 || completionPercent > 100) { alert('0 ile 100 arasında bir tam sayı girin.'); return; } const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/${item.id}`, { method: 'PUT', body: JSON.stringify({ subject, topic, completionPercent }) }); if (!response.ok) { alert('Konu ilerlemesi güncellenemedi.'); return; } await openStudentDetail(student); }));
       subjectSection.querySelectorAll('.subject-delete').forEach(button => button.addEventListener('click', async () => { if (!confirm('Bu konu ilerlemesini silmek istediğinize emin misiniz?')) return; const response = await authRequest(`/api/tenants/${localStorage.getItem('tenantId')}/students/${student.id}/subjects/${button.dataset.id}`, { method: 'DELETE' }); if (!response.ok) { alert('Konu ilerlemesi silinemedi.'); return; } await openStudentDetail(student); }));
-      setStudentDetailTab('overview');
+      setStudentDetailTab(window.__detailKeepTab || 'overview');
     }
+    window.__studentDetailRefresh = async tab => { window.__detailKeepTab = tab || null; try { await openStudentDetail(currentDetailStudentObj); } finally { window.__detailKeepTab = null; } };
     function closeStudentDetail() { document.getElementById('student-detail-modal').classList.add('hidden'); }
     function toLocalDateInputValue(date) {
       const pad = value => String(value).padStart(2, '0');
@@ -1515,6 +1509,7 @@
       document.getElementById('exam-modal').classList.remove('hidden');
     }
     function closeExamModal() { document.getElementById('exam-modal').classList.add('hidden'); }
+    window.__openExamModal = openExamModal;
     document.getElementById('exam-modal-close').addEventListener('click', closeExamModal);
     document.getElementById('exam-modal-cancel').addEventListener('click', closeExamModal);
     document.getElementById('exam-modal').addEventListener('click', event => { if (event.target.id === 'exam-modal') closeExamModal(); });
@@ -1526,6 +1521,7 @@
       const response = await authRequest(`/api/tenants/${tenantId}/students/${studentId}/exams${editingExam ? `/${editingExam.id}` : ''}`, { method: editingExam ? 'PUT' : 'POST', body: JSON.stringify(payload) });
       if (!response.ok) { const body = await response.json().catch(() => ({})); const error = document.getElementById('exam-form-error'); error.textContent = body.error || 'Deneme kaydedilemedi.'; error.classList.remove('hidden'); return; }
       closeExamModal(); await loadExamsPage();
+      if (window.__studentDetailRefresh && !document.getElementById('student-detail-modal').classList.contains('hidden')) window.__studentDetailRefresh('exams');
     });
     function planDateLocal(date) { const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; }
     function defaultPlanMonday() { const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - ((date.getDay() + 6) % 7)); return planDateLocal(date); }
