@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119000000">
+  <link rel="stylesheet" href="/theme.css?v=20261119001000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -1247,6 +1247,8 @@
     }
     window.__studentDetailRefresh = async tab => { window.__detailKeepTab = tab || null; try { await openStudentDetail(currentDetailStudentObj); } finally { window.__detailKeepTab = null; } };
     function closeStudentDetail() { document.getElementById('student-detail-modal').classList.add('hidden'); }
+    document.querySelector('.sidebar')?.addEventListener('click', e => { if (e.target.closest('.nav a, .brand')) closeStudentDetail(); }, true);
+    window.addEventListener('hashchange', closeStudentDetail);
     function toLocalDateInputValue(date) {
       const pad = value => String(value).padStart(2, '0');
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
