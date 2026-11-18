@@ -860,3 +860,24 @@ body.wb-open .sb-toggle{display:flex!important}
 @media(max-width:900px){.sk-steps{grid-template-columns:1fr}}
 .sk-id h3{white-space:normal;overflow:visible;line-height:1.25;word-break:break-word}
 .sk-card header{align-items:flex-start}
+
+/* ===== Öğrenci gelişim dosyası: üst bölüm sıkıştırıldı, içerik yukarıdan başlasın ===== */
+#student-detail-modal .modal-head{padding:12px 28px 10px}
+#student-detail-modal .modal-head h2{font-size:18px!important}
+#student-detail-modal .modal-head p{display:none}
+#student-detail-modal .modal-close{width:34px!important;height:34px!important}
+#student-detail-modal .detail-hero{margin:12px 28px 10px!important;padding:12px 18px!important;gap:14px;border-radius:16px!important}
+#student-detail-modal .detail-avatar{width:48px!important;height:48px!important;border-radius:14px!important;font-size:17px!important}
+#student-detail-modal .detail-hero h3{font-size:20px!important;margin:0 0 6px!important}
+#student-detail-modal .detail-contact-item{padding:4px 10px;font-size:12px}
+#student-detail-modal .detail-week-link{padding:10px 16px!important;font-size:13.5px!important;border-radius:12px!important}
+#student-detail-modal .detail-tabs{margin:0 28px 2px;padding:4px!important}
+#student-detail-modal .detail-tab{padding:8px 16px!important;font-size:13.5px}
+#student-detail-modal .detail-body{padding:12px 28px 24px!important}
+#student-detail-body{gap:12px}
+#student-detail-body>#sd-share{padding:10px 16px;margin:0;border-radius:14px}
+#student-detail-body>#sd-share b{font-size:13.5px}
+#student-detail-body>#sd-share>div>span{font-size:12px}
+#student-detail-modal .sd-exam-head{padding:14px 20px}
+#student-detail-modal .sd-kpis{gap:12px}
+#student-detail-modal .form-section{padding:16px 18px!important;border-radius:16px}
