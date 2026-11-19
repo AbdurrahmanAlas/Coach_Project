@@ -2009,7 +2009,13 @@
         createButton.classList.toggle('hidden', !isCoach);
         return;
       }
-      const selected = tenants.find(x => x.id === localStorage.getItem('tenantId')) || tenants[0];
+      let selected = tenants.find(x => x.id === localStorage.getItem('tenantId'));
+      if (!selected && tenants.length > 1 && currentUserRoles.some(role => role.toLowerCase() === 'student')) {
+        // İlk girişte öğrenci en çok verisi (plan, ders, deneme, görüşme) olan koçla açılır; sonra üstteki seçiciden değiştirebilir.
+        const scored = await Promise.all(tenants.map(async item => { try { const r = await authRequest(`/api/student/me/overview?tenantId=${encodeURIComponent(item.id)}`); if (!r.ok) return { item, score: -1 }; const o = await r.json(); return { item, score: (o.plans || []).length * 3 + (o.lessonSlots || []).length + (o.exams || []).length * 2 + (o.sessions || []).length }; } catch { return { item, score: -1 }; } }));
+        selected = scored.sort((a, b) => b.score - a.score)[0].item;
+      }
+      selected = selected || tenants[0];
       localStorage.setItem('tenantId', selected.id);
       const tenantLabel = document.getElementById('tenant-name');
       const switcherHost = document.getElementById('tenant-switcher');
