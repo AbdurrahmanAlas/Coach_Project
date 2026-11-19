@@ -354,7 +354,7 @@
     .session-item{border:1px solid #d9e8f2!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;transition:all .2s ease!important}.session-item:hover{box-shadow:0 8px 16px rgba(16,35,63,.1)!important;border-color:#c4d5e3!important}
     .topbar{background:linear-gradient(90deg,#fff 0%,#f8fbfd 100%)!important;box-shadow:0 2px 8px rgba(16,35,63,.04)!important;border-color:#d9e8f2!important}
   </style>
-  <link rel="stylesheet" href="/theme.css?v=20261119034000">
+  <link rel="stylesheet" href="/theme.css?v=20261119040000">
   <link rel="stylesheet" href="/analytics.css?v=20261117120000">
   <script src="/share-image.js?v=20261118220000"></script>
   <script src="/analytics.js?v=20261117150000b"></script>
@@ -1981,6 +1981,7 @@
       // Dashboard yüklemesi doğrudan başlar; tamamlandığında mevcut shell'i günceller.
       for (let attempt = 0; attempt < 3; attempt++) { try { await loadTenants(); break; } catch (error) { console.warn('Koçluk alanları yüklenemedi', error); if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1))); } }
       loadNotifications().catch(error => console.warn('Bildirimler yüklenemedi', error));
+      if (role === 'Student') [2500, 7000, 15000].forEach(delay => setTimeout(() => { if (document.getElementById('tenant-switch')) return; loadTenants().catch(() => {}); }, delay));
       if (role === 'Parent') loadParentDashboard().catch(error => console.warn('Veli paneli yüklenemedi', error)); else if (role === 'Student') loadStudentDashboard().catch(error => { console.warn('Öğrenci paneli yüklenemedi', error); content.innerHTML = `<div class="welcome"><div><h1>Merhaba, ${escapeHtml(name)} 👋</h1><p>Öğrenci verileri alınamadı.</p></div><div class="date">Öğrenci paneli</div></div><div class="card section"><div class="section-title"><h2>Panel verileri yüklenemedi</h2><button type="button" class="tag blue" onclick="location.reload()">Yenile</button></div><p style="color:var(--muted);margin:0">Sayfayı yenileyerek tekrar deneyebilirsin.</p></div>`; }); else { loadDashboardData().catch(error => console.warn('Koç paneli yüklenemedi', error)); if (role === 'Admin') loadAdminDashboard().catch(error => console.warn('Yönetim paneli yüklenemedi', error)); }
       // Koç ve admin hesapları her girişte Genel Bakış ile başlamalıdır.
       // Tarayıcıda kalan eski #schedule adresi dashboard verilerinin yüklenmeden
