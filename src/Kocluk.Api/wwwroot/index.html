@@ -1981,7 +1981,7 @@
       // Dashboard yüklemesi doğrudan başlar; tamamlandığında mevcut shell'i günceller.
       for (let attempt = 0; attempt < 3; attempt++) { try { await loadTenants(); break; } catch (error) { console.warn('Koçluk alanları yüklenemedi', error); if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 700 * (attempt + 1))); } }
       loadNotifications().catch(error => console.warn('Bildirimler yüklenemedi', error));
-      if (role === 'Student') [2500, 7000, 15000].forEach(delay => setTimeout(() => { if (document.getElementById('tenant-switch')) return; loadTenants().catch(() => {}); }, delay));
+      if (role === 'Student') (() => { let tries = 0; const poll = () => { if (document.getElementById('tenant-switch') || tries++ >= 20) return; loadTenants().catch(error => console.warn('Koç listesi yenilenemedi', error)).finally(() => setTimeout(poll, 3000)); }; setTimeout(poll, 1500); })();
       if (role === 'Parent') loadParentDashboard().catch(error => console.warn('Veli paneli yüklenemedi', error)); else if (role === 'Student') loadStudentDashboard().catch(error => { console.warn('Öğrenci paneli yüklenemedi', error); content.innerHTML = `<div class="welcome"><div><h1>Merhaba, ${escapeHtml(name)} 👋</h1><p>Öğrenci verileri alınamadı.</p></div><div class="date">Öğrenci paneli</div></div><div class="card section"><div class="section-title"><h2>Panel verileri yüklenemedi</h2><button type="button" class="tag blue" onclick="location.reload()">Yenile</button></div><p style="color:var(--muted);margin:0">Sayfayı yenileyerek tekrar deneyebilirsin.</p></div>`; }); else { loadDashboardData().catch(error => console.warn('Koç paneli yüklenemedi', error)); if (role === 'Admin') loadAdminDashboard().catch(error => console.warn('Yönetim paneli yüklenemedi', error)); }
       // Koç ve admin hesapları her girişte Genel Bakış ile başlamalıdır.
       // Tarayıcıda kalan eski #schedule adresi dashboard verilerinin yüklenmeden
@@ -2031,29 +2031,10 @@
         switcher.id = 'tenant-switch'; switcher.title = isStudentUser ? 'Hangi koçunun verisini görmek istediğini seç' : 'Koçluk alanını değiştir';
         switcher.className = 'ts-select';
         tenants.forEach(item => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; option.selected = item.id === selected.id; switcher.appendChild(option); });
-        const switchTo = id => { localStorage.setItem('tenantId', id); location.reload(); };
+        const switchTo = async id => { localStorage.setItem('tenantId', id); switcher.disabled = true; try { await loadCurrentUser(); } catch (error) { console.warn(error); location.reload(); } };
         switcher.addEventListener('change', () => switchTo(switcher.value));
         switcherHost.append(label, switcher);
         switcherHost.classList.remove('hidden');
-        if (isStudentUser) {
-          Promise.all(tenants.filter(item => item.id !== selected.id).map(async item => {
-            const overviewResponse = await authRequest(`/api/student/me/overview?tenantId=${encodeURIComponent(item.id)}`);
-            if (!overviewResponse.ok) return null;
-            const overview = await overviewResponse.json();
-            return { item, pending: (overview.sessions || []).filter(session => session.status === 'PendingStudent' && parseServerDate(session.startsAtUtc) >= new Date()).length };
-          })).then(results => {
-            const waiting = results.filter(result => result && result.pending > 0);
-            waiting.forEach(({ item, pending }) => { const option = [...switcher.options].find(o => o.value === item.id); if (option) option.textContent = `${item.name} · ${pending} bekleyen talep`; });
-            if (!waiting.length) return;
-            const pill = document.createElement('button');
-            pill.type = 'button';
-            pill.className = 'ts-pill';
-            pill.textContent = `⏳ ${waiting[0].item.name} sana ${waiting.reduce((sum, w) => sum + w.pending, 0)} randevu önerdi · incele${waiting.length > 1 ? ' (+' + (waiting.length - 1) + ' koç daha)' : ''}`;
-            pill.title = 'Onayını bekleyen randevuyu görmek için o koçun paneline geç';
-            pill.addEventListener('click', () => switchTo(waiting[0].item.id));
-            switcherHost.appendChild(pill);
-          }).catch(() => {});
-        }
       } else { tenantLabel.textContent = `· ${selected.name}`; switcherHost.classList.add('hidden'); }
       createButton.classList.add('hidden');
     }
